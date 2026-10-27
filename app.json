@@ -18,9 +18,7 @@
       "package": "com.zombieoutbreak.game",
       "edgeToEdgeEnabled": true
     },
-    "web": {
-      "bundler": "metro"
-    },
+    "platforms": ["android", "ios"],
     "extra": {
       "supportsRTL": false
     },

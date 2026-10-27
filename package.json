@@ -6,9 +6,8 @@
   "scripts": {
     "setup": "node scripts/setup.js",
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "android": "node scripts/run-android.js",
+    "android:offline": "node scripts/run-android.js --offline",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },

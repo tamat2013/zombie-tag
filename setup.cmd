@@ -1,6 +1,7 @@
 @echo off
 chcp 65001 >nul
-rem Installs Node.js (if missing) and all project dependencies. Double-click or run: setup.cmd
+rem Installs Node.js (if missing), then runs scripts\setup.js which installs the project
+rem dependencies, a JDK, the Android SDK and the emulator. Double-click or run: setup.cmd
 cd /d "%~dp0"
 
 where node >nul 2>nul
@@ -22,5 +23,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo הכל מותקן. אם Node.js הותקן הרגע, סגור ופתח מחדש את VS Code, ואז לחץ F5.
+echo הכל מותקן. אם Node.js או Java הותקנו הרגע, סגור ופתח מחדש את VS Code, ואז לחץ F5.
 pause

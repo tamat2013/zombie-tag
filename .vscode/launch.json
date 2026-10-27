@@ -2,22 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "משחק מלא (עם Firebase)",
+      "name": "אנדרואיד - משחק מלא (עם Firebase)",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npx.cmd expo start --web --clear",
+      "command": "node scripts/run-android.js",
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "setup",
       "env": { "EXPO_PUBLIC_OFFLINE": "", "PATH": "${env:PATH};${env:ProgramFiles}\\nodejs" }
     },
     {
-      "name": "בלי Firebase (אופליין + בוטים)",
+      "name": "אנדרואיד - בלי Firebase (אופליין + בוטים)",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npx.cmd expo start --web --clear",
+      "command": "node scripts/run-android.js --offline",
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "setup",
-      "env": { "EXPO_PUBLIC_OFFLINE": "1", "PATH": "${env:PATH};${env:ProgramFiles}\\nodejs" }
+      "env": { "PATH": "${env:PATH};${env:ProgramFiles}\\nodejs" }
     }
   ]
 }
