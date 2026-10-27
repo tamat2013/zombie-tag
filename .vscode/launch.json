@@ -18,6 +18,24 @@
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "setup",
       "env": { "PATH": "${env:PATH};${env:ProgramFiles}\\nodejs" }
+    },
+    {
+      "name": "WEB - משחק מלא (עם Firebase)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "node scripts/run-web.js",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "setup",
+      "env": { "EXPO_PUBLIC_OFFLINE": "", "PATH": "${env:PATH};${env:ProgramFiles}\\nodejs" }
+    },
+    {
+      "name": "WEB - בלי Firebase (אופליין + בוטים)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "node scripts/run-web.js --offline",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "setup",
+      "env": { "PATH": "${env:PATH};${env:ProgramFiles}\\nodejs" }
     }
   ]
 }

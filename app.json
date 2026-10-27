@@ -18,7 +18,13 @@
       "package": "com.zombieoutbreak.game",
       "edgeToEdgeEnabled": true
     },
-    "platforms": ["android", "ios"],
+    "web": {
+      "bundler": "metro"
+    },
+    "platforms": ["android", "ios", "web"],
+    "experiments": {
+      "baseUrl": "/zombie-tag"
+    },
     "extra": {
       "supportsRTL": false
     },

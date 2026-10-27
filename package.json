@@ -9,6 +9,9 @@
     "android": "node scripts/run-android.js",
     "android:offline": "node scripts/run-android.js --offline",
     "android:release": "node scripts/run-android.js --release",
+    "web": "node scripts/run-web.js",
+    "web:offline": "node scripts/run-web.js --offline",
+    "web:build": "expo export --platform web",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "ios": "expo run:ios"

@@ -4,7 +4,13 @@ A zombie game built with [Expo](https://expo.dev) and React Native.
 
 ## Getting started
 
-The game targets Android phones and runs in the Android emulator (no browser build).
+The game runs as an Android app (in the emulator or on a phone) and in the browser. Both come from the same code in `src/`, so a change made once shows up in both. Code that differs per platform is isolated behind `Platform.OS` checks (for example keyboard controls on web, haptics on Android).
+
+To try the browser version without installing the Android tools: `npm install`, then `npm run web` (or `npm run web:offline` for bots only). `npm run web:build` exports a static site to `dist/`.
+
+### Publishing the web version (GitHub Pages)
+
+[.github/workflows/deploy-web.yml](.github/workflows/deploy-web.yml) builds the site and deploys it on every push to `main` (or by hand from the Actions tab). Once: Settings > Pages > Source = "GitHub Actions". The site is served at `https://<user>.github.io/zombie-tag/` (`experiments.baseUrl` in `app.json` must match the repository name). To enable Firebase on the site, add the `EXPO_PUBLIC_FIREBASE_*` values from `.env.example` as repository variables; without them it runs in offline mode.
 
 ### Automatic install (Windows)
 
