@@ -78,9 +78,28 @@ export const authService = {
 
   onChange(listener: Listener): () => void {
     if (isFirebaseConfigured) {
-      return onAuthStateChanged(firebaseAuth(), (u) =>
-        listener(u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? pendingName ?? (u.email ?? 'שחקן').split('@')[0] } : null),
-      );
+      // A Firebase user wins; otherwise a local guest (used when Firebase rejects guest sign-in).
+      let fbUser: AppUser | null | undefined;
+      let guest: AppUser | null = null;
+      const emit = () => {
+        if (fbUser !== undefined) listener(fbUser ?? guest);
+      };
+      const unsubscribe = onAuthStateChanged(firebaseAuth(), (u) => {
+        fbUser = u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? pendingName ?? (u.email ?? 'שחקן').split('@')[0] } : null;
+        emit();
+      });
+      const onGuest: Listener = (g) => {
+        guest = g;
+        emit();
+      };
+      localListeners.add(onGuest);
+      readJson<AppUser | null>(LOCAL_SESSION, null).then((u) => {
+        if (u?.uid === LOCAL_GUEST_UID) onGuest(u);
+      });
+      return () => {
+        unsubscribe();
+        localListeners.delete(onGuest);
+      };
     }
     localListeners.add(listener);
     readJson<AppUser | null>(LOCAL_SESSION, null).then((u) => emitLocal(u));
@@ -128,8 +147,14 @@ export const authService = {
     const name = 'אורח';
     if (isFirebaseConfigured) {
       pendingName = name;
-      const cred = await signInAnonymously(firebaseAuth());
-      return { uid: cred.user.uid, email: '', displayName: name };
+      try {
+        const cred = await signInAnonymously(firebaseAuth());
+        return { uid: cred.user.uid, email: '', displayName: name };
+      } catch (e) {
+        // Anonymous sign-in is off in the Firebase project or the network is down: fall back to a
+        // device-only guest. Profile and bot matches work; online rooms need a real sign-in.
+        console.warn('Anonymous sign-in failed, using a local guest', e);
+      }
     }
     const accounts = await readJson<LocalAccount[]>(LOCAL_ACCOUNTS, []);
     const guest = accounts.find((a) => a.uid === LOCAL_GUEST_UID);
@@ -140,7 +165,7 @@ export const authService = {
   },
 
   async signOut(): Promise<void> {
-    if (isFirebaseConfigured) return fbSignOut(firebaseAuth());
+    if (isFirebaseConfigured) await fbSignOut(firebaseAuth());
     await removeKey(LOCAL_SESSION);
     emitLocal(null);
   },
@@ -148,7 +173,7 @@ export const authService = {
   current(): AppUser | null {
     if (isFirebaseConfigured) {
       const u = firebaseAuth().currentUser;
-      return u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? '' } : null;
+      return u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? '' } : localUser;
     }
     return localUser;
   },
