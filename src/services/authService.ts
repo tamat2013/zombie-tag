@@ -1,0 +1,135 @@
+// Email + password authentication. Uses Firebase Auth when configured, otherwise local
+// device accounts (handy for development and for playing against bots offline).
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut as fbSignOut,
+  updateProfile,
+} from 'firebase/auth';
+import { firebaseAuth, isFirebaseConfigured } from './firebase';
+import { readJson, removeKey, writeJson } from './storage';
+
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName: string;
+}
+
+type Listener = (u: AppUser | null) => void;
+
+const LOCAL_ACCOUNTS = 'auth:accounts';
+const LOCAL_SESSION = 'auth:session';
+
+interface LocalAccount extends AppUser {
+  passwordHash: string;
+}
+
+// Local-only accounts never leave the device; this hash just avoids storing plain text.
+function hash(s: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  return ((h2 >>> 0).toString(16) + (h1 >>> 0).toString(16)).padStart(16, '0');
+}
+
+// Firebase reports the new user before updateProfile() stores the name, so remember it here.
+let pendingName: string | null = null;
+
+const localListeners = new Set<Listener>();
+let localUser: AppUser | null = null;
+
+function emitLocal(u: AppUser | null) {
+  localUser = u;
+  localListeners.forEach((l) => l(u));
+}
+
+const ERRORS: Record<string, string> = {
+  'auth/invalid-email': 'כתובת אימייל לא תקינה',
+  'auth/email-already-in-use': 'האימייל כבר רשום – נסה להתחבר',
+  'auth/weak-password': 'הסיסמה חלשה מדי (לפחות 6 תווים)',
+  'auth/invalid-credential': 'אימייל או סיסמה שגויים',
+  'auth/wrong-password': 'אימייל או סיסמה שגויים',
+  'auth/user-not-found': 'אימייל או סיסמה שגויים',
+  'auth/too-many-requests': 'יותר מדי ניסיונות. נסה שוב בעוד כמה דקות',
+  'auth/network-request-failed': 'אין חיבור לרשת',
+};
+
+export function authErrorMessage(e: unknown): string {
+  const code = (e as { code?: string })?.code ?? '';
+  return ERRORS[code] ?? (e instanceof Error ? e.message : 'שגיאה לא צפויה');
+}
+
+function validate(email: string, password: string) {
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw Object.assign(new Error(), { code: 'auth/invalid-email' });
+  if (password.length < 6) throw Object.assign(new Error(), { code: 'auth/weak-password' });
+}
+
+export const authService = {
+  isOnline: isFirebaseConfigured,
+
+  onChange(listener: Listener): () => void {
+    if (isFirebaseConfigured) {
+      return onAuthStateChanged(firebaseAuth(), (u) =>
+        listener(u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? pendingName ?? (u.email ?? 'שחקן').split('@')[0] } : null),
+      );
+    }
+    localListeners.add(listener);
+    readJson<AppUser | null>(LOCAL_SESSION, null).then((u) => emitLocal(u));
+    return () => localListeners.delete(listener);
+  },
+
+  async signUp(email: string, password: string, displayName: string): Promise<AppUser> {
+    email = email.trim().toLowerCase();
+    validate(email, password);
+    const name = displayName.trim() || email.split('@')[0];
+    if (isFirebaseConfigured) {
+      pendingName = name;
+      const cred = await createUserWithEmailAndPassword(firebaseAuth(), email, password);
+      await updateProfile(cred.user, { displayName: name });
+      return { uid: cred.user.uid, email, displayName: name };
+    }
+    const accounts = await readJson<LocalAccount[]>(LOCAL_ACCOUNTS, []);
+    if (accounts.some((a) => a.email === email)) throw Object.assign(new Error(), { code: 'auth/email-already-in-use' });
+    const user: LocalAccount = { uid: `local-${Date.now().toString(36)}`, email, displayName: name, passwordHash: hash(password) };
+    await writeJson(LOCAL_ACCOUNTS, [...accounts, user]);
+    const session = { uid: user.uid, email, displayName: name };
+    await writeJson(LOCAL_SESSION, session);
+    emitLocal(session);
+    return session;
+  },
+
+  async signIn(email: string, password: string): Promise<AppUser> {
+    email = email.trim().toLowerCase();
+    validate(email, password);
+    if (isFirebaseConfigured) {
+      const cred = await signInWithEmailAndPassword(firebaseAuth(), email, password);
+      return { uid: cred.user.uid, email, displayName: cred.user.displayName ?? email.split('@')[0] };
+    }
+    const accounts = await readJson<LocalAccount[]>(LOCAL_ACCOUNTS, []);
+    const acc = accounts.find((a) => a.email === email && a.passwordHash === hash(password));
+    if (!acc) throw Object.assign(new Error(), { code: 'auth/invalid-credential' });
+    const session = { uid: acc.uid, email: acc.email, displayName: acc.displayName };
+    await writeJson(LOCAL_SESSION, session);
+    emitLocal(session);
+    return session;
+  },
+
+  async signOut(): Promise<void> {
+    if (isFirebaseConfigured) return fbSignOut(firebaseAuth());
+    await removeKey(LOCAL_SESSION);
+    emitLocal(null);
+  },
+
+  current(): AppUser | null {
+    if (isFirebaseConfigured) {
+      const u = firebaseAuth().currentUser;
+      return u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? '' } : null;
+    }
+    return localUser;
+  },
+};

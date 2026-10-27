@@ -1,0 +1,15 @@
+export const TILE = 48;
+export const PLAYER_RADIUS = 16;
+export const SURVIVOR_SPEED = 170; // px / s
+export const ZOMBIE_SPEED = 162;
+export const SURVIVOR_VISION = 230;
+export const ZOMBIE_VISION = 200;
+export const INFECT_REACH = 4;
+export const TASK_USE_RANGE = TILE * 1.1;
+export const CLASSIC_DURATION_SEC = 600; // 10 minutes
+export const TRAINING_DURATION_SEC = 300;
+export const MUD_SLOW = 0.55;
+export const SAW_RADIUS = 18;
+export const SAW_SPAN_TILES = 3;
+export const SAW_PERIOD_SEC = 2.6;
+export const NETWORK_SEND_HZ = 10;

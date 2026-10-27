@@ -1,0 +1,39 @@
+rules_version = '2';
+// Firestore security rules for the zombie game.
+// Deploy with: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Player profiles: only the owner can read or write.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Custom maps: any signed-in player can read (needed for the community list and share codes),
+    // only the author can create, change or delete.
+    match /maps/{mapId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.tiles.size() <= 4000;
+      allow update, delete: if signedIn() && resource.data.authorId == request.auth.uid
+        && (request.method == 'delete' || request.resource.data.authorId == request.auth.uid);
+    }
+
+    // Tournament leaderboards: everyone signed in can read, players write only their own entry,
+    // and a single write can add at most 2000 points.
+    match /tournaments/{tournamentId}/entries/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.points is number
+        && request.resource.data.points <= 2000;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.points is number
+        && request.resource.data.points >= resource.data.points
+        && request.resource.data.points - resource.data.points <= 2000;
+    }
+  }
+}

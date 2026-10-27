@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Zombie Tag",
+    "slug": "zombie-tag",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0f0a",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0b0f0a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zombieoutbreak.game"
+    },
+    "android": {
+      "package": "com.zombieoutbreak.game",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "supportsRTL": false
+    },
+    "plugins": []
+  }
+}
