@@ -38,6 +38,20 @@ export function AuthScreen() {
     }
   };
 
+  const guest = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      await authService.signInGuest();
+      haptic('success');
+    } catch (e) {
+      haptic('error');
+      setError(authErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Screen scroll>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -70,6 +84,7 @@ export function AuthScreen() {
           <Field label="סיסמה" value={password} onChangeText={setPassword} placeholder="לפחות 6 תווים" secureTextEntry onSubmitEditing={submit} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <Button title={mode === 'login' ? 'כניסה למשחק' : 'יצירת חשבון'} icon={mode === 'login' ? '🔓' : '✨'} onPress={submit} loading={busy} style={{ marginTop: 12 }} />
+          <Button title="המשך כאורח (בלי התחברות)" icon="👤" variant="ghost" onPress={guest} disabled={busy} style={{ marginTop: 10 }} />
           {!authService.isOnline ? (
             <Text style={styles.offline}>
               מצב לא מקוון: Firebase לא הוגדר, ולכן החשבון נשמר במכשיר בלבד ומשחקים מתנהלים מול בוטים. ראה README להגדרה.

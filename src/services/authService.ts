@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInAnonymously,
   signOut as fbSignOut,
   updateProfile,
 } from 'firebase/auth';
@@ -20,6 +21,8 @@ type Listener = (u: AppUser | null) => void;
 
 const LOCAL_ACCOUNTS = 'auth:accounts';
 const LOCAL_SESSION = 'auth:session';
+// One fixed guest per device, so the guest's progress survives restarts.
+const LOCAL_GUEST_UID = 'local-guest';
 
 interface LocalAccount extends AppUser {
   passwordHash: string;
@@ -57,6 +60,7 @@ const ERRORS: Record<string, string> = {
   'auth/user-not-found': 'אימייל או סיסמה שגויים',
   'auth/too-many-requests': 'יותר מדי ניסיונות. נסה שוב בעוד כמה דקות',
   'auth/network-request-failed': 'אין חיבור לרשת',
+  'auth/operation-not-allowed': 'כניסה כאורח לא מופעלת ב-Firebase (Authentication > Sign-in method > Anonymous)',
 };
 
 export function authErrorMessage(e: unknown): string {
@@ -114,6 +118,22 @@ export const authService = {
     const acc = accounts.find((a) => a.email === email && a.passwordHash === hash(password));
     if (!acc) throw Object.assign(new Error(), { code: 'auth/invalid-credential' });
     const session = { uid: acc.uid, email: acc.email, displayName: acc.displayName };
+    await writeJson(LOCAL_SESSION, session);
+    emitLocal(session);
+    return session;
+  },
+
+  /** Enter without an email or password: an anonymous Firebase user, or a local guest account offline. */
+  async signInGuest(): Promise<AppUser> {
+    const name = 'אורח';
+    if (isFirebaseConfigured) {
+      pendingName = name;
+      const cred = await signInAnonymously(firebaseAuth());
+      return { uid: cred.user.uid, email: '', displayName: name };
+    }
+    const accounts = await readJson<LocalAccount[]>(LOCAL_ACCOUNTS, []);
+    const guest = accounts.find((a) => a.uid === LOCAL_GUEST_UID);
+    const session = { uid: LOCAL_GUEST_UID, email: '', displayName: guest?.displayName ?? name };
     await writeJson(LOCAL_SESSION, session);
     emitLocal(session);
     return session;

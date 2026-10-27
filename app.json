@@ -3,7 +3,7 @@
     "name": "Zombie Tag",
     "slug": "zombie-tag",
     "version": "1.0.0",
-    "orientation": "landscape",
+    "orientation": "default",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b0f0a",
     "newArchEnabled": true,

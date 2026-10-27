@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { RootStackParamList } from './src/navigation/types';
 import { GameProvider, useGame } from './src/state/GameContext';
 import { ToastHost } from './src/components/ui';
+import { RotateHint } from './src/components/RotateHint';
 import { colors } from './src/theme';
 import { IntroScreen } from './src/screens/IntroScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
@@ -91,6 +92,7 @@ export default function App() {
           <StatusBar style="light" hidden />
           <Root />
           <ToastHost />
+          <RotateHint />
         </View>
       </GameProvider>
     </SafeAreaProvider>
