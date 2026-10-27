@@ -25,7 +25,10 @@ const config = {
 // emulators (`firebase emulators:start`) instead of a real project. Useful for testing multiplayer.
 const emulatorHost = process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST;
 
-export const isFirebaseConfigured = Boolean(config.apiKey && config.projectId && config.appId && config.databaseURL);
+// EXPO_PUBLIC_OFFLINE=1 forces offline mode even when a .env with Firebase keys exists.
+const forceOffline = process.env.EXPO_PUBLIC_OFFLINE === '1';
+
+export const isFirebaseConfigured = !forceOffline && Boolean(config.apiKey && config.projectId && config.appId && config.databaseURL);
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;

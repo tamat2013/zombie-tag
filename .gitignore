@@ -6,4 +6,5 @@ web-build/
 .env
 .env.local
 ios/
+install.log
 android/
