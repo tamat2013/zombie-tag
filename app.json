@@ -7,7 +7,10 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b0f0a",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0b0f0a"
     },
     "ios": {
@@ -16,10 +19,15 @@
     },
     "android": {
       "package": "com.zombieoutbreak.game",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b0f0a"
+      },
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
     },
     "platforms": ["android", "ios", "web"],
     "experiments": {

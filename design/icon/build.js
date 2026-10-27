@@ -89,18 +89,50 @@ if (!browser) {
   process.exit(0);
 }
 
-const png = path.join(out, 'icon.png');
-spawnSync(
-  browser,
-  [
-    '--headless=new',
-    '--disable-gpu',
-    '--hide-scrollbars',
-    '--window-size=1024,1024',
-    `--screenshot=${png}`,
-    '--default-background-color=00000000',
-    `file:///${svgFile.replace(/\\/g, '/')}`,
-  ],
-  { stdio: 'ignore' },
+const assets = path.join(out, '..', '..', 'assets');
+fs.mkdirSync(assets, { recursive: true });
+
+// Renders an SVG file to a PNG of the given size (an HTML wrapper scales the 1024 drawing).
+function render(svgPath, target, size, transparent) {
+  const html = `${target}.html`;
+  fs.writeFileSync(
+    html,
+    `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:transparent}img{display:block;width:${size}px;height:${size}px}</style><img src="file:///${svgPath.replace(/\\/g, '/')}">`,
+  );
+  spawnSync(
+    browser,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--hide-scrollbars',
+      '--allow-file-access-from-files',
+      `--window-size=${size},${size}`,
+      `--screenshot=${target}`,
+      ...(transparent ? ['--default-background-color=00000000'] : []),
+      `file:///${html.replace(/\\/g, '/')}`,
+    ],
+    { stdio: 'ignore' },
+  );
+  fs.rmSync(html, { force: true });
+  if (!fs.existsSync(target)) console.error(`רינדור נכשל: ${target}`);
+}
+
+// Opaque version for iOS, the Play Store and the favicon (they do not allow transparency).
+const bgFile = path.join(out, '_icon-opaque.svg');
+fs.writeFileSync(
+  bgFile,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${defs}
+  <defs><radialGradient id="bg" cx="50%" cy="52%" r="72%">
+    <stop offset="0" stop-color="#27452a"/><stop offset="0.55" stop-color="#112012"/><stop offset="1" stop-color="#0a0e09"/>
+  </radialGradient></defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g transform="translate(512 512) scale(1.05)">${zombie}</g></svg>\n`,
 );
-console.log(fs.existsSync(png) ? 'נוצר: design/icon/icon.svg, design/icon/icon.png' : 'רינדור PNG נכשל');
+
+render(svgFile, path.join(out, 'icon.png'), 1024, true); // source, transparent
+render(bgFile, path.join(assets, 'icon.png'), 1024, false); // app icon
+render(svgFile, path.join(assets, 'adaptive-icon.png'), 1024, true); // Android foreground layer
+render(svgFile, path.join(assets, 'splash-icon.png'), 1024, true);
+render(bgFile, path.join(assets, 'favicon.png'), 48, false);
+fs.rmSync(bgFile, { force: true });
+console.log('נוצר: design/icon/icon.svg, design/icon/icon.png ו-assets/*.png');
