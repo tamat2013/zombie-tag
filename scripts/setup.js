@@ -24,9 +24,12 @@ if (upToDate) {
 }
 
 console.log('מתקין תלויות (npm install)...');
+// npm lives next to node; add it to PATH in case node was launched by full path.
+const nodeDir = path.dirname(process.execPath);
 const result = spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
   cwd: root,
   stdio: 'inherit',
   shell: true,
+  env: { ...process.env, PATH: `${nodeDir}${path.delimiter}${process.env.PATH}` },
 });
 process.exit(result.status ?? 1);

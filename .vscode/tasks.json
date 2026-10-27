@@ -5,6 +5,9 @@
       "label": "setup",
       "type": "shell",
       "command": "node scripts/setup.js",
+      "windows": {
+        "command": "if (Get-Command node -ErrorAction SilentlyContinue) { node scripts/setup.js } else { & \"$env:ProgramFiles\\nodejs\\node.exe\" scripts/setup.js }"
+      },
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     }

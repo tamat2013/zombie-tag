@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem Installs Node.js (if missing) and all project dependencies. Double-click or run: setup.cmd
 cd /d "%~dp0"
 
