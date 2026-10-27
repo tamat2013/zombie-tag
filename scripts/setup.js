@@ -61,9 +61,17 @@ async function installCmdlineTools() {
   const tmp = path.join(sdk, 'cmdline-tools-tmp');
   fs.rmSync(tmp, { recursive: true, force: true });
   fs.mkdirSync(tmp, { recursive: true });
-  const unzip = run(
-    'powershell',
-    ['-NoProfile', '-Command', `"Expand-Archive -LiteralPath '${zip}' -DestinationPath '${tmp}' -Force"`],
+  // Full path: PATH may not contain PowerShell. No shell, so the paths need no quoting.
+  const powershell = path.join(
+    process.env.SystemRoot || 'C:\\Windows',
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'powershell.exe',
+  );
+  const unzip = spawnSync(
+    powershell,
+    ['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${zip}' -DestinationPath '${tmp}' -Force`],
     { stdio: 'inherit' },
   );
   if (unzip.status !== 0) fail('פריסת הארכיב נכשלה.');
