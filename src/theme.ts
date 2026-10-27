@@ -1,13 +1,13 @@
 // Shared colors and spacing for the UI.
 export const colors = {
-  bg: '#0b0f0a',
-  bgAlt: '#121a10',
-  panel: '#18221a',
-  panelLight: '#223024',
-  border: '#2e4031',
+  bg: '#0a0e09',
+  bgAlt: '#0d140c',
+  panel: '#121a10',
+  panelLight: '#1c2a1b',
+  border: '#2a3b2c',
   text: '#eef5e9',
-  textDim: '#9fb39a',
-  textMuted: '#6b7f67',
+  textDim: '#a3b79e',
+  textMuted: '#6f8470',
   toxic: '#7cff4f',
   toxicDark: '#3f9b1f',
   blood: '#e5383b',
@@ -38,7 +38,7 @@ export const tileColors: Record<number, string> = {
   10: '#1d261c', // saw rail (floor underneath)
 };
 
-export const radius = { sm: 8, md: 14, lg: 22 };
+export const radius = { sm: 10, md: 16, lg: 20 };
 
 export const shadow = {
   shadowColor: '#000',

@@ -1,10 +1,9 @@
-// Main menu: player card, game modes and links to every other part of the game.
+// Main menu: player card, featured classic mode, other game modes and a bottom navigation bar.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ScreenProps } from '../navigation/types';
 import type { GameMode } from '../types';
-import { Screen, CurrencyBar, ProgressBar } from '../components/ui';
+import { Screen, ProgressBar } from '../components/ui';
 import { Character } from '../components/Character';
 import { useGame, useProfile } from '../state/GameContext';
 import { findSkin } from '../data/skins';
@@ -16,30 +15,27 @@ import { authService } from '../services/authService';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
-interface ModeCard {
+interface ModeRow {
   mode: GameMode;
   title: string;
   subtitle: string;
   icon: string;
-  gradient: [string, string];
+  tint: string;
 }
 
-const MODES: ModeCard[] = [
-  { mode: 'classic', title: 'קלאסי', subtitle: 'שורדים נגד זומבים · 10 דקות', icon: '🧟', gradient: ['#3f9b1f', '#173d0c'] },
-  { mode: 'tournament', title: 'טורנירים', subtitle: 'תחרויות מתוזמנות עם פרסים', icon: '🏆', gradient: ['#c98a00', '#4d3300'] },
-  { mode: 'obstacle', title: 'מסלול מכשולים', subtitle: 'רוץ נגד השעון, אסוף מדליות', icon: '🏃', gradient: ['#2456b8', '#0c1f45'] },
-  { mode: 'training', title: 'אימון', subtitle: 'תרגל מול בוטים בלי לחץ', icon: '🎯', gradient: ['#6d2bb8', '#26103f'] },
+const MODES: ModeRow[] = [
+  { mode: 'tournament', title: 'טורנירים', subtitle: 'תחרויות מתוזמנות עם פרסים', icon: '🏆', tint: '#2a2210' },
+  { mode: 'obstacle', title: 'מסלול מכשולים', subtitle: 'רוץ נגד השעון, אסוף מדליות', icon: '🏃', tint: '#101c2e' },
+  { mode: 'training', title: 'אימון', subtitle: 'תרגל מול בוטים בלי לחץ', icon: '🎯', tint: '#231a33' },
 ];
 
 export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const profile = useProfile();
   const { signOut } = useGame();
-  const { width } = useWindowDimensions();
   const skin = findSkin(profile.selectedSkinId, profile.customSkins);
   const lvl = levelInfo(profile.xp);
   const missionsReady = claimableCount(profile, Date.now());
   const liveTournament = getTournaments(Date.now()).some((t) => tournamentStatus(t, Date.now()) === 'live');
-  const wide = width > 700;
 
   const bob = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -61,67 +57,95 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
 
   return (
     <Screen scroll>
-      <View style={styles.top}>
-        <CurrencyBar compact />
-        <Pressable onPress={() => navigation.navigate('Profile')} style={styles.playerCard}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name} numberOfLines={1}>
-              {profile.displayName}
-            </Text>
-            <Text style={styles.level}>
-              רמה {lvl.level} · {lvl.into}/{lvl.needed} XP
-            </Text>
-            <ProgressBar value={lvl.progress} height={8} style={{ marginTop: 4 }} />
-          </View>
-          <Animated.View style={{ transform: [{ translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }}>
-            <Character skin={skin} size={54} outfit={outfitEmoji(profile.equippedOutfit)} />
-          </Animated.View>
+      <View style={styles.headerRow}>
+        <Text style={styles.logo}>זומבי: התפרצות</Text>
+        <Pressable onPress={signOut} accessibilityLabel="התנתקות" style={styles.iconBtn} hitSlop={6}>
+          <Text style={styles.iconBtnText}>⎋</Text>
         </Pressable>
       </View>
-
-      <Text style={styles.logo}>זומבי: התפרצות</Text>
       {!authService.isOnline ? <Text style={styles.offline}>מצב לא מקוון · משחק מול בוטים</Text> : null}
 
-      <View style={[styles.modes, wide && { flexDirection: 'row-reverse', flexWrap: 'wrap' }]}>
+      <Pressable onPress={() => navigation.navigate('Profile')} style={styles.playerCard}>
+        <View style={styles.avatar}>
+          <Animated.View style={{ transform: [{ translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }] }}>
+            <Character skin={skin} size={40} outfit={outfitEmoji(profile.equippedOutfit)} />
+          </Animated.View>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>{lvl.level}</Text>
+          </View>
+        </View>
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text style={styles.name} numberOfLines={1}>
+            {profile.displayName}
+          </Text>
+          <ProgressBar value={lvl.progress} height={8} />
+          <Text style={styles.xp}>
+            {lvl.into} / {lvl.needed} XP
+          </Text>
+        </View>
+        <View style={{ gap: 6 }}>
+          <View style={styles.stat}>
+            <Text style={[styles.statText, { color: colors.coin }]}>{profile.coins.toLocaleString()}</Text>
+            <Text style={styles.statIcon}>🪙</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={[styles.statText, { color: colors.medal }]}>{profile.medals}</Text>
+            <Text style={styles.statIcon}>🏅</Text>
+          </View>
+        </View>
+      </Pressable>
+
+      <View style={styles.hero}>
+        <Text style={styles.heroTag}>מצב מרכזי · 10 דקות</Text>
+        <Text style={styles.heroTitle}>קלאסי</Text>
+        <Text style={styles.heroSub}>שורדים נגד זומבים. מי שנתפס, מצטרף לנגיף.</Text>
+        <Pressable onPress={() => startMode('classic')} style={({ pressed }) => [styles.heroBtn, pressed && { transform: [{ scale: 0.97 }] }]}>
+          <Text style={styles.heroBtnText}>שחק עכשיו</Text>
+        </Pressable>
+        <Text style={styles.heroArt}>🧟</Text>
+      </View>
+
+      <View style={{ gap: 10, marginTop: 14 }}>
         {MODES.map((m) => (
-          <Pressable
-            key={m.mode}
-            onPress={() => startMode(m.mode)}
-            style={({ pressed }) => [wide ? { width: '48.5%' } : null, pressed && { transform: [{ scale: 0.97 }] }]}
-          >
-            <LinearGradient colors={m.gradient} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={styles.mode}>
-              <Text style={styles.modeIcon}>{m.icon}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modeTitle}>{m.title}</Text>
-                <Text style={styles.modeSub}>{m.subtitle}</Text>
-              </View>
-              {m.mode === 'tournament' && liveTournament ? <Text style={styles.live}>● LIVE</Text> : null}
-            </LinearGradient>
+          <Pressable key={m.mode} onPress={() => startMode(m.mode)} style={({ pressed }) => [styles.row, pressed && { opacity: 0.75 }]}>
+            <View style={[styles.rowIcon, { backgroundColor: m.tint }]}>
+              <Text style={styles.rowIconText}>{m.icon}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>{m.title}</Text>
+              <Text style={styles.rowSub}>{m.subtitle}</Text>
+            </View>
+            {m.mode === 'tournament' && liveTournament ? <Text style={styles.live}>חי עכשיו</Text> : null}
+            <Text style={styles.chevron}>‹</Text>
           </Pressable>
         ))}
       </View>
 
-      <View style={styles.grid}>
-        <MenuTile icon="🛒" label="חנות" onPress={() => navigation.navigate('Shop')} />
-        <MenuTile icon="📋" label="משימות" badge={missionsReady} onPress={() => navigation.navigate('Missions')} />
-        <MenuTile icon="🎨" label="הסקינים שלי" onPress={() => navigation.navigate('SkinSelect')} />
-        <MenuTile icon="✏️" label="מעצב סקינים" onPress={() => navigation.navigate('SkinDesigner')} />
-        <MenuTile icon="🗺️" label="יוצר מפות" onPress={() => navigation.navigate('MapCreator')} />
-        <MenuTile icon="👤" label="פרופיל והישגים" onPress={() => navigation.navigate('Profile')} />
+      <View style={styles.quick}>
+        <Pressable onPress={() => navigation.navigate('SkinDesigner')} style={styles.quickBtn}>
+          <Text style={styles.quickText}>✏️ מעצב סקינים</Text>
+        </Pressable>
+        <Pressable onPress={() => navigation.navigate('MapCreator')} style={styles.quickBtn}>
+          <Text style={styles.quickText}>🗺️ יוצר מפות</Text>
+        </Pressable>
       </View>
 
-      <Pressable onPress={signOut} style={styles.signOut}>
-        <Text style={styles.signOutText}>התנתקות</Text>
-      </Pressable>
+      <View style={styles.nav}>
+        <NavItem icon="🏠" label="בית" active />
+        <NavItem icon="🛒" label="חנות" onPress={() => navigation.navigate('Shop')} />
+        <NavItem icon="📋" label="משימות" badge={missionsReady} onPress={() => navigation.navigate('Missions')} />
+        <NavItem icon="🎨" label="סקינים" onPress={() => navigation.navigate('SkinSelect')} />
+        <NavItem icon="👤" label="פרופיל" onPress={() => navigation.navigate('Profile')} />
+      </View>
     </Screen>
   );
 }
 
-function MenuTile({ icon, label, onPress, badge }: { icon: string; label: string; onPress: () => void; badge?: number }) {
+function NavItem({ icon, label, onPress, badge, active }: { icon: string; label: string; onPress?: () => void; badge?: number; active?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.7, transform: [{ scale: 0.96 }] }]}>
-      <Text style={styles.tileIcon}>{icon}</Text>
-      <Text style={styles.tileLabel}>{label}</Text>
+    <Pressable onPress={onPress} style={[styles.navItem, active && styles.navItemActive]}>
+      <Text style={styles.navIcon}>{icon}</Text>
+      <Text style={[styles.navLabel, active && { color: colors.toxic, fontWeight: '700' }]}>{label}</Text>
       {badge ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge}</Text>
@@ -132,24 +156,42 @@ function MenuTile({ icon, label, onPress, badge }: { icon: string; label: string
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  playerCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.panel, borderRadius: radius.md, padding: 10, borderWidth: 1, borderColor: colors.border, flex: 1, maxWidth: 320 },
-  name: { color: colors.text, fontWeight: '900', fontSize: 16, textAlign: 'right' },
-  level: { color: colors.textDim, fontSize: 12, textAlign: 'right' },
-  logo: { color: colors.toxic, fontSize: 34, fontWeight: '900', textAlign: 'center', marginTop: 22, textShadowColor: '#3f9b1f', textShadowRadius: 14 },
-  offline: { color: colors.textMuted, textAlign: 'center', fontSize: 12, marginTop: 2 },
-  modes: { gap: 10, marginTop: 18, justifyContent: 'space-between' },
-  mode: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, borderRadius: radius.lg, padding: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', marginBottom: 2 },
-  modeIcon: { fontSize: 44 },
-  modeTitle: { color: '#fff', fontSize: 22, fontWeight: '900', textAlign: 'right' },
-  modeSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, textAlign: 'right', marginTop: 2 },
-  live: { color: '#ff4d4d', fontWeight: '900', fontSize: 12 },
-  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10, marginTop: 18, justifyContent: 'center' },
-  tile: { width: 104, height: 96, backgroundColor: colors.panel, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  tileIcon: { fontSize: 30 },
-  tileLabel: { color: colors.text, fontWeight: '800', fontSize: 12, textAlign: 'center' },
-  badge: { position: 'absolute', top: 6, right: 6, minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.blood, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  badgeText: { color: '#fff', fontWeight: '900', fontSize: 12 },
-  signOut: { alignSelf: 'center', marginTop: 24, padding: 8 },
-  signOutText: { color: colors.textMuted, fontWeight: '700', textDecorationLine: 'underline' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logo: { color: colors.toxic, fontSize: 22, fontWeight: '900' },
+  iconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  iconBtnText: { color: colors.textDim, fontSize: 20 },
+  offline: { color: colors.textMuted, textAlign: 'right', fontSize: 12, marginTop: 2 },
+  playerCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, backgroundColor: colors.panel, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border, marginTop: 14 },
+  avatar: { width: 52, height: 52, borderRadius: 14, backgroundColor: colors.panelLight, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  levelBadge: { position: 'absolute', bottom: -6, left: -6, minWidth: 24, height: 24, borderRadius: 8, backgroundColor: colors.toxic, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  levelBadgeText: { color: colors.bg, fontSize: 12, fontWeight: '900' },
+  name: { color: colors.text, fontWeight: '700', fontSize: 16, textAlign: 'right' },
+  xp: { color: colors.textDim, fontSize: 12, textAlign: 'right' },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.bg, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 4 },
+  statText: { fontWeight: '700', fontSize: 14 },
+  statIcon: { fontSize: 14 },
+  hero: { marginTop: 14, minHeight: 230, borderRadius: radius.lg, backgroundColor: '#101a0e', borderWidth: 1, borderColor: colors.toxic, padding: 20, alignItems: 'flex-end', justifyContent: 'space-between', overflow: 'hidden' },
+  heroTag: { color: colors.toxic, fontSize: 12, fontWeight: '700' },
+  heroTitle: { color: colors.text, fontSize: 40, fontWeight: '900', lineHeight: 46 },
+  heroSub: { color: colors.textDim, fontSize: 14, textAlign: 'right', maxWidth: 220, lineHeight: 20 },
+  heroBtn: { height: 48, paddingHorizontal: 28, borderRadius: 12, backgroundColor: colors.toxic, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  heroBtnText: { color: colors.bg, fontSize: 16, fontWeight: '900' },
+  heroArt: { position: 'absolute', left: 14, top: 40, fontSize: 96, opacity: 0.9 },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, minHeight: 72, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.panel },
+  rowIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  rowIconText: { fontSize: 24 },
+  rowTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'right' },
+  rowSub: { color: colors.textDim, fontSize: 13, textAlign: 'right', marginTop: 2 },
+  live: { color: '#ff7b7e', backgroundColor: '#2a1213', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, fontSize: 12, fontWeight: '900', overflow: 'hidden' },
+  chevron: { color: colors.textMuted, fontSize: 26 },
+  quick: { flexDirection: 'row-reverse', gap: 10, marginTop: 14 },
+  quickBtn: { flex: 1, height: 48, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  quickText: { color: colors.textDim, fontSize: 14, fontWeight: '500' },
+  nav: { flexDirection: 'row-reverse', marginTop: 20, backgroundColor: colors.bgAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 4 },
+  navItem: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 12 },
+  navItemActive: { backgroundColor: colors.panelLight },
+  navIcon: { fontSize: 20 },
+  navLabel: { color: colors.textDim, fontSize: 12 },
+  badge: { position: 'absolute', top: 4, right: '50%', marginRight: -26, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.blood, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  badgeText: { color: '#fff', fontWeight: '900', fontSize: 11 },
 });

@@ -2,7 +2,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors, radius } from '../theme';
@@ -11,7 +10,7 @@ import { levelInfo } from '../logic/progression';
 
 export function Screen({ children, scroll, style }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle> }) {
   return (
-    <LinearGradient colors={['#0f1a0d', '#0b0f0a', '#070906']} style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'top', 'bottom']}>
         {scroll ? (
           <ScrollView contentContainerStyle={[{ padding: 16, paddingBottom: 40 }, style]} showsVerticalScrollIndicator={false}>
@@ -21,7 +20,7 @@ export function Screen({ children, scroll, style }: { children: React.ReactNode;
           <View style={[{ flex: 1, padding: 12 }, style]}>{children}</View>
         )}
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -150,14 +149,14 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 },
   headerSide: { flex: 1, alignItems: 'flex-start' },
   headerTitle: { color: colors.text, fontSize: 22, fontWeight: '900', flexShrink: 1, textAlign: 'right' },
-  back: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  back: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
   backText: { color: colors.text, fontSize: 22, fontWeight: '900' },
   currency: { flexDirection: 'row', gap: 6 },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: colors.border },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.bg, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: colors.border },
   pillText: { fontWeight: '800', fontSize: 13 },
   pillIcon: { fontSize: 13 },
   card: { backgroundColor: colors.panel, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border },
-  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border },
+  tab: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border },
   tabActive: { backgroundColor: colors.toxic, borderColor: colors.toxic },
   tabText: { color: colors.text, fontWeight: '800', fontSize: 13 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.panel },
