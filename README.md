@@ -28,7 +28,7 @@ The emulator needs hardware virtualization: enable it in BIOS, and on Windows tu
 3. In Device Manager, create a virtual device (for example Pixel 6, any Google APIs system image) and start it.
 4. Set `ANDROID_HOME` to the SDK folder (default `%LOCALAPPDATA%\Android\Sdk`) and add `platform-tools` and `emulator` from it to `PATH`.
 5. In the project folder run `npm install`.
-6. With the emulator running, run `npx expo start --android`. Expo installs Expo Go on the emulator and opens the game. For offline mode, set `EXPO_PUBLIC_OFFLINE=1` first.
+6. With the emulator running, run `npx expo run:android`. It builds the game as a real Android app (`com.zombieoutbreak.game`), installs it on the emulator and opens it. For offline mode, set `EXPO_PUBLIC_OFFLINE=1` first.
 
 Using your own emulator, the `ZombieTag` one from step 6 of the automatic install is not needed. `npm run android` also starts any AVD only if it is named `ZombieTag`; otherwise start your emulator yourself first and it will be detected.
 
@@ -41,7 +41,7 @@ npm run android          # full game (Firebase)
 npm run android:offline  # offline, bots only
 ```
 
-This starts the emulator if needed and opens the game in Expo Go.
+This starts the emulator if needed, builds the game as a native app and installs it on the emulator, like any app on a phone (no Expo Go). The first build generates the `android/` folder (not in git) and takes several minutes; later builds are faster. By default the app is a debug build that loads the JavaScript from the dev server, so edits show up live. For a standalone build with the JavaScript inside the app, run `node scripts/run-android.js --release` (add `--offline` for bots only).
 
 ## License
 

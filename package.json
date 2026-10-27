@@ -8,8 +8,10 @@
     "start": "expo start",
     "android": "node scripts/run-android.js",
     "android:offline": "node scripts/run-android.js --offline",
+    "android:release": "node scripts/run-android.js --release",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

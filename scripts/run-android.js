@@ -1,5 +1,6 @@
-// Starts the Android emulator (if none is running) and launches the game in it via Expo Go.
-// Run with `node scripts/run-android.js` (add `--offline` for no Firebase, bots only).
+// Starts the Android emulator (if none is running), builds the game as a native app and runs it.
+// Run with `node scripts/run-android.js` (add `--offline` for no Firebase, bots only,
+// and `--release` for a standalone build that does not need the dev server).
 const { spawn, spawnSync } = require('node:child_process');
 const { AVD_NAME, androidEnv } = require('./android');
 
@@ -33,7 +34,11 @@ if (!hasDevice()) {
   }
 }
 
-const expo = spawn('npx', ['expo', 'start', '--android', '--clear'], {
+// Builds a real native app (package com.zombieoutbreak.game) and installs it on the emulator.
+// The first build generates the android/ folder and takes several minutes.
+// --release bundles the JavaScript inside the app, so it runs without the dev server.
+const variant = process.argv.includes('--release') ? ['--variant', 'release'] : [];
+const expo = spawn('npx', ['expo', 'run:android', ...variant], {
   env,
   stdio: 'inherit',
   shell: true,

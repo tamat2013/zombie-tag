@@ -92,7 +92,7 @@ function installEmulator() {
   run('sdkmanager', ['--licenses'], { input: 'y\n'.repeat(30), stdio: ['pipe', 'ignore', 'inherit'] });
   const install = run(
     'sdkmanager',
-    ['platform-tools', 'emulator', `platforms;android-${API}`, `"${IMAGE}"`],
+    ['platform-tools', 'emulator', `platforms;android-${API}`, 'platforms;android-36', 'build-tools;36.0.0', `"${IMAGE}"`],
     { stdio: 'inherit' },
   );
   if (install.status !== 0) fail('התקנת רכיבי ה-SDK נכשלה.');
