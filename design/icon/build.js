@@ -1,6 +1,5 @@
-// Generates the app icon (icon.svg and icon.png): the zombie from the game on a transparent background.
+// Generates the app icon (icon.svg and icon.png): half zombie (left), half survivor (right), in the game's character style.
 // Run with `node design/icon/build.js`. PNG rendering needs Chrome or Edge.
-// Nothing here is referenced by app.json until the icon is applied.
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,75 +8,75 @@ const out = __dirname;
 
 // Game palette (src/theme.ts) and the zombie look from src/components/Character.tsx.
 const C = {
-  toxic: '#7cff4f',
-  skinLight: '#b4dd62',
-  skin: '#6b8f3a',
-  skinDark: '#3d5a1c',
+  zLight: '#b4dd62',
+  z: '#6b8f3a',
+  zDark: '#3d5a1c',
   outline: '#16240c',
   eye: '#d4ff3a',
-  pupil: '#e5383b',
-  mouth: '#2a0c0c',
-  teeth: '#ecf3c4',
 };
 
 const defs = `
   <defs>
-    <radialGradient id="skin" cx="38%" cy="30%" r="80%">
-      <stop offset="0" stop-color="${C.skinLight}"/>
-      <stop offset="0.55" stop-color="${C.skin}"/>
-      <stop offset="1" stop-color="${C.skinDark}"/>
+    <radialGradient id="zskin" cx="62%" cy="30%" r="80%">
+      <stop offset="0" stop-color="${C.zLight}"/><stop offset="0.55" stop-color="${C.z}"/><stop offset="1" stop-color="${C.zDark}"/>
     </radialGradient>
     <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="${C.eye}" stop-opacity="0.9"/>
-      <stop offset="1" stop-color="${C.eye}" stop-opacity="0"/>
+      <stop offset="0" stop-color="${C.eye}" stop-opacity="0.9"/><stop offset="1" stop-color="${C.eye}" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="aura" cx="50%" cy="50%" r="50%">
-      <stop offset="0.45" stop-color="${C.toxic}" stop-opacity="0.38"/>
-      <stop offset="1" stop-color="${C.toxic}" stop-opacity="0"/>
-    </radialGradient>
+    <clipPath id="face"><circle r="300"/></clipPath>
   </defs>`;
 
-// The zombie, drawn around (0,0) with a body radius of 300.
-const zombie = `
-  <circle r="470" fill="url(#aura)"/>
-  <circle r="300" fill="url(#skin)" stroke="${C.outline}" stroke-width="24"/>
-  <!-- decay blotches -->
-  <ellipse cx="170" cy="-175" rx="85" ry="55" fill="${C.skinDark}" opacity="0.45" transform="rotate(-30 170 -175)"/>
-  <ellipse cx="-185" cy="150" rx="60" ry="40" fill="${C.skinDark}" opacity="0.4" transform="rotate(25 -185 150)"/>
-  <!-- stitched scar across the forehead -->
-  <path d="M-205 -165 L-70 -250" stroke="${C.outline}" stroke-width="13" stroke-linecap="round"/>
-  <g stroke="${C.outline}" stroke-width="11" stroke-linecap="round">
-    <path d="M-190 -205 L-165 -158"/><path d="M-150 -228 L-125 -181"/><path d="M-110 -250 L-85 -203"/>
+// Zigzag tear down the middle of the face.
+const tear = 'M8 -320 L-22 -230 L24 -150 L-18 -70 L22 10 L-20 90 L20 170 L-16 250 L10 320';
+
+// The icon, drawn around (0,0) with a body radius of 300.
+const S = { body: '#4f8ef7', light: '#8fb8ff', dark: '#2f62c4', accent: '#1f3f7a' };
+const gameEye = (cx, zombie) => `
+  ${zombie ? `<circle cx="${cx}" cy="-60" r="105" fill="url(#eyeGlow)"/>` : ''}
+  <circle cx="${cx}" cy="-60" r="62" fill="${zombie ? C.eye : '#fff'}" stroke="${zombie ? C.outline : S.accent}" stroke-width="10"/>
+  <circle cx="${cx + (zombie ? 6 : -6)}" cy="-56" r="28" fill="${zombie ? '#ff2a2a' : '#111'}"/>
+  <circle cx="${cx + (zombie ? -4 : -16)}" cy="-68" r="9" fill="#fff" opacity="0.9"/>`;
+// Mouth curve: the survivor's smile runs from the middle (0,110) up to (140,80).
+const MOUTH = 'M-140 80 Q0 140 140 80';
+const icon = `
+  <defs>
+    <radialGradient id="sskin" cx="70%" cy="28%" r="80%">
+      <stop offset="0" stop-color="${S.light}"/><stop offset="0.55" stop-color="${S.body}"/><stop offset="1" stop-color="${S.dark}"/>
+    </radialGradient>
+    <clipPath id="leftHalf"><path d="${tear} L-330 320 L-330 -320 Z"/></clipPath>
+    <clipPath id="rightHalf"><path d="${tear} L330 320 L330 -320 Z"/></clipPath>
+    <radialGradient id="auraBlue" cx="50%" cy="50%" r="50%">
+      <stop offset="0.45" stop-color="#4fa8ff" stop-opacity="0.42"/><stop offset="1" stop-color="#4fa8ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle r="470" fill="url(#auraBlue)"/>
+  <g clip-path="url(#face)">
+    <rect x="-320" y="-320" width="640" height="640" fill="url(#zskin)"/>
+    <path d="${tear} L330 320 L330 -320 Z" fill="url(#sskin)"/>
+    <ellipse cx="-190" cy="-170" rx="70" ry="45" fill="${C.zDark}" opacity="0.45" transform="rotate(30 -190 -170)"/>
+    <ellipse cx="-180" cy="200" rx="50" ry="32" fill="${C.zDark}" opacity="0.4"/>
+    <!-- mouth: straight and stitched on the zombie half, a smile on the survivor half -->
+    <g clip-path="url(#leftHalf)" stroke="#3a1010" stroke-linecap="round">
+      <path d="M-140 110 L40 110" stroke-width="32"/>
+      <g stroke-width="17"><path d="M-110 72 L-110 148"/><path d="M-70 72 L-70 148"/><path d="M-30 72 L-30 148"/></g>
+    </g>
+    <path d="${MOUTH}" stroke="${S.accent}" stroke-width="20" fill="none" stroke-linecap="round" clip-path="url(#rightHalf)"/>
   </g>
-  <!-- eyes: glowing, mismatched -->
-  <circle cx="-105" cy="-40" r="130" fill="url(#eyeGlow)"/>
-  <circle cx="112" cy="-55" r="105" fill="url(#eyeGlow)"/>
-  <circle cx="-105" cy="-40" r="84" fill="${C.eye}" stroke="${C.outline}" stroke-width="14"/>
-  <circle cx="112" cy="-55" r="62" fill="${C.eye}" stroke="${C.outline}" stroke-width="14"/>
-  <circle cx="-92" cy="-34" r="37" fill="${C.pupil}"/>
-  <circle cx="105" cy="-48" r="27" fill="${C.pupil}"/>
-  <circle cx="-92" cy="-34" r="16" fill="#3a0a0a"/>
-  <circle cx="105" cy="-48" r="12" fill="#3a0a0a"/>
-  <circle cx="-103" cy="-47" r="9" fill="#fff" opacity="0.9"/>
-  <circle cx="98" cy="-58" r="7" fill="#fff" opacity="0.9"/>
-  <!-- angry brows -->
-  <path d="M-195 -118 L-30 -78" stroke="${C.outline}" stroke-width="26" stroke-linecap="round"/>
-  <path d="M60 -92 L185 -140" stroke="${C.outline}" stroke-width="24" stroke-linecap="round"/>
-  <!-- mouth with teeth -->
-  <path d="M-150 88 Q0 108 150 88 Q146 196 0 204 Q-146 196 -150 88 Z" fill="${C.mouth}" stroke="${C.outline}" stroke-width="14" stroke-linejoin="round"/>
-  <g fill="${C.teeth}">
-    <path d="M-128 96 L-92 96 L-110 144 Z"/>
-    <path d="M-62 101 L-22 101 L-42 156 Z"/>
-    <path d="M22 101 L62 101 L42 156 Z"/>
-    <path d="M92 96 L128 96 L110 144 Z"/>
-    <path d="M-40 200 L-4 200 L-22 164 Z"/>
-    <path d="M10 200 L46 200 L28 164 Z"/>
-  </g>`;
+  <!-- outline: dark green on the zombie side, dark blue on the survivor side -->
+  <circle r="300" fill="none" stroke="${C.outline}" stroke-width="26" clip-path="url(#leftHalf)"/>
+  <circle r="300" fill="none" stroke="${S.accent}" stroke-width="26" clip-path="url(#rightHalf)"/>
+  <!-- tear with stitches -->
+  <path d="${tear}" stroke="${C.outline}" stroke-width="12" fill="none" stroke-linejoin="round"/>
+  <g stroke="${C.outline}" stroke-width="9" stroke-linecap="round">
+    <path d="M-30 -195 L30 -185"/><path d="M-26 -110 L28 -100"/><path d="M-26 -30 L28 -20"/><path d="M-26 50 L28 60"/><path d="M-24 130 L26 140"/><path d="M-22 210 L22 220"/>
+  </g>
+  ${gameEye(-130, true)}
+  ${gameEye(130, false)}`;
 
 const svgFile = path.join(out, 'icon.svg');
 fs.writeFileSync(
   svgFile,
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${defs}<g transform="translate(512 512) scale(0.95)">${zombie}</g></svg>\n`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${defs}<g transform="translate(512 512) scale(0.95)">${icon}</g></svg>\n`,
 );
 
 const browser = [
@@ -126,7 +125,7 @@ fs.writeFileSync(
     <stop offset="0" stop-color="#27452a"/><stop offset="0.55" stop-color="#112012"/><stop offset="1" stop-color="#0a0e09"/>
   </radialGradient></defs>
   <rect width="1024" height="1024" fill="url(#bg)"/>
-  <g transform="translate(512 512) scale(1.05)">${zombie}</g></svg>\n`,
+  <g transform="translate(512 512) scale(1.05)">${icon}</g></svg>\n`,
 );
 
 render(svgFile, path.join(out, 'icon.png'), 1024, true); // source, transparent
