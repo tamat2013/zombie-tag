@@ -7,13 +7,14 @@ import { colors } from '../theme';
 
 interface Props {
   role: Role;
+  doctor?: boolean;
   skin: Skin;
   outfit?: string | null;
   mode: GameMode;
   secondsLeft: number;
 }
 
-export function RoleReveal({ role, skin, outfit, mode, secondsLeft }: Props) {
+export function RoleReveal({ role, doctor, skin, outfit, mode, secondsLeft }: Props) {
   const a = useRef(new Animated.Value(0)).current;
   const spin = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -25,12 +26,14 @@ export function RoleReveal({ role, skin, outfit, mode, secondsLeft }: Props) {
 
   const zombie = role === 'zombie';
   const obstacle = mode === 'obstacle';
-  const title = obstacle ? 'מסלול מכשולים' : zombie ? 'אתה זומבי!' : 'אתה שורד!';
+  const title = obstacle ? 'מסלול מכשולים' : zombie ? 'אתה זומבי!' : doctor ? 'אתה רופא! 🩺' : 'אתה שורד!';
   const subtitle = obstacle
     ? 'הגע לקו הסיום כמה שיותר מהר. הימנע ממסורים ומלכודות!'
     : zombie
       ? 'גע בשורדים כדי להדביק אותם. הפוך את כולם לזומבים!'
-      : 'בצע משימות, השתמש ביכולות ושרוד עד סוף הזמן!';
+      : doctor
+        ? 'שורד שנדבק קפוא ל-10 שניות – גע בו כדי לרפא אותו. אם רופא אחר ירפא אותך, תאבד את כוח הריפוי.'
+        : 'בצע משימות, השתמש ביכולות ושרוד עד סוף הזמן!';
   const tint = obstacle ? colors.gold : zombie ? colors.zombie : colors.survivor;
 
   return (

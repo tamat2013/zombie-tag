@@ -17,7 +17,7 @@ export interface AbilityDef {
 export const ABILITIES: Record<AbilityId, AbilityDef> = {
   sprint: { id: 'sprint', role: 'survivor', name: 'מהירות', icon: '💨', description: 'ריצה מהירה פי 1.6 למשך 3 שניות', cooldownSec: 15, durationSec: 3 },
   scan: { id: 'scan', role: 'survivor', name: 'חיפוש', icon: '📡', description: 'חושף את כל הזומבים במפה ל-5 שניות', cooldownSec: 20, durationSec: 5 },
-  medic: { id: 'medic', role: 'survivor', name: 'רופא', icon: '💊', description: 'מגן עליך ועל שורדים קרובים ל-4 שניות ומרפא מי שנדבק ב-3 השניות האחרונות', cooldownSec: 25, durationSec: 4, radius: 170 },
+  medic: { id: 'medic', role: 'survivor', name: 'רופא', icon: '💊', description: 'מגן עליך ועל שורדים קרובים ל-4 שניות', cooldownSec: 25, durationSec: 4, radius: 170 },
   invisibility: { id: 'invisibility', role: 'survivor', name: 'היעלמות', icon: '🫥', description: 'זומבים לא רואים אותך ל-4 שניות (חוץ ממגע קרוב)', cooldownSec: 30, durationSec: 4 },
   dash: { id: 'dash', role: 'zombie', name: 'זינוק', icon: '⚡', description: 'האצה פי 2.1 ל-1.2 שניות', cooldownSec: 10, durationSec: 1.2 },
   zombieVision: { id: 'zombieVision', role: 'zombie', name: 'ראיית זומבי', icon: '👁️', description: 'רואה את כל השורדים דרך קירות ל-5 שניות', cooldownSec: 22, durationSec: 5 },
@@ -27,7 +27,6 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
 export const FREE_ABILITIES: AbilityId[] = ['sprint', 'scan', 'medic', 'dash', 'zombieVision'];
 export const DEFAULT_LOADOUT = { survivor: ['sprint', 'scan', 'medic'] as AbilityId[], zombie: ['dash', 'zombieVision'] as AbilityId[] };
 export const MAX_LOADOUT = 3;
-export const CURE_WINDOW_MS = 3000;
 
 const EFFECT_FOR: Partial<Record<AbilityId, EffectKey>> = {
   sprint: 'sprint',
@@ -68,6 +67,7 @@ export interface AbilityWorld {
   players: EnginePlayer[];
   cooldownScale: number;
   canSee(viewer: EnginePlayer, target: EnginePlayer, now: number): boolean;
+  isFrozen(p: EnginePlayer, now?: number): boolean;
   applyEffect(target: EnginePlayer, kind: 'shield' | 'cure' | 'slow', durationMs: number, from: EnginePlayer): void;
 }
 
@@ -112,9 +112,6 @@ export const AbilityManager = {
       for (const other of world.players) {
         if (other === p || Math.hypot(other.x - p.x, other.y - p.y) > def.radius!) continue;
         if (other.role === 'survivor') world.applyEffect(other, 'shield', dur, p);
-        else if (other.infectedAt !== null && now - other.infectedAt <= CURE_WINDOW_MS && other.startRole === 'survivor') {
-          world.applyEffect(other, 'cure', 0, p);
-        }
       }
     }
     if (id === 'roar') {
@@ -130,7 +127,7 @@ export const AbilityManager = {
   suggest(world: AbilityWorld, p: EnginePlayer, now: number): AbilityId | null {
     const ready = this.available(p).filter((id) => this.canUse(p, id, now));
     if (!ready.length) return null;
-    const enemies = world.players.filter((o) => o.role !== p.role && world.canSee(p, o, now));
+    const enemies = world.players.filter((o) => o.role !== p.role && !world.isFrozen(o, now) && world.canSee(p, o, now));
     const nearest = enemies.reduce<{ d: number; o: EnginePlayer | null }>(
       (best, o) => {
         const d = Math.hypot(o.x - p.x, o.y - p.y);
@@ -141,10 +138,6 @@ export const AbilityManager = {
     if (p.role === 'survivor') {
       if (isActive(p, 'shield', now) || isActive(p, 'sprint', now) || isActive(p, 'invisible', now)) return null;
       const allies = world.players.filter((o) => o !== p && o.role === 'survivor' && Math.hypot(o.x - p.x, o.y - p.y) < 170);
-      const curable = world.players.some(
-        (o) => o.role === 'zombie' && o.infectedAt !== null && now - o.infectedAt <= CURE_WINDOW_MS && o.startRole === 'survivor' && Math.hypot(o.x - p.x, o.y - p.y) < 170,
-      );
-      if (ready.includes('medic') && curable) return 'medic';
       if (nearest.d < 110) {
         if (ready.includes('medic') && allies.length > 0) return 'medic';
         if (ready.includes('invisibility')) return 'invisibility';

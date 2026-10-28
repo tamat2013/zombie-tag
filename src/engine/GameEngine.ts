@@ -6,6 +6,9 @@ import { updateBot } from './bots.ts';
 import type { BotWorld } from './bots.ts';
 import {
   CLASSIC_DURATION_SEC,
+  DOCTOR_COUNT,
+  HEAL_REACH,
+  INFECT_FREEZE_MS,
   INFECT_REACH,
   MUD_SLOW,
   PLAYER_RADIUS,
@@ -64,6 +67,8 @@ export interface NetPlayerState {
   ib?: string | null;
   ia?: number | null;
   it?: boolean;
+  /** 1 while the player is a doctor who can still heal. */
+  d?: 0 | 1;
 }
 
 export interface EngineConfig {
@@ -168,6 +173,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
         infections: 0,
         infectedAt: null,
         infectedBy: null,
+        doctor: false,
         inTask: false,
         abilitiesUsed: 0,
         lastNetUpdate: cfg.startTime,
@@ -178,6 +184,28 @@ export class GameEngine implements AbilityWorld, BotWorld {
         difficulty: cfg.difficulty ?? 'normal',
       });
     }
+    if (cfg.mode !== 'obstacle') this.pickDoctors(cfg.seed);
+  }
+
+  /** Same doctors on every client: survivors sorted by id, shuffled with the shared seed. */
+  private pickDoctors(seed: number | undefined) {
+    const rng = mulberry32((seed ?? Math.floor(Math.random() * 1e9)) ^ 0x5eed);
+    const survivors = this.players.filter((p) => p.role === 'survivor').sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    for (let i = survivors.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [survivors[i], survivors[j]] = [survivors[j], survivors[i]];
+    }
+    for (const p of survivors.slice(0, DOCTOR_COUNT)) p.doctor = true;
+  }
+
+  /** A freshly infected player stays frozen for a few seconds, waiting for a doctor. */
+  isFrozen(p: EnginePlayer, now = this.now): boolean {
+    return p.role === 'zombie' && p.infectedAt !== null && now - p.infectedAt < INFECT_FREEZE_MS;
+  }
+
+  /** Milliseconds left until a frozen zombie can move (0 when not frozen). */
+  frozenLeftMs(p: EnginePlayer): number {
+    return this.isFrozen(p) ? INFECT_FREEZE_MS - (this.now - p.infectedAt!) : 0;
   }
 
   get local(): EnginePlayer | undefined {
@@ -239,6 +267,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
   canMove(p: EnginePlayer): boolean {
     if (p.inTask || this.ended) return false;
     if (p.respawnUntil > this.now) return false;
+    if (this.isFrozen(p)) return false;
     if (p.role === 'zombie' && p.startRole === 'zombie' && !this.zombiesReleased) return false;
     if (this.mode === 'obstacle' && p.finishedAt !== null) return false;
     return true;
@@ -280,15 +309,20 @@ export class GameEngine implements AbilityWorld, BotWorld {
     if (!t || t.control === 'remote') return;
     if (kind === 'shield' && t.role === 'survivor') t.effects.shield = Math.max(t.effects.shield, this.now + durationMs);
     if (kind === 'slow' && t.role === 'survivor' && !isActive(t, 'shield', this.now)) t.effects.slowed = this.now + durationMs;
-    if (kind === 'cure' && t.role === 'zombie' && t.startRole === 'survivor') {
-      t.role = 'survivor';
-      t.infectedAt = null;
-      t.infectedBy = null;
-      t.effects = emptyEffects();
-      t.effects.shield = this.now + 2000;
-      t.brain = undefined;
-      this.events.push({ type: 'cured', playerId: t.id, byId: fromId });
-    }
+    if (kind === 'cure') this.cure(t, fromId);
+  }
+
+  private cure(t: EnginePlayer, byId: string) {
+    if (!this.isFrozen(t) || t.startRole !== 'survivor') return;
+    t.role = 'survivor';
+    t.infectedAt = null;
+    t.infectedBy = null;
+    // A doctor healed by another doctor can no longer heal.
+    t.doctor = false;
+    t.effects = emptyEffects();
+    t.effects.shield = this.now + 2000;
+    t.brain = undefined;
+    this.events.push({ type: 'cured', playerId: t.id, byId });
   }
 
   activateAbility(p: EnginePlayer, id: AbilityId): void {
@@ -370,12 +404,25 @@ export class GameEngine implements AbilityWorld, BotWorld {
       for (const z of this.players) {
         if (z.role !== 'zombie') continue;
         if (z.startRole === 'zombie' && !this.zombiesReleased) continue;
+        if (this.isFrozen(z)) continue;
         const reach = PLAYER_RADIUS * 2 + INFECT_REACH * z.mods.reach * 2;
         if (Math.hypot(victim.x - z.x, victim.y - z.y) <= reach) {
           this.infect(victim, z);
           break;
         }
       }
+    }
+  }
+
+  /** Doctors heal frozen zombies by touching them. Checked by whoever owns the frozen player. */
+  private checkCures() {
+    if (this.mode === 'obstacle') return;
+    for (const z of this.players) {
+      if (z.control === 'remote' || !this.isFrozen(z) || z.startRole !== 'survivor') continue;
+      const doc = this.players.find(
+        (d) => d.doctor && d.role === 'survivor' && Math.hypot(d.x - z.x, d.y - z.y) <= PLAYER_RADIUS * 2 + HEAL_REACH,
+      );
+      if (doc) this.cure(z, doc.id);
     }
   }
 
@@ -427,6 +474,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
       ib: p.infectedBy,
       ia: p.infectedAt === null ? null : Math.round(this.now - p.infectedAt),
       it: p.inTask,
+      d: p.doctor ? 1 : 0,
     };
   }
 
@@ -453,6 +501,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
     p.netTarget = { x: s.x, y: s.y };
     p.facing = s.f;
     p.inTask = !!s.it;
+    if (s.d !== undefined) p.doctor = s.d === 1;
     p.effects = emptyEffects();
     for (const k of EFFECT_KEYS) if (s.e?.[k]) p.effects[k] = this.now + s.e[k]!;
     p.infections = Math.max(p.infections, s.i);
@@ -504,6 +553,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
       if (this.mode === 'obstacle' && p.control !== 'remote') this.obstacleInteractions(p);
     }
 
+    this.checkCures();
     this.checkInfections();
     this.checkEnd();
   }

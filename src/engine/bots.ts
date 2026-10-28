@@ -127,9 +127,23 @@ function maybeUseAbility(world: BotWorld, p: EnginePlayer, level: BotLevel, now:
   if (suggestion && world.rng() < level.abilityChance) world.activateAbility(p, suggestion);
 }
 
+function nearestPatient(world: BotWorld, p: EnginePlayer, level: BotLevel, now: number): EnginePlayer | null {
+  let best: EnginePlayer | null = null;
+  let bestD = 400 * level.vision;
+  for (const o of world.players) {
+    if (!world.isFrozen(o, now) || o.startRole !== 'survivor' || !world.canSee(p, o, now)) continue;
+    const d = Math.hypot(o.x - p.x, o.y - p.y);
+    if (d < bestD) {
+      best = o;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
 function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level: BotLevel, now: number): BotIntent {
   const threats = world.players.filter(
-    (o) => o.role === 'zombie' && world.canSee(p, o, now) && Math.hypot(o.x - p.x, o.y - p.y) < 300 * level.vision,
+    (o) => o.role === 'zombie' && !world.isFrozen(o, now) && world.canSee(p, o, now) && Math.hypot(o.x - p.x, o.y - p.y) < 300 * level.vision,
   );
   const nearestThreat = Math.min(Infinity, ...threats.map((t) => Math.hypot(t.x - p.x, t.y - p.y)));
 
@@ -138,6 +152,11 @@ function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level:
       p.inTask = false;
       brain.mode = 'flee';
       brain.repathAt = 0;
+    } else if (p.doctor && nearestPatient(world, p, level, now)) {
+      // Drop the task to go heal.
+      p.inTask = false;
+      brain.mode = 'idle';
+      brain.stationIndex = undefined;
     } else {
       if (now >= (brain.workUntil ?? 0) && brain.stationIndex !== undefined) {
         world.completeTask(p, brain.stationIndex);
@@ -160,6 +179,24 @@ function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level:
   }
 
   if (brain.mode === 'flee') brain.mode = 'idle';
+
+  // Doctors run to heal a frozen zombie they can see.
+  if (p.doctor) {
+    const target = nearestPatient(world, p, level, now);
+    if (target) {
+      brain.mode = 'chase';
+      brain.targetId = target.id;
+      if (hasLineOfSight(world.map, p, target)) {
+        brain.path = [];
+        brain.goal = { x: target.x, y: target.y };
+      } else if (now >= brain.repathAt || !brain.path.length) {
+        pathTo(world, p, brain, { x: target.x, y: target.y });
+        brain.repathAt = now + 500;
+      }
+      return steer(p, brain);
+    }
+    if (brain.mode === 'chase') brain.mode = 'idle';
+  }
 
   if (brain.mode === 'task' && brain.stationIndex !== undefined) {
     const s = world.stations[brain.stationIndex];
@@ -195,6 +232,7 @@ function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level:
 }
 
 function thinkZombie(world: BotWorld, p: EnginePlayer, brain: BotBrain, level: BotLevel, now: number): BotIntent {
+  if (world.isFrozen(p, now)) return { x: 0, y: 0 };
   const visible = world.players.filter((o) => o.role === 'survivor' && world.canSee(p, o, now));
   if (visible.length) {
     const target = visible.reduce((a, b) => (Math.hypot(a.x - p.x, a.y - p.y) <= Math.hypot(b.x - p.x, b.y - p.y) ? a : b));

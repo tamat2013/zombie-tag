@@ -171,7 +171,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             setFlash(colors.blood);
             setTimeout(() => setFlash(null), 450);
             setTask(null);
-            pushFeed('נדבקת! עכשיו אתה זומבי – הדבק את כולם 🧟', colors.zombie);
+            pushFeed('נדבקת! קפוא ל-10 שניות – רק רופא יכול לרפא אותך 🩺', colors.zombie);
           } else if (e.byId === me) {
             haptic('success');
             pushFeed(`הדבקת את ${nameOf(e.victimId)}! 🧟`, colors.zombie);
@@ -180,8 +180,13 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           }
           break;
         case 'cured':
-          if (e.playerId === me) pushFeed(`${nameOf(e.byId)} ריפא אותך! 💊`, colors.survivor);
-          else pushFeed(`${nameOf(e.byId)} ריפא את ${nameOf(e.playerId)} 💊`, colors.survivor);
+          if (e.playerId === me) {
+            haptic('success');
+            pushFeed(`הרופא ${nameOf(e.byId)} ריפא אותך! 🩺`, colors.survivor);
+          } else if (e.byId === me) {
+            haptic('success');
+            pushFeed(`ריפאת את ${nameOf(e.playerId)}! 🩺`, colors.survivor);
+          } else pushFeed(`${nameOf(e.byId)} ריפא את ${nameOf(e.playerId)} 🩺`, colors.survivor);
           break;
         case 'blocked':
           if (e.playerId === me) pushFeed('שריון הטנק חסם את ההדבקה! 🛡️', colors.gold);
@@ -429,6 +434,8 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   const zombieNear = engine.players.some((p) => p.role === 'zombie' && engine.canSee(local, p, now) && Math.hypot(p.x - local.x, p.y - local.y) < 260);
 
   const visiblePlayers = engine.players.filter((p) => p === local || engine.canSee(local, p, now));
+  const myFrozenSec = Math.ceil(engine.frozenLeftMs(local) / 1000);
+  const patient = local.doctor && local.role === 'survivor' ? visiblePlayers.find((p) => p.startRole === 'survivor' && engine.isFrozen(p)) : undefined;
 
   // Arrow towards the nearest unfinished task (survivors) when it's off-screen.
   let arrow: { angle: number } | null = null;
@@ -500,7 +507,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       {/* Players are drawn above the fog; visibility is decided by the engine (sight, scan, vision). */}
       <View style={[styles.world, { width: worldW, height: worldH, transform: worldTransform }]} pointerEvents="none">
         {visiblePlayers.map((p) => (
-          <PlayerSprite key={p.id} p={p} now={now} isLocal={p === local} localRole={local.role} />
+          <PlayerSprite key={p.id} p={p} now={now} isLocal={p === local} localRole={local.role} frozenMs={engine.frozenLeftMs(p)} />
         ))}
       </View>
 
@@ -557,7 +564,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             </Text>
           )}
           <Text style={[styles.roleTag, { color: isZombie ? colors.zombie : colors.survivor }]}>
-            {obstacle ? 'מסלול מכשולים' : isZombie ? 'זומבי' : 'שורד'}
+            {obstacle ? 'מסלול מכשולים' : isZombie ? 'זומבי' : local.doctor ? 'שורד · רופא 🩺' : 'שורד'}
             {mode === 'training' ? ' · אימון' : mode === 'tournament' ? ' · טורניר' : ''}
           </Text>
         </View>
@@ -572,6 +579,18 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         <View style={styles.banner} pointerEvents="none">
           <Text style={styles.bannerText}>
             {local.startRole === 'zombie' ? 'מתכונן לצאת לצוד...' : 'ברחו! הזומבים משתחררים בעוד'} {Math.ceil(releaseIn)}
+          </Text>
+        </View>
+      ) : null}
+
+      {!obstacle && myFrozenSec > 0 ? (
+        <View style={styles.banner} pointerEvents="none">
+          <Text style={styles.bannerText}>🥶 קפוא! רופא יכול לרפא אותך עוד {myFrozenSec}</Text>
+        </View>
+      ) : patient ? (
+        <View style={[styles.banner, { backgroundColor: 'rgba(42,111,151,0.9)' }]} pointerEvents="none">
+          <Text style={styles.bannerText}>
+            🩺 גע ב{patient.name} כדי לרפא אותו ({Math.ceil(engine.frozenLeftMs(patient) / 1000)})
           </Text>
         </View>
       ) : null}
@@ -616,7 +635,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
 
       {task ? <TaskModal type={task.type} speed={local.mods.task} onComplete={completeTask} onClose={closeTask} danger={zombieNear} /> : null}
 
-      {beforeStart ? <RoleReveal role={local.role} skin={local.skin} outfit={local.outfit} mode={mode} secondsLeft={(engine.startTime - realNow) / 1000} /> : null}
+      {beforeStart ? <RoleReveal role={local.role} doctor={local.doctor} skin={local.skin} outfit={local.outfit} mode={mode} secondsLeft={(engine.startTime - realNow) / 1000} /> : null}
 
       {engine.ended ? (
         <View style={styles.endOverlay} pointerEvents="none">
@@ -642,7 +661,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   );
 }
 
-function PlayerSprite({ p, now, isLocal, localRole }: { p: EnginePlayer; now: number; isLocal: boolean; localRole: string }) {
+function PlayerSprite({ p, now, isLocal, localRole, frozenMs }: { p: EnginePlayer; now: number; isLocal: boolean; localRole: string; frozenMs: number }) {
   const size = PLAYER_RADIUS * 2;
   const invisible = isActive(p, 'invisible', now);
   const zombie = p.role === 'zombie';
@@ -653,6 +672,9 @@ function PlayerSprite({ p, now, isLocal, localRole }: { p: EnginePlayer; now: nu
       {isActive(p, 'sprint', now) ? <View style={[styles.aura, { backgroundColor: 'rgba(79,195,247,0.3)' }]} /> : null}
       {isActive(p, 'slowed', now) ? <Text style={styles.status}>🐌</Text> : null}
       {p.inTask ? <Text style={styles.status}>🔧</Text> : null}
+      {p.doctor && !zombie ? <Text style={styles.doctorBadge}>🩺</Text> : null}
+      {frozenMs > 0 ? <View style={[styles.aura, { backgroundColor: 'rgba(120,200,255,0.35)' }]} /> : null}
+      {frozenMs > 0 ? <Text style={styles.frozen}>🥶{Math.ceil(frozenMs / 1000)}</Text> : null}
       <Character
         skin={p.skin}
         size={size}
@@ -707,6 +729,8 @@ const styles = StyleSheet.create({
   saw: { position: 'absolute', width: SAW_RADIUS * 2, height: SAW_RADIUS * 2, borderRadius: SAW_RADIUS, backgroundColor: '#9ca3af', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#e5e7eb' },
   aura: { position: 'absolute', left: -8, top: -8, right: -8, bottom: -8, borderRadius: 40 },
   status: { position: 'absolute', top: -26, left: 20, fontSize: 14 },
+  doctorBadge: { position: 'absolute', top: -24, left: -6, fontSize: 14 },
+  frozen: { position: 'absolute', top: -28, left: -4, width: PLAYER_RADIUS * 2 + 8, textAlign: 'center', fontSize: 13, fontWeight: '900', color: '#bfe6ff', textShadowColor: '#000', textShadowRadius: 3 },
   name: { position: 'absolute', top: PLAYER_RADIUS * 2 + 2, left: -30, width: PLAYER_RADIUS * 2 + 60, textAlign: 'center', fontSize: 11, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 3 },
   joyZone: { position: 'absolute', left: 0, bottom: 0, top: 90 },
   topBar: { position: 'absolute', top: 8, left: 10, right: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

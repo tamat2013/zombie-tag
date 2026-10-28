@@ -57,6 +57,8 @@ export interface EnginePlayer {
   infections: number;
   infectedAt: number | null;
   infectedBy: string | null;
+  /** Can heal frozen zombies. Lost for good once this player is healed back by another doctor. */
+  doctor: boolean;
   inTask: boolean;
   abilitiesUsed: number;
   lastNetUpdate: number;

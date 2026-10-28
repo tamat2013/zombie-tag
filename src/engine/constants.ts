@@ -13,3 +13,8 @@ export const SAW_RADIUS = 18;
 export const SAW_SPAN_TILES = 3;
 export const SAW_PERIOD_SEC = 2.6;
 export const NETWORK_SEND_HZ = 10;
+/** A freshly infected player is frozen this long; only a doctor can heal them meanwhile. */
+export const INFECT_FREEZE_MS = 10_000;
+export const DOCTOR_COUNT = 2;
+/** Extra distance (beyond touching) at which a doctor heals a frozen zombie. */
+export const HEAL_REACH = 10;

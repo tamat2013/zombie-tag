@@ -93,25 +93,122 @@ test('survivor bots complete tasks', () => {
   assert.ok(done >= 3, `bots completed only ${done} tasks`);
 });
 
-test('medic shield blocks infection and medic cures a fresh zombie', () => {
+test('medic shield blocks infection', () => {
   const m = BUILT_IN_MAPS[0];
-  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(3, [2]), localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'dummy' });
+  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(2, [1]), localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'dummy' });
   const me = e.local!;
-  const ally = e.getPlayer('bot1')!;
-  const z = e.getPlayer('bot2')!;
+  const z = e.getPlayer('bot1')!;
   e.update(10, { x: 0, y: 0 });
-  // Put the zombie right on top of the ally to infect it.
-  z.x = ally.x + 10; z.y = ally.y;
-  me.x = ally.x - 60; me.y = ally.y;
-  e.update(40, { x: 0, y: 0 });
-  assert.equal(ally.role, 'zombie');
-  z.x = 48 * 25; z.y = 48 * 2;
   assert.ok(e.useAbility('medic'));
-  assert.equal(ally.role, 'survivor', 'medic should cure a just-infected ally');
   assert.ok(me.effects.shield > e.now);
   z.x = me.x + 5; z.y = me.y;
-  e.update(80, { x: 0, y: 0 });
+  e.update(40, { x: 0, y: 0 });
   assert.equal(me.role, 'survivor', 'shield should block infection');
+});
+
+/** 5 survivors + 1 zombie, with p0 and bot1 forced to be the two doctors. */
+function doctorMatch() {
+  const m = BUILT_IN_MAPS[0];
+  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(6, [5]), localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'dummy' });
+  for (const p of e.players) p.doctor = p.id === 'p0' || p.id === 'bot1';
+  e.update(10, { x: 0, y: 0 });
+  return { e, z: e.getPlayer('bot5')! };
+}
+
+function infect(e: GameEngine, z: { x: number; y: number }, victim: { x: number; y: number }, t: number) {
+  z.x = victim.x + 10; z.y = victim.y;
+  e.update(t, { x: 0, y: 0 });
+  z.x = 48 * 25; z.y = 48 * 2;
+}
+
+test('exactly two doctors are picked, the same on every client', () => {
+  const m = BUILT_IN_MAPS[0];
+  const a = new GameEngine({ map: m, mode: 'classic', roster: roster(8, [7]), localId: 'p0', isAuthority: true, startTime: 0, seed: 42 });
+  const b = new GameEngine({ map: m, mode: 'classic', roster: roster(8, [7]).reverse(), localId: 'bot3', isAuthority: false, startTime: 0, seed: 42 });
+  const docs = (e: GameEngine) => e.players.filter((p) => p.doctor).map((p) => p.id).sort();
+  assert.equal(docs(a).length, 2);
+  assert.deepEqual(docs(a), docs(b));
+  assert.ok(a.players.filter((p) => p.doctor).every((p) => p.role === 'survivor'));
+});
+
+test('an infected player is frozen 10 seconds and a doctor heals by touch', () => {
+  const { e, z } = doctorMatch();
+  const me = e.local!;
+  const victim = e.getPlayer('bot2')!;
+  me.x = victim.x - 200; me.y = victim.y;
+  infect(e, z, victim, 40);
+  assert.equal(victim.role, 'zombie');
+  assert.ok(e.isFrozen(victim));
+  assert.equal(e.canMove(victim), false);
+  // A frozen zombie does not infect.
+  me.x = victim.x + 5;
+  e.update(80, { x: 0, y: 0 });
+  assert.equal(victim.role, 'survivor', 'doctor touch should heal');
+  assert.equal(me.role, 'survivor');
+  assert.equal(victim.doctor, false);
+});
+
+test('only doctors can heal, and not after the 10 seconds', () => {
+  const { e, z } = doctorMatch();
+  const me = e.local!;
+  const victim = e.getPlayer('bot2')!;
+  const normal = e.getPlayer('bot3')!;
+  me.x = victim.x - 300; me.y = victim.y;
+  infect(e, z, victim, 40);
+  normal.x = victim.x + 5; normal.y = victim.y;
+  e.update(80, { x: 0, y: 0 });
+  assert.equal(victim.role, 'zombie', 'a regular survivor cannot heal');
+  normal.x = victim.x + 400;
+  e.update(10_100, { x: 0, y: 0 });
+  assert.equal(e.isFrozen(victim), false);
+  me.x = victim.x + 5; me.y = victim.y;
+  victim.x = me.x; // keep it from walking off
+  e.update(10_120, { x: 0, y: 0 });
+  assert.notEqual(victim.role, 'survivor', 'too late to heal');
+});
+
+test('doctors heal without limit, but a doctor healed by a doctor loses the power', () => {
+  const { e, z } = doctorMatch();
+  const me = e.local!;
+  const doc2 = e.getPlayer('bot1')!;
+  let t = 40;
+  for (const id of ['bot2', 'bot3', 'bot4']) {
+    const v = e.getPlayer(id)!;
+    me.x = v.x - 300; me.y = v.y;
+    infect(e, z, v, t += 20);
+    me.x = v.x + 5; me.y = v.y;
+    e.update(t += 20, { x: 0, y: 0 });
+    assert.equal(v.role, 'survivor', `${id} should be healed`);
+  }
+  // Infect the second doctor, then heal them.
+  me.x = doc2.x - 300; me.y = doc2.y;
+  infect(e, z, doc2, t += 20);
+  me.x = doc2.x + 5; me.y = doc2.y;
+  e.update(t += 20, { x: 0, y: 0 });
+  assert.equal(doc2.role, 'survivor');
+  assert.equal(doc2.doctor, false, 'healed doctor can no longer heal');
+  assert.equal(me.doctor, true);
+  // The healed doctor cannot heal anyone now.
+  const v = e.getPlayer('bot2')!;
+  me.x = v.x - 300;
+  doc2.x = v.x - 300; doc2.y = v.y;
+  e.update(t += 3000, { x: 0, y: 0 });
+  infect(e, z, v, t += 20);
+  doc2.x = v.x + 5;
+  e.update(t += 20, { x: 0, y: 0 });
+  assert.equal(v.role, 'zombie');
+});
+
+test('doctor status travels over the network', () => {
+  const { e } = doctorMatch();
+  const me = e.local!;
+  const s = e.serialize(me);
+  assert.equal(s.d, 1);
+  const m = BUILT_IN_MAPS[0];
+  const other = new GameEngine({ map: m, mode: 'classic', roster: roster(6, [5], 'x'), localId: 'bot1', isAuthority: false, startTime: 0 });
+  const remote = other.getPlayer('x')!;
+  other.applyRemoteState('x', { ...s, d: 0 });
+  assert.equal(remote.doctor, false);
 });
 
 test('ability manager respects cooldowns and suggests sprint when chased', () => {
