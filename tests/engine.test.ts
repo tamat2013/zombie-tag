@@ -7,7 +7,7 @@ import type { RosterEntry } from '../src/engine/entities.ts';
 import { validateMap, moveWithCollision, isSolid, tileAt, toTile, getTaskStations } from '../src/engine/map.ts';
 import { findPath } from '../src/engine/pathfinding.ts';
 import { AbilityManager, LEAP_DISTANCE, buildModifiers } from '../src/engine/abilities.ts';
-import { TOURNAMENT_SURVIVOR_SPEED_MUL, TOURNAMENT_ZOMBIE_SPEED_MUL } from '../src/engine/constants.ts';
+import { TASK_TIME_BONUS_SEC, TASK_TIME_MAX_SHARE, TOURNAMENT_SURVIVOR_SPEED_MUL, TOURNAMENT_ZOMBIE_SPEED_MUL } from '../src/engine/constants.ts';
 
 const skin = BUILT_IN_SKINS[0];
 
@@ -432,4 +432,17 @@ test('new skin powers', () => {
   assert.ok(byPower('engineer').task > 1.2);
   assert.ok(byPower('master').cooldown < 0.9);
   assert.ok(byPower('brute').zombieSpeed > 1);
+});
+
+test('finished tasks cut time off the clock, up to a cap', () => {
+  const m = BUILT_IN_MAPS[0];
+  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(3, [2]), localId: 'p0', isAuthority: true, startTime: 0, durationSec: 100, difficulty: 'dummy' });
+  e.update(10, { x: 0, y: 0 });
+  const before = e.timeLeftMs;
+  e.completeTask(e.local!, 0);
+  assert.equal(before - e.timeLeftMs, TASK_TIME_BONUS_SEC * 1000);
+  e.completeTask(e.getPlayer('bot1')!, 1);
+  assert.equal(before - e.timeLeftMs, TASK_TIME_BONUS_SEC * 2000, 'tasks by any survivor count');
+  for (let i = 2; i < 40; i++) e.completeTask(e.local!, i);
+  assert.ok(e.timeLeftMs >= 100 * 1000 * (1 - TASK_TIME_MAX_SHARE) - 100, 'never cuts more than the cap');
 });

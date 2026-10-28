@@ -19,6 +19,8 @@ import {
   SAW_RADIUS,
   SURVIVOR_SPEED,
   SURVIVOR_VISION,
+  TASK_TIME_BONUS_SEC,
+  TASK_TIME_MAX_SHARE,
   TASK_USE_RANGE,
   TRAINING_DURATION_SEC,
   TOURNAMENT_SURVIVOR_SPEED_MUL,
@@ -234,8 +236,15 @@ export class GameEngine implements AbilityWorld, BotWorld {
     return this.players.find((p) => p.id === id);
   }
 
+  /** Time taken off the clock by finished tasks. Derived from player state, so every device agrees. */
+  get taskTimeCutMs(): number {
+    if (!Number.isFinite(this.endsAt)) return 0;
+    const done = this.players.reduce((n, p) => n + p.completedStations.length, 0);
+    return Math.min(done * TASK_TIME_BONUS_SEC * 1000, (this.endsAt - this.startTime) * TASK_TIME_MAX_SHARE);
+  }
+
   get timeLeftMs(): number {
-    return Math.max(0, this.endsAt - this.now);
+    return Math.max(0, this.endsAt - this.taskTimeCutMs - this.now);
   }
 
   get elapsedMs(): number {
@@ -679,7 +688,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
     }
     const { survivors, zombies } = this.counts();
     if (survivors === 0) this.forceEnd('zombie');
-    else if (this.now >= this.endsAt) this.forceEnd('survivor');
+    else if (this.timeLeftMs <= 0) this.forceEnd('survivor');
     else if (zombies === 0 && this.zombiesReleased) this.forceEnd('survivor');
   }
 

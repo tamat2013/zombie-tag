@@ -8,6 +8,9 @@ export const INFECT_REACH = 4;
 export const TASK_USE_RANGE = TILE * 1.1;
 export const CLASSIC_DURATION_SEC = 600; // 10 minutes
 export const TRAINING_DURATION_SEC = 300;
+// Every finished task, by any survivor, takes this long off the clock (never more than the cap).
+export const TASK_TIME_BONUS_SEC = 3;
+export const TASK_TIME_MAX_SHARE = 0.5;
 export const MUD_SLOW = 0.55;
 export const SAW_RADIUS = 18;
 export const SAW_SPAN_TILES = 3;

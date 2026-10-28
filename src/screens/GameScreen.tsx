@@ -12,7 +12,7 @@ import type { EffectKey, EnginePlayer } from '../engine/entities';
 import { isActive } from '../engine/entities';
 import { findTiles, mergeTiles } from '../engine/map';
 import type { TaskStation } from '../engine/map';
-import { NETWORK_SEND_HZ, NOISE_HEAR_RADIUS, NOISE_MS, PLAYER_RADIUS, SAW_RADIUS, SOUND_WAVE_RADIUS, TILE } from '../engine/constants';
+import { NETWORK_SEND_HZ, NOISE_HEAR_RADIUS, NOISE_MS, PLAYER_RADIUS, SAW_RADIUS, SOUND_WAVE_RADIUS, TASK_TIME_BONUS_SEC, TILE } from '../engine/constants';
 import { FirebaseTransport, LocalTransport } from '../services/matchTransport';
 import type { MatchTransport } from '../services/matchTransport';
 import { roomService } from '../services/roomService';
@@ -242,7 +242,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           if (e.playerId === me) {
             haptic('success');
             playSfx('task');
-            pushFeed(`${TASK_INFO[e.taskType].title} הושלמה ✔️`, colors.toxic);
+            pushFeed(`${TASK_INFO[e.taskType].title} הושלמה ✔️ · הטיימר ירד ב־${TASK_TIME_BONUS_SEC} שנ׳`, colors.toxic);
           }
           break;
         case 'checkpoint':
