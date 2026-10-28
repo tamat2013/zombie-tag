@@ -1,6 +1,6 @@
 import type { AbilityId, Role, Skin, UpgradeId } from '../types.ts';
 import { UPGRADES } from '../data/catalog.ts';
-import type { EffectKey, EnginePlayer, Modifiers } from './entities.ts';
+import type { BuffKind, EffectKey, EnginePlayer, Modifiers } from './entities.ts';
 import { isActive } from './entities.ts';
 
 export interface AbilityDef {
@@ -22,7 +22,14 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   dash: { id: 'dash', role: 'zombie', name: 'זינוק', icon: '⚡', description: 'האצה פי 2.1 ל-1.2 שניות', cooldownSec: 10, durationSec: 1.2 },
   zombieVision: { id: 'zombieVision', role: 'zombie', name: 'ראיית זומבי', icon: '👁️', description: 'רואה את כל השורדים דרך קירות ל-5 שניות', cooldownSec: 22, durationSec: 5 },
   roar: { id: 'roar', role: 'zombie', name: 'שאגה', icon: '📢', description: 'מאט שורדים קרובים ב-50% ל-2.5 שניות', cooldownSec: 28, durationSec: 2.5, radius: 180 },
+  smoke: { id: 'smoke', role: 'survivor', name: 'רימון עשן', icon: '🌫️', description: 'מסנוור זומבים קרובים: כמעט לא רואים ל-4 שניות', cooldownSec: 28, durationSec: 4, radius: 200 },
+  teleport: { id: 'teleport', role: 'survivor', name: 'שיגור', icon: '🌀', description: 'מעביר אותך לנקודת ההתחלה הרחוקה ביותר מהזומבים', cooldownSec: 40, durationSec: 0 },
+  frenzy: { id: 'frenzy', role: 'zombie', name: 'טירוף', icon: '🩸', description: 'מהירות פי 1.35 למשך 5 שניות', cooldownSec: 24, durationSec: 5 },
+  leap: { id: 'leap', role: 'zombie', name: 'קפיצה', icon: '🦘', description: 'קופץ 3 משבצות קדימה בבת אחת', cooldownSec: 14, durationSec: 0 },
 };
+
+/** How far a zombie's leap goes, in pixels. */
+export const LEAP_DISTANCE = 48 * 3;
 
 export const FREE_ABILITIES: AbilityId[] = ['sprint', 'scan', 'medic', 'dash', 'zombieVision'];
 export const DEFAULT_LOADOUT = { survivor: ['sprint', 'scan', 'medic'] as AbilityId[], zombie: ['dash', 'zombieVision'] as AbilityId[] };
@@ -34,6 +41,7 @@ const EFFECT_FOR: Partial<Record<AbilityId, EffectKey>> = {
   invisibility: 'invisible',
   dash: 'dash',
   zombieVision: 'vision',
+  frenzy: 'frenzy',
 };
 
 export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, number>> = {}): Modifiers {
@@ -49,6 +57,7 @@ export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, n
     dashCooldown: 1,
     detectability: 1,
     tankShield: false,
+    zombieSpeed: 1,
   };
   switch (skin.power) {
     case 'swift': m.speed *= 1.08; break;
@@ -58,6 +67,9 @@ export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, n
     case 'alpha': m.dashCooldown = 0.7; break;
     case 'hunter': m.reach *= 1.15; break;
     case 'scout': m.vision *= 1.15; break;
+    case 'engineer': m.task *= 1.25; break;
+    case 'master': m.cooldown *= 0.85; break;
+    case 'brute': m.zombieSpeed = 1.08; break;
   }
   return m;
 }
@@ -68,7 +80,11 @@ export interface AbilityWorld {
   cooldownScale: number;
   canSee(viewer: EnginePlayer, target: EnginePlayer, now: number): boolean;
   isFrozen(p: EnginePlayer, now?: number): boolean;
-  applyEffect(target: EnginePlayer, kind: 'shield' | 'cure' | 'slow', durationMs: number, from: EnginePlayer): void;
+  applyEffect(target: EnginePlayer, kind: BuffKind, durationMs: number, from: EnginePlayer): void;
+  /** Moves a player forward along their facing, stopping at walls. */
+  leap(p: EnginePlayer, distance: number): void;
+  /** Moves a survivor to the spawn point farthest from every zombie. */
+  teleportToSafety(p: EnginePlayer): void;
 }
 
 /**
@@ -120,6 +136,14 @@ export const AbilityManager = {
         world.applyEffect(other, 'slow', dur, p);
       }
     }
+    if (id === 'smoke') {
+      for (const other of world.players) {
+        if (other.role !== 'zombie' || Math.hypot(other.x - p.x, other.y - p.y) > def.radius!) continue;
+        world.applyEffect(other, 'blind', dur, p);
+      }
+    }
+    if (id === 'teleport') world.teleportToSafety(p);
+    if (id === 'leap') world.leap(p, LEAP_DISTANCE);
     return true;
   },
 
@@ -140,8 +164,10 @@ export const AbilityManager = {
       const allies = world.players.filter((o) => o !== p && o.role === 'survivor' && Math.hypot(o.x - p.x, o.y - p.y) < 170);
       if (nearest.d < 110) {
         if (ready.includes('medic') && allies.length > 0) return 'medic';
+        if (ready.includes('smoke')) return 'smoke';
         if (ready.includes('invisibility')) return 'invisibility';
         if (ready.includes('sprint')) return 'sprint';
+        if (ready.includes('teleport')) return 'teleport';
         if (ready.includes('medic')) return 'medic';
       }
       if (nearest.d < 170 && ready.includes('sprint')) return 'sprint';
@@ -149,10 +175,15 @@ export const AbilityManager = {
       return null;
     }
     // Zombie
-    if (isActive(p, 'dash', now)) return null;
+    if (isActive(p, 'dash', now) || isActive(p, 'frenzy', now)) return null;
     const close = world.players.filter((o) => o.role === 'survivor' && Math.hypot(o.x - p.x, o.y - p.y) < 170);
     if (close.length && ready.includes('roar')) return 'roar';
     if (nearest.o && nearest.d < 190 && ready.includes('dash')) return 'dash';
+    if (nearest.o && nearest.d > 90 && nearest.d < 170 && ready.includes('leap')) {
+      const ahead = Math.cos(Math.atan2(nearest.o.y - p.y, nearest.o.x - p.x) - p.facing);
+      if (ahead > 0.9) return 'leap';
+    }
+    if (nearest.o && nearest.d < 320 && ready.includes('frenzy')) return 'frenzy';
     if (!enemies.length && ready.includes('zombieVision')) return 'zombieVision';
     return null;
   },

@@ -18,6 +18,10 @@ export const OUTFITS: Outfit[] = [
   { id: 'crown', name: 'כתר', emoji: '👑', price: 1500, minLevel: 10 },
   { id: 'flame', name: 'להבה', emoji: '🔥', price: 800, minLevel: 7 },
   { id: 'skull', name: 'גולגולת', emoji: '💀', price: 600, minLevel: 6 },
+  { id: 'bow', name: 'פפיון', emoji: '🎀', price: 180, minLevel: 1 },
+  { id: 'gradcap', name: 'כובע סיום', emoji: '🎓', price: 350, minLevel: 3 },
+  { id: 'star', name: 'כוכב', emoji: '🌟', price: 700, minLevel: 6 },
+  { id: 'unicorn', name: 'חד-קרן', emoji: '🦄', price: 1200, minLevel: 9 },
 ];
 
 /** The emoji drawn on the character for an outfit id (null for none). */
@@ -74,6 +78,10 @@ export function upgradeMinLevel(currentLevel: number): number {
 export const ABILITY_PRICES: Partial<Record<AbilityId, { price: number; minLevel: number }>> = {
   invisibility: { price: 1000, minLevel: 4 },
   roar: { price: 1000, minLevel: 4 },
+  smoke: { price: 1200, minLevel: 6 },
+  frenzy: { price: 1200, minLevel: 6 },
+  teleport: { price: 1500, minLevel: 8 },
+  leap: { price: 1500, minLevel: 8 },
 };
 
 export const MEDAL_TO_COINS = 50;

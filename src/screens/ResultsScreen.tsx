@@ -6,12 +6,15 @@ import { Screen, Card, H, P } from '../components/ui';
 import { Button } from '../components/Button';
 import { Character } from '../components/Character';
 import { ACHIEVEMENTS, formatSeconds, medalName, obstacleMedal } from '../logic/progression';
+import { knockoutOutcome, roundName } from '../logic/tournaments';
+import { nextKnockoutSetup } from '../utils/matchSetup';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 import { playSfx } from '../services/sound';
 
 export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
-  const { result, rewards, levelBefore, levelAfter, achievementIds, tournamentPoints, flow, map, roomCode, players } = route.params;
+  const { result, rewards, levelBefore, levelAfter, achievementIds, tournamentPoints, flow, map, roomCode, players, setup } = route.params;
+  const ko = knockoutOutcome(result);
   const pop = useRef(new Animated.Value(0)).current;
   const lines = useRef(rewards.lines.map(() => new Animated.Value(0))).current;
 
@@ -48,6 +51,19 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
         <Text style={styles.big}>{obstacle ? (medal ? { gold: '🥇', silver: '🥈', bronze: '🥉' }[medal] : result.won ? '🏁' : '⌛') : result.won ? '🏆' : '💀'}</Text>
         <Text style={[styles.title, { color: tint }]}>{title}</Text>
         <Text style={[styles.outcome, { color: result.won ? colors.toxic : colors.blood }]}>{result.won ? 'ניצחון' : 'הפסד'}</Text>
+        {ko ? (
+          <Text style={[styles.knockout, { color: ko.kind === 'out' ? colors.blood : colors.gold }]}>
+            {ko.kind === 'champion'
+              ? '🏆 אלוף הטורניר! 🏆'
+              : ko.kind === 'advance'
+                ? `⏭️ עלית ל${roundName(ko.nextSize)}!`
+                : ko.place === 2
+                  ? '🥈 מקום שני בטורניר'
+                  : ko.place === 3
+                    ? '🥉 הודחת בחצי הגמר'
+                    : '💀 הודחת מהטורניר'}
+          </Text>
+        ) : null}
         {obstacle && result.obstacleTimeMs !== undefined ? (
           <P style={{ textAlign: 'center', marginTop: 4 }}>
             זמן: {(result.obstacleTimeMs / 1000).toFixed(2)} שנ׳ {medal ? `· מדליית ${medalName(medal)}` : ''}
@@ -130,7 +146,26 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
       ) : null}
 
       <View style={{ flexDirection: 'row-reverse', gap: 10, marginTop: 18 }}>
-        <Button title="שחק שוב" icon="🔁" style={{ flex: 1 }} onPress={() => navigation.replace('Lobby', { flow, map, roomCode })} />
+        {ko?.kind === 'advance' && !roomCode && setup ? (
+          <Button
+            title={`ל${roundName(ko.nextSize)}`}
+            icon="⏭️"
+            variant="gold"
+            style={{ flex: 1 }}
+            onPress={() => {
+              const next = nextKnockoutSetup(setup, result.startRole);
+              if (next) navigation.replace('Game', { setup: next });
+              else navigation.replace('Lobby', { flow, map });
+            }}
+          />
+        ) : (
+          <Button
+            title={ko?.kind === 'advance' ? `ל${roundName(ko.nextSize)}` : ko ? 'טורניר חדש' : 'שחק שוב'}
+            icon={ko?.kind === 'advance' ? '⏭️' : '🔁'}
+            style={{ flex: 1 }}
+            onPress={() => navigation.replace('Lobby', { flow, map, roomCode })}
+          />
+        )}
         <Button title="לתפריט" icon="🏠" variant="dark" style={{ flex: 1 }} onPress={() => navigation.popToTop()} />
       </View>
     </Screen>
@@ -142,6 +177,7 @@ const styles = StyleSheet.create({
   big: { fontSize: 76 },
   title: { fontSize: 34, fontWeight: '900', textAlign: 'center', textShadowColor: '#000', textShadowRadius: 10 },
   outcome: { fontSize: 18, fontWeight: '900', marginTop: 2 },
+  knockout: { fontSize: 20, fontWeight: '900', marginTop: 6, textAlign: 'center' },
   levelUp: { marginTop: 12, alignItems: 'center' },
   levelUpText: { color: colors.gold, fontSize: 22, fontWeight: '900', textAlign: 'center' },
   line: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },

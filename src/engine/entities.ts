@@ -1,8 +1,11 @@
 import type { AbilityId, BotDifficulty, Role, Skin, TaskType, UpgradeId } from '../types.ts';
 import type { Vec } from './map.ts';
 
-export type EffectKey = 'sprint' | 'shield' | 'scan' | 'invisible' | 'dash' | 'vision' | 'slowed';
-export const EFFECT_KEYS: EffectKey[] = ['sprint', 'shield', 'scan', 'invisible', 'dash', 'vision', 'slowed'];
+export type EffectKey = 'sprint' | 'shield' | 'scan' | 'invisible' | 'dash' | 'vision' | 'slowed' | 'frenzy' | 'blinded';
+export const EFFECT_KEYS: EffectKey[] = ['sprint', 'shield', 'scan', 'invisible', 'dash', 'vision', 'slowed', 'frenzy', 'blinded'];
+
+/** Buffs one player can put on another (sent over the network when the target is remote). */
+export type BuffKind = 'shield' | 'cure' | 'slow' | 'blind';
 
 /** Who drives a player in this client: local input, the network, or this client's AI. */
 export type Control = 'local' | 'remote' | 'ai';
@@ -18,6 +21,8 @@ export interface Modifiers {
   /** Multiplier on the distance at which zombies notice this player. */
   detectability: number;
   tankShield: boolean;
+  /** Extra speed only while playing as a zombie. */
+  zombieSpeed: number;
 }
 
 export interface Noise {
@@ -69,6 +74,10 @@ export interface EnginePlayer {
   infectedBy: string | null;
   /** Can heal frozen zombies. Lost for good once this player is healed back by another doctor. */
   doctor: boolean;
+  /** Frozen teammates this player healed as a doctor. */
+  cures: number;
+  /** Doctor who last healed this player, sent so the doctor's own client can credit the heal. */
+  curedBy: string | null;
   /** Each survivor gets one stone per match to make a noise somewhere else. */
   stoneUsed: boolean;
   noise: Noise | null;
@@ -98,7 +107,7 @@ export interface RosterEntry {
 }
 
 export function emptyEffects(): Record<EffectKey, number> {
-  return { sprint: 0, shield: 0, scan: 0, invisible: 0, dash: 0, vision: 0, slowed: 0 };
+  return { sprint: 0, shield: 0, scan: 0, invisible: 0, dash: 0, vision: 0, slowed: 0, frenzy: 0, blinded: 0 };
 }
 
 export function isActive(p: EnginePlayer, key: EffectKey, now: number): boolean {

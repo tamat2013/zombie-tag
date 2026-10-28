@@ -2,6 +2,7 @@
 import { get, onValue, ref, remove, runTransaction, serverTimestamp, set, update } from 'firebase/database';
 import type { AbilityId, BotDifficulty, GameMap, Profile, Role, Skin, UpgradeId } from '../types';
 import { findSkin } from '../data/skins';
+import { KNOCKOUT_SIZE } from '../engine/constants';
 import { realtimeDb } from './firebase';
 
 export interface RoomPlayer {
@@ -38,6 +39,23 @@ export interface Room {
     bots: Record<string, RoomBot>;
     durationSec: number;
   } | null;
+  /** Knockout tournament in progress: who is still in, and the bots that are still in. */
+  knockout?: RoomKnockout | null;
+}
+
+export interface RoomKnockout {
+  alive: string[];
+  bots?: Record<string, RoomBot>;
+}
+
+/** Most players a room can hold (a knockout tournament always starts with 8). */
+export function roomCapacity(room: Pick<Room, 'mode'>): number {
+  return room.mode === 'tournament' ? KNOCKOUT_SIZE : MAX_ROOM_PLAYERS;
+}
+
+/** True when the knockout already started and `uid` was knocked out. */
+export function knockedOut(room: Room, uid: string): boolean {
+  return !!room.knockout?.alive?.length && !room.knockout.alive.includes(uid);
 }
 
 export const MAX_ROOM_PLAYERS = 10;
@@ -93,7 +111,8 @@ export const roomService = {
     if (!snap.exists()) throw new Error('החדר לא נמצא');
     const room = snap.val() as Room;
     if (room.status !== 'lobby') throw new Error('המשחק בחדר הזה כבר התחיל');
-    if (Object.keys(room.players ?? {}).length >= MAX_ROOM_PLAYERS && !room.players[profile.uid]) throw new Error('החדר מלא');
+    if (room.knockout?.alive?.length && !room.players?.[profile.uid]) throw new Error('הטורניר בחדר הזה כבר באמצע');
+    if (Object.keys(room.players ?? {}).length >= roomCapacity(room) && !room.players?.[profile.uid]) throw new Error('החדר מלא');
     await set(ref(realtimeDb(), `rooms/${c}/players/${profile.uid}`), roomPlayerFrom(profile));
   },
 
@@ -113,6 +132,13 @@ export const roomService = {
     await update(ref(realtimeDb(), `rooms/${roomCode}`), { match: { ...match, startedAt: serverTimestamp() }, status: 'playing', live: null, buffs: null, result: null });
   },
 
+  /** Host only: who moves on to the next knockout round (null when the run is over). */
+  async setKnockout(roomCode: string, knockout: RoomKnockout | null, newHostId?: string) {
+    const patch: Record<string, unknown> = { knockout };
+    if (newHostId) patch.hostId = newHostId;
+    await update(ref(realtimeDb(), `rooms/${roomCode}`), patch);
+  },
+
   async backToLobby(roomCode: string) {
     await update(ref(realtimeDb(), `rooms/${roomCode}`), { status: 'lobby', match: null, live: null, buffs: null, result: null });
   },
@@ -128,7 +154,8 @@ export const roomService = {
       return;
     }
     const patch: Record<string, unknown> = { [`players/${uid}`]: null, [`live/${uid}`]: null };
-    if (room.hostId === uid) patch.hostId = others[0]; // hand the room to the next player
+    // Hand the room to the next player, preferring one still in the knockout.
+    if (room.hostId === uid) patch.hostId = others.find((id) => room.knockout?.alive?.includes(id)) ?? others[0];
     await update(ref(db, `rooms/${roomCode}`), patch);
   },
 
@@ -137,7 +164,7 @@ export const roomService = {
     if (!snap.exists()) return [];
     const rooms = Object.values(snap.val() as Record<string, Room>);
     return rooms
-      .filter((r) => r.status === 'lobby' && Object.keys(r.players ?? {}).length < MAX_ROOM_PLAYERS)
+      .filter((r) => r.status === 'lobby' && !r.knockout?.alive?.length && Object.keys(r.players ?? {}).length < roomCapacity(r))
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
       .slice(0, 20);
   },

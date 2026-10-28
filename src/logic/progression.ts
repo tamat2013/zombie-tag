@@ -4,7 +4,7 @@ import { DEFAULT_LOADOUT, FREE_ABILITIES } from '../engine/abilities.ts';
 import { DEFAULT_SKIN_ID, STARTER_SKINS } from '../data/skins.ts';
 import { findBuiltInMap } from '../data/maps.ts';
 import { ensureMissions } from './missions.ts';
-import { tournamentPoints, getTournamentById } from './tournaments.ts';
+import { getTournamentById, knockoutOutcome, knockoutPrize, roundName, tournamentPoints, PRIZE_LABELS } from './tournaments.ts';
 
 export const MAX_LEVEL = 50;
 
@@ -113,6 +113,16 @@ export function obstacleMedal(mapId: string, timeMs: number, medalTimes?: [numbe
   return null;
 }
 
+/** Coins for each completed task, and the bonus a doctor gets for each heal. */
+export const TASK_COINS = 15;
+export const CURE_COINS = 25;
+export const CURE_XP = 40;
+
+/** Started as a survivor, got infected, and the zombies won: the win only counts half. */
+function turnedAndWon(r: MatchResult): boolean {
+  return r.mode !== 'obstacle' && r.won && r.winner === 'zombie' && r.startRole === 'survivor' && r.finalRole === 'zombie';
+}
+
 export function computeRewards(result: MatchResult, profile: Profile, medalTimes?: [number, number, number]): Rewards {
   const lines: RewardLine[] = [];
   if (result.mode === 'obstacle') {
@@ -131,7 +141,8 @@ export function computeRewards(result: MatchResult, profile: Profile, medalTimes
     }
   } else {
     lines.push({ label: 'השתתפות', xp: 20, coins: 10 });
-    if (result.tasks) lines.push({ label: `${result.tasks} משימות`, xp: result.tasks * 25, coins: result.tasks * 5 });
+    if (result.tasks) lines.push({ label: `${result.tasks} משימות`, xp: result.tasks * 25, coins: result.tasks * TASK_COINS });
+    if (result.cures) lines.push({ label: `${result.cures} ריפויים 🩺`, xp: result.cures * CURE_XP, coins: result.cures * CURE_COINS });
     if (result.infections) lines.push({ label: `${result.infections} הדבקות`, xp: result.infections * 30, coins: result.infections * 10 });
     if (result.secondsSurvived) {
       lines.push({
@@ -145,6 +156,11 @@ export function computeRewards(result: MatchResult, profile: Profile, medalTimes
   let xp = lines.reduce((s, l) => s + l.xp, 0);
   let coins = lines.reduce((s, l) => s + l.coins, 0);
   const medals = lines.reduce((s, l) => s + (l.medals ?? 0), 0);
+  if (turnedAndWon(result)) {
+    xp = Math.round(xp / 2);
+    coins = Math.round(coins / 2);
+    lines.push({ label: 'נדבקת והזומבים ניצחו: חצי פרס', xp: 0, coins: 0 });
+  }
   if (result.mode === 'training') {
     xp = Math.round(xp * 0.5);
     coins = Math.round(coins * 0.3);
@@ -214,6 +230,20 @@ export function applyMatchResult(profile: Profile, result: MatchResult, now: num
       tournamentPointsGained = tournamentPoints(result);
       p.tournaments[result.tournamentId] = { ...entry, points: entry.points + tournamentPointsGained };
       stats.tournamentMatches++;
+    }
+    // Knockout prize, paid as soon as the run ends (champion or knocked out).
+    const outcome = knockoutOutcome(result);
+    if (outcome?.kind === 'advance') {
+      rewards.lines.push({ label: `עלית ל${roundName(outcome.nextSize)}! ⏭️`, xp: 0, coins: 0 });
+    } else if (t && outcome) {
+      const prize = knockoutPrize(t, outcome)!;
+      const place = outcome.kind === 'champion' ? 0 : outcome.place - 1;
+      const newSkin = prize.skin && !p.ownedSkins.includes(prize.skin) ? prize.skin : null;
+      if (newSkin) p.ownedSkins = [...p.ownedSkins, newSkin];
+      const label = `פרס טורניר: ${PRIZE_LABELS[place]}${place === 0 ? ' 🏆' : ''}${newSkin ? ' + סקין בלעדי 👑' : ''}`;
+      rewards.lines.push({ label, xp: 0, coins: prize.coins, medals: prize.medals });
+      rewards.coins += prize.coins;
+      rewards.medals += prize.medals;
     }
   }
 

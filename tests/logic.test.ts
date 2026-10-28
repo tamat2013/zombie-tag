@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyMatchResult, createDefaultProfile, levelInfo, normalizeProfile, bumpStat } from '../src/logic/progression.ts';
+import { applyMatchResult, computeRewards, CURE_COINS, TASK_COINS, createDefaultProfile, levelInfo, normalizeProfile, bumpStat } from '../src/logic/progression.ts';
 import { claimMission, currentMissions, ensureMissions, missionProgress } from '../src/logic/missions.ts';
 import { buyUpgrade, buySkin, convertMedals, toggleLoadout } from '../src/logic/shop.ts';
-import { claimTournamentPrize, getTournaments, registerForTournament, tournamentStatus, rankOf, simulatedRivals } from '../src/logic/tournaments.ts';
+import { getTournaments, knockoutOutcome, registerForTournament, tournamentStatus, rankOf, simulatedRivals } from '../src/logic/tournaments.ts';
 import type { MatchResult } from '../src/types.ts';
 
 const NOW = new Date(2026, 9, 27, 12, 30).getTime();
@@ -30,6 +30,31 @@ test('match result updates stats, rewards and achievements', () => {
   assert.ok(r.rewards.xp > 100);
   assert.ok(r.newAchievements.some((a) => a.id === 'first_win'));
   assert.ok(r.profile.coins > p.coins + r.rewards.coins - 1);
+});
+
+test('every task pays extra coins, and doctors earn a bonus per heal', () => {
+  const p = createDefaultProfile('u', 'T', '', NOW);
+  const none = applyMatchResult(p, classicWin({ tasks: 0 }), NOW).rewards;
+  const four = applyMatchResult(p, classicWin({ tasks: 4 }), NOW).rewards;
+  assert.equal(four.coins - none.coins, 4 * TASK_COINS);
+  const healer = applyMatchResult(p, classicWin({ cures: 2 }), NOW).rewards;
+  assert.equal(healer.coins - four.coins, 2 * CURE_COINS);
+  assert.ok(healer.lines.some((l) => l.label.includes('ריפויים')));
+});
+
+test('a survivor who turned into a zombie gets half when the zombies win', () => {
+  const p = createDefaultProfile('u', 'T', '', NOW);
+  const zombieWin = { winner: 'zombie' as const, secondsSurvived: 300 };
+  const born = applyMatchResult(p, classicWin({ ...zombieWin, startRole: 'zombie', finalRole: 'zombie', secondsSurvived: 0, tasks: 0 }), NOW).rewards;
+  const full = computeRewards(classicWin({ ...zombieWin, startRole: 'survivor', finalRole: 'survivor' }), p);
+  const turned = applyMatchResult(p, classicWin({ ...zombieWin, startRole: 'survivor', finalRole: 'zombie' }), NOW).rewards;
+  assert.equal(turned.coins, Math.round(full.coins / 2));
+  assert.equal(turned.xp, Math.round(full.xp / 2));
+  assert.ok(turned.lines.some((l) => l.label.includes('חצי')));
+  assert.ok(!born.lines.some((l) => l.label.includes('חצי')), 'starting zombies keep the full reward');
+  // Losing as a turned zombie is not halved again.
+  const lost = computeRewards(classicWin({ won: false, winner: 'survivor', startRole: 'survivor', finalRole: 'zombie' }), p);
+  assert.ok(!lost.lines.some((l) => l.label.includes('חצי')));
 });
 
 test('training gives reduced rewards', () => {
@@ -85,20 +110,46 @@ test('shop: upgrades need level and coins', () => {
   assert.ok(lo.ok && !lo.profile.loadout.survivor.includes('scan'));
 });
 
-test('tournament schedule always has something live or upcoming, prizes claim once after end', () => {
+test('tournament schedule always has something live, and matches add leaderboard points', () => {
   const list = getTournaments(NOW);
   assert.ok(list.some((t) => tournamentStatus(t, NOW) === 'live'));
   const t = list.find((x) => tournamentStatus(x, NOW) === 'live')!;
-  let p = registerForTournament(createDefaultProfile('u', 'T', '', NOW), t);
-  const r = applyMatchResult(p, classicWin({ mode: 'tournament', tournamentId: t.id }), NOW);
+  const p = registerForTournament(createDefaultProfile('u', 'T', '', NOW), t);
+  const r = applyMatchResult(p, classicWin({ mode: 'tournament', tournamentId: t.id, roundSize: 8, advancing: 4 }), NOW);
   assert.ok(r.tournamentPointsGained > 0);
-  p = r.profile;
-  assert.equal(claimTournamentPrize(p, t, 1, NOW), null, 'cannot claim before end');
-  const after = claimTournamentPrize(p, t, 1, t.endsAt + 1);
-  assert.ok(after && after.coins > p.coins);
-  assert.equal(claimTournamentPrize(after!, t, 1, t.endsAt + 1), null);
   const board = [...simulatedRivals(t, t.endsAt), { uid: 'u', name: 'T', points: 99999 }];
   assert.equal(rankOf(board, 'u'), 1);
+});
+
+test('knockout: only the starting team advances, down to a final of 2', () => {
+  const ko = (extra: Partial<MatchResult>) => knockoutOutcome(classicWin({ mode: 'tournament', ...extra }));
+  assert.deepEqual(ko({ roundSize: 8, advancing: 4 }), { kind: 'advance', nextSize: 4 });
+  assert.deepEqual(ko({ roundSize: 4, advancing: 2 }), { kind: 'advance', nextSize: 2 });
+  assert.deepEqual(ko({ roundSize: 2, advancing: 1 }), { kind: 'champion' });
+  assert.deepEqual(ko({ won: false, roundSize: 2 }), { kind: 'out', place: 2 });
+  assert.deepEqual(ko({ won: false, roundSize: 4 }), { kind: 'out', place: 3 });
+  assert.deepEqual(ko({ won: false, roundSize: 8 }), { kind: 'out', place: 4 });
+  assert.equal(knockoutOutcome(classicWin()), null);
+});
+
+test('knockout prizes are paid when the run ends; the champion gets the biggest prize', () => {
+  const t = getTournaments(NOW).find((x) => tournamentStatus(x, NOW) === 'live')!;
+  const p = registerForTournament(createDefaultProfile('u', 'T', '', NOW), t);
+  const play = (extra: Partial<MatchResult>) => applyMatchResult(p, classicWin({ mode: 'tournament', tournamentId: t.id, ...extra }), NOW);
+  const base = computeRewards(classicWin({ mode: 'tournament' }), p).coins;
+
+  const advance = play({ roundSize: 8, advancing: 4 });
+  assert.equal(advance.rewards.coins, base, 'no prize while still in the run');
+  assert.ok(advance.rewards.lines.some((l) => l.label.includes('חצי גמר')));
+
+  const champ = play({ roundSize: 2, advancing: 1 });
+  assert.equal(champ.rewards.coins, base + t.prizes[0].coins);
+  assert.equal(champ.rewards.medals, t.prizes[0].medals);
+  if (t.prizes[0].skin) assert.ok(champ.profile.ownedSkins.includes(t.prizes[0].skin));
+
+  const runnerUp = play({ won: false, winner: 'zombie', roundSize: 2 });
+  assert.ok(runnerUp.rewards.lines.some((l) => l.coins === t.prizes[1].coins && l.label.includes('גמר')));
+  assert.ok(t.prizes[0].coins > t.prizes[1].coins && t.prizes[1].coins > t.prizes[3].coins);
 });
 
 test('old profiles get new fields', () => {

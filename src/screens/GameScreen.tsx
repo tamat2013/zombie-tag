@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { AbilityId, GameMap } from '../types';
 import { T } from '../types';
-import type { ScreenProps } from '../navigation/types';
+import type { MatchSetup, ScreenProps } from '../navigation/types';
 import { GameEngine } from '../engine/GameEngine';
 import type { EngineEvent, MoveInput } from '../engine/GameEngine';
 import { ABILITIES, AbilityManager } from '../engine/abilities';
@@ -40,7 +40,7 @@ const GROAN_RANGE = 520;
 /** Distance walked between footsteps. */
 const STRIDE = { survivor: 44, zombie: 58 };
 
-const ABILITY_EFFECT: Record<AbilityId, EffectKey> = {
+const ABILITY_EFFECT: Partial<Record<AbilityId, EffectKey>> = {
   sprint: 'sprint',
   scan: 'scan',
   medic: 'shield',
@@ -48,12 +48,30 @@ const ABILITY_EFFECT: Record<AbilityId, EffectKey> = {
   dash: 'dash',
   zombieVision: 'vision',
   roar: 'slowed',
+  frenzy: 'frenzy',
 };
 
 interface FeedItem {
   id: number;
   text: string;
   color: string;
+}
+
+/**
+ * Online knockout, host only: remember who moves on (players whose starting team won).
+ * If the host is out, the room goes to a human who is still in so the next round can start.
+ */
+function saveKnockout(setup: MatchSetup, winner: string) {
+  const alive = setup.roster.filter((r) => r.role === winner);
+  const humans = alive.filter((r) => !r.isBot);
+  const code = setup.roomCode!;
+  if (alive.length < 2 || humans.length === 0) {
+    roomService.setKnockout(code, null).catch((e) => console.warn('knockout save failed', e));
+    return;
+  }
+  const bots = Object.fromEntries(alive.filter((r) => r.isBot).map((r) => [r.id, { name: r.name, skin: r.skin }]));
+  const newHost = humans.some((r) => r.id === setup.localId) ? undefined : humans[0].id;
+  roomService.setKnockout(code, { alive: alive.map((r) => r.id), bots }, newHost).catch((e) => console.warn('knockout save failed', e));
 }
 
 // ---- Static map layer ------------------------------------------------------------------------
@@ -253,7 +271,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           if (e.playerId === me) pushFeed('זרקת אבן! הזומבים ישמעו רעש שם 🪨', colors.gold);
           else if (hears) {
             haptic('light');
-            pushFeed('שמעת רעש! 🪨', colors.gold);
+            pushFeed('שמעת רעש!', colors.gold);
           }
           break;
         }
@@ -282,6 +300,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       if (applied.tournamentPointsGained > 0 && setup.flow.tournamentId) {
         tournamentService.addPoints(setup.flow.tournamentId, applied.profile, applied.tournamentPointsGained);
       }
+      if (setup.flow.mode === 'tournament' && setup.roomCode && setup.isAuthority) saveKnockout(setup, result.winner);
       transport.close();
       allowLeave.current = true;
       navigation.replace('Results', {
@@ -294,6 +313,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         flow: setup.flow,
         map: setup.map,
         roomCode: setup.roomCode,
+        setup,
         players: engine.players.map((pl) => ({
           name: pl.name,
           role: pl.role,
@@ -631,8 +651,8 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           })}
           {noises.map((n) => (
             <React.Fragment key={`n${n.by}`}>
-              <Waves x={n.x} y={n.y} now={now} color="#ffd23f" radius={110} strength={Math.min(1, (n.until - now) / (NOISE_MS * 0.5))} />
-              <Text style={[styles.stone, { left: n.x - 12, top: n.y - 14 }]}>🪨</Text>
+              <Waves x={n.x} y={n.y} now={now} color="#3fa9ff" radius={70} strength={0.4 + 0.6 * Math.min(1, (n.until - now) / (NOISE_MS * 0.5))} />
+              {!isZombie ? <Text style={[styles.stone, { left: n.x - 12, top: n.y - 14 }]}>🪨</Text> : null}
             </React.Fragment>
           ))}
         </View>
@@ -762,7 +782,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
                 def={ABILITIES[id]}
                 cooldown={total > 0 ? rem / total : 0}
                 remainingSec={rem / 1000}
-                active={isActive(local, ABILITY_EFFECT[id], now)}
+                active={ABILITY_EFFECT[id] ? isActive(local, ABILITY_EFFECT[id]!, now) : false}
                 suggested={suggested === id}
                 disabled={!!engine.ended || beforeStart}
                 onPress={() => useAbility(id)}
@@ -838,7 +858,9 @@ function PlayerSprite({ p, now, isLocal, localRole, frozenMs }: { p: EnginePlaye
     <View style={{ position: 'absolute', left: p.x - size / 2, top: p.y - size / 2, width: size, height: size }}>
       {zombie ? <View style={[styles.aura, { backgroundColor: isActive(p, 'dash', now) ? 'rgba(255,220,0,0.35)' : 'rgba(124,255,79,0.18)' }]} /> : null}
       {isActive(p, 'sprint', now) ? <View style={[styles.aura, { backgroundColor: 'rgba(79,195,247,0.3)' }]} /> : null}
+      {isActive(p, 'frenzy', now) ? <View style={[styles.aura, { backgroundColor: 'rgba(255,40,40,0.4)' }]} /> : null}
       {isActive(p, 'slowed', now) ? <Text style={styles.status}>🐌</Text> : null}
+      {isActive(p, 'blinded', now) ? <Text style={styles.status}>🌫️</Text> : null}
       {p.inTask ? <Text style={styles.status}>🔧</Text> : null}
       {p.doctor && !zombie ? <Text style={styles.doctorBadge}>🩺</Text> : null}
       {frozenMs > 0 ? <View style={[styles.aura, { backgroundColor: 'rgba(120,200,255,0.35)' }]} /> : null}

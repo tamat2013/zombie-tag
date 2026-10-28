@@ -1,7 +1,8 @@
 // Builds the MatchSetup handed to the Game screen, for local (bots) and online (room) matches.
 import type { BotDifficulty, GameMap, Profile, Role } from '../types';
 import type { RosterEntry } from '../engine/entities';
-import { assignRoles } from '../engine/GameEngine';
+import { assignRoles, knockoutRoles } from '../engine/GameEngine';
+import { KNOCKOUT_SIZE, TOURNAMENT_ROUND_SEC } from '../engine/constants';
 import { BOT_NAMES } from '../engine/bots';
 import { BUILT_IN_SKINS, findSkin } from '../data/skins';
 import { findBuiltInMap } from '../data/maps';
@@ -71,10 +72,13 @@ export function localSetup(profile: Profile, flow: PlayFlow, map: GameMap, opts:
       seed,
     };
   }
-  const bots = makeBots(opts.botCount, rng);
+  const knockout = flow.mode === 'tournament';
+  const bots = makeBots(knockout ? KNOCKOUT_SIZE - 1 : opts.botCount, rng);
   const botIds = Object.keys(bots);
   let roles: Record<string, Role>;
-  if (flow.mode === 'training' && opts.trainingRole === 'survivor') {
+  if (knockout) {
+    roles = knockoutRoles([profile.uid, ...botIds], rng);
+  } else if (flow.mode === 'training' && opts.trainingRole === 'survivor') {
     roles = { ...assignRoles(botIds, rng), [profile.uid]: 'survivor' };
   } else if (flow.mode === 'training' && opts.trainingRole === 'zombie') {
     roles = { ...Object.fromEntries(botIds.map((id) => [id, 'survivor' as Role])), [profile.uid]: 'zombie' };
@@ -92,8 +96,26 @@ export function localSetup(profile: Profile, flow: PlayFlow, map: GameMap, opts:
     localId: profile.uid,
     isAuthority: true,
     startTime: Date.now() + COUNTDOWN_MS,
-    durationSec: opts.durationSec,
+    durationSec: knockout ? TOURNAMENT_ROUND_SEC : opts.durationSec,
     difficulty: opts.difficulty,
+    seed,
+  };
+}
+
+/**
+ * Next knockout round against bots: only players whose starting team won move on,
+ * and they are split half zombies, half survivors again. Null when the run is over.
+ */
+export function nextKnockoutSetup(prev: MatchSetup, winner: Role): MatchSetup | null {
+  const alive = prev.roster.filter((r) => r.role === winner);
+  if (alive.length < 2 || !alive.some((r) => r.id === prev.localId)) return null;
+  const seed = Math.floor(Math.random() * 1e9);
+  const roles = knockoutRoles(alive.map((r) => r.id), seededRng(seed));
+  return {
+    ...prev,
+    roster: alive.map((r) => ({ ...r, role: roles[r.id] })),
+    startTime: Date.now() + COUNTDOWN_MS,
+    durationSec: TOURNAMENT_ROUND_SEC,
     seed,
   };
 }

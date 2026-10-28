@@ -11,12 +11,12 @@ import { useGame, useProfile } from '../state/GameContext';
 import { findSkin } from '../data/skins';
 import { outfitEmoji } from '../data/catalog';
 import { ABILITIES } from '../engine/abilities';
-import { assignRoles } from '../engine/GameEngine';
-import { CLASSIC_DURATION_SEC } from '../engine/constants';
+import { assignRoles, knockoutRoles } from '../engine/GameEngine';
+import { CLASSIC_DURATION_SEC, KNOCKOUT_SIZE, TOURNAMENT_ROUND_SEC } from '../engine/constants';
 import { isFirebaseConfigured } from '../services/firebase';
-import { MAX_ROOM_PLAYERS, roomService } from '../services/roomService';
+import { MAX_ROOM_PLAYERS, knockedOut, roomCapacity, roomService } from '../services/roomService';
 import type { Room } from '../services/roomService';
-import { getTournamentById, tournamentStatus } from '../logic/tournaments';
+import { getTournamentById, roundName, tournamentStatus } from '../logic/tournaments';
 import { localSetup, makeBots, onlineSetup, roomMap, seededRng } from '../utils/matchSetup';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -126,8 +126,23 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
               </View>
             </>
           ) : null}
-          <Label>מספר בוטים: {botCount}</Label>
-          <Stepper value={botCount} min={1} max={MAX_ROOM_PLAYERS - 1} onChange={setBotCount} />
+          {flow.mode === 'tournament' ? (
+            <>
+              <H size={16}>🏆 טורניר נוקאאוט</H>
+              <P dim style={{ marginTop: 4 }}>
+                {KNOCKOUT_SIZE} שחקנים, חצי זומבים וחצי שורדים. עולים לשלב הבא רק אם הקבוצה שהתחלת בה ניצחה (גם אם נדבקת בדרך).
+                רבע גמר ← חצי גמר ← גמר של 2 שחקנים. האלוף זוכה בפרס הגדול!
+              </P>
+              <P dim style={{ marginTop: 4 }}>
+                ⏱️ {TOURNAMENT_ROUND_SEC / 60} דקות לסיבוב · 🏃 שורדים מהירים יותר · 🐢 זומבים איטיים יותר
+              </P>
+            </>
+          ) : (
+            <>
+              <Label>מספר בוטים: {botCount}</Label>
+              <Stepper value={botCount} min={1} max={MAX_ROOM_PLAYERS - 1} onChange={setBotCount} />
+            </>
+          )}
           <Label>רמת קושי</Label>
           <View style={styles.chips}>
             {DIFFICULTIES.filter((d) => flow.mode === 'training' || d.id !== 'dummy').map((d) => (
@@ -135,7 +150,7 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
             ))}
           </View>
           {flow.mode === 'training' ? <P dim style={{ marginTop: 8 }}>באימון היכולות נטענות פי 2 מהר יותר.</P> : null}
-          {flow.mode === 'classic' || flow.mode === 'tournament' ? (
+          {flow.mode === 'classic' ? (
             <P dim style={{ marginTop: 8 }}>
               שורדים: בצעו משימות ושרדו 10 דקות. זומבים: הדביקו את כולם. הזומבים משתחררים אחרי 5 שניות.
             </P>
@@ -265,7 +280,9 @@ function OnlineLobby({
       <View style={{ marginTop: 12, gap: 12 }}>
         <Card>
           <H size={16}>צור חדר חדש</H>
-          <P dim>חברים מצטרפים עם קוד בן 5 אותיות. עד {MAX_ROOM_PLAYERS} שחקנים, בוטים ממלאים מקומות פנויים.</P>
+          <P dim>
+            חברים מצטרפים עם קוד בן 5 אותיות. עד {flow.mode === 'tournament' ? KNOCKOUT_SIZE : MAX_ROOM_PLAYERS} שחקנים, בוטים ממלאים מקומות פנויים.
+          </P>
           <Button title="צור חדר" icon="➕" onPress={create} loading={busy} style={{ marginTop: 10 }} />
         </Card>
         <Card>
@@ -295,7 +312,7 @@ function OnlineLobby({
           {openRooms?.map((r) => (
             <Pressable key={r.code} onPress={() => join(r.code)} style={styles.openRoom}>
               <Text style={styles.openCount}>
-                {Object.keys(r.players ?? {}).length}/{MAX_ROOM_PLAYERS}
+                {Object.keys(r.players ?? {}).length}/{roomCapacity(r)}
               </Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.openName}>{r.players?.[r.hostId]?.name ?? 'חדר'} · {roomMap(r)?.name ?? r.mapId}</Text>
@@ -313,23 +330,29 @@ function OnlineLobby({
   const isHost = room.hostId === profile.uid;
   const players = Object.entries(room.players ?? {}).sort((a, b) => a[1].joinedAt - b[1].joinedAt);
   const me = room.players?.[profile.uid];
-  const others = players.filter(([id]) => id !== room.hostId);
+  const knockout = room.mode === 'tournament';
+  const alive = room.knockout?.alive?.length ? room.knockout.alive : null;
+  const out = knockedOut(room, profile.uid);
+  // Between knockout rounds only the players still in take part.
+  const inRun = alive ? players.filter(([id]) => alive.includes(id)) : players.slice(0, roomCapacity(room));
+  const others = inRun.filter(([id]) => id !== room.hostId);
   const allReady = others.every(([, p]) => p.ready);
-  const freeSlots = MAX_ROOM_PLAYERS - players.length;
-  const bots = Math.min(room.botCount, freeSlots);
+  const aliveBots = alive ? Object.fromEntries(Object.entries(room.knockout?.bots ?? {}).filter(([id]) => alive.includes(id))) : null;
+  const bots = aliveBots ? Object.keys(aliveBots).length : knockout ? KNOCKOUT_SIZE - inRun.length : Math.min(room.botCount, MAX_ROOM_PLAYERS - players.length);
 
   const start = async () => {
-    if (players.length + bots < 2) {
+    if (inRun.length + bots < 2) {
       toast('צריך לפחות 2 משתתפים (שחקנים או בוטים)', { tone: 'bad' });
       return;
     }
     haptic('heavy');
     const seed = Math.floor(Math.random() * 1e9);
     const rng = seededRng(seed);
-    const botMap = makeBots(bots, rng, players.map(([, p]) => p.name));
-    const roles = assignRoles([...players.map(([id]) => id), ...Object.keys(botMap)], rng);
+    const botMap = aliveBots ?? makeBots(bots, rng, players.map(([, p]) => p.name));
+    const ids = [...inRun.map(([id]) => id), ...Object.keys(botMap)];
+    const roles = knockout ? knockoutRoles(ids, rng) : assignRoles(ids, rng);
     try {
-      await roomService.start(room.code, { startedAt: 0, seed, roles, bots: botMap, durationSec: CLASSIC_DURATION_SEC });
+      await roomService.start(room.code, { startedAt: 0, seed, roles, bots: botMap, durationSec: knockout ? TOURNAMENT_ROUND_SEC : CLASSIC_DURATION_SEC });
     } catch (e) {
       toast('ההתחלה נכשלה', { tone: 'bad' });
       console.warn(e);
@@ -342,16 +365,27 @@ function OnlineLobby({
         <P dim>קוד החדר</P>
         <Text style={styles.roomCode}>{room.code}</Text>
         <P dim>
-          {players.length} שחקנים · {bots} בוטים · {roomMap(room)?.name}
+          {inRun.length} שחקנים · {bots} בוטים · {roomMap(room)?.name}
         </P>
+        {knockout ? (
+          <P style={{ marginTop: 4, color: colors.gold, fontWeight: '800' }}>
+            🏆 {roundName(inRun.length + bots)} · {TOURNAMENT_ROUND_SEC / 60} דקות · חצי זומבים חצי שורדים
+          </P>
+        ) : null}
       </Card>
+      {out ? (
+        <Card highlight={colors.blood}>
+          <H size={16}>💀 הודחת מהטורניר</H>
+          <P dim>הקבוצה שלך הפסידה בסיבוב הקודם. הפרס שלך כבר התקבל. אפשר לעזוב את החדר או לחכות לסוף הטורניר.</P>
+        </Card>
+      ) : null}
 
       <Card>
         <H size={16}>שחקנים</H>
         {players.map(([id, p]) => (
-          <View key={id} style={styles.player}>
+          <View key={id} style={[styles.player, alive && !alive.includes(id) && { opacity: 0.4 }]}>
             <Text style={[styles.ready, { color: id === room.hostId ? colors.gold : p.ready ? colors.toxic : colors.textMuted }]}>
-              {id === room.hostId ? '👑 מארח' : p.ready ? '✔ מוכן' : '… ממתין'}
+              {alive && !alive.includes(id) ? '💀 הודח' : id === room.hostId ? '👑 מארח' : p.ready ? '✔ מוכן' : '… ממתין'}
             </Text>
             <Text style={styles.playerName} numberOfLines={1}>
               {p.name}
@@ -369,10 +403,14 @@ function OnlineLobby({
         ))}
       </Card>
 
-      {isHost ? (
+      {out ? null : isHost ? (
         <Card>
-          <Label>בוטים: {room.botCount}</Label>
-          <Stepper value={room.botCount} min={0} max={MAX_ROOM_PLAYERS - 1} onChange={(n) => roomService.updateSettings(room.code, { botCount: n })} />
+          {knockout ? null : (
+            <>
+              <Label>בוטים: {room.botCount}</Label>
+              <Stepper value={room.botCount} min={0} max={MAX_ROOM_PLAYERS - 1} onChange={(n) => roomService.updateSettings(room.code, { botCount: n })} />
+            </>
+          )}
           <Label>רמת הבוטים</Label>
           <View style={styles.chips}>
             {DIFFICULTIES.filter((d) => d.id !== 'dummy').map((d) => (

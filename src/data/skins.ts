@@ -8,6 +8,9 @@ export const SKIN_POWERS: Record<SkinPowerId, { name: string; description: strin
   alpha: { name: 'אלפא', description: 'זמן טעינת הזינוק של הזומבי קצר ב-30%' },
   hunter: { name: 'צייד', description: '+15% טווח הדבקה' },
   scout: { name: 'סייר', description: '+15% טווח ראייה' },
+  engineer: { name: 'מהנדס', description: 'משימות מהירות ב-25%' },
+  master: { name: 'מאסטר', description: 'כל היכולות נטענות מהר ב-15%' },
+  brute: { name: 'בריון', description: '+8% מהירות כשאתה זומבי' },
 };
 
 export const BUILT_IN_SKINS: Skin[] = [
@@ -22,6 +25,14 @@ export const BUILT_IN_SKINS: Skin[] = [
   { id: 'scout', name: 'סיירת', body: '#c9a227', accent: '#6b5208', eyes: 'round', pattern: 'spots', accessory: '🔭', power: 'scout', price: 800, rarity: 'rare' },
   { id: 'alpha', name: 'זומבי אלפא', body: '#7d8c3a', accent: '#3d1a1a', eyes: 'angry', pattern: 'split', accessory: '🦴', power: 'alpha', price: 1400, rarity: 'legendary' },
   { id: 'hunter', name: 'צייד לילה', body: '#5b2a86', accent: '#1d0b2e', eyes: 'cyclops', pattern: 'ring', accessory: '🗡️', power: 'hunter', price: 1100, rarity: 'epic' },
+  { id: 'pumpkin', name: 'דלעת', body: '#f77f00', accent: '#5a2e00', eyes: 'angry', pattern: 'stripes', accessory: '🎃', price: 250, rarity: 'common' },
+  { id: 'ice', name: 'קרחון', body: '#a8e6ff', accent: '#1d6fa3', eyes: 'sleepy', pattern: 'spots', accessory: '❄️', price: 300, rarity: 'common' },
+  { id: 'pirate', name: 'פיראט', body: '#8d5524', accent: '#111827', eyes: 'cyclops', pattern: 'stripes', accessory: '🏴‍☠️', price: 450, rarity: 'rare' },
+  { id: 'rainbow', name: 'קשת', body: '#ff7eb6', accent: '#6366f1', eyes: 'round', pattern: 'split', accessory: '🌈', price: 500, rarity: 'rare' },
+  { id: 'robot', name: 'רובוט', body: '#9ca3af', accent: '#00b4d8', eyes: 'cyclops', pattern: 'ring', accessory: '🤖', power: 'engineer', price: 950, rarity: 'epic' },
+  { id: 'astronaut', name: 'אסטרונאוט', body: '#e5e7eb', accent: '#1e3a8a', eyes: 'round', pattern: 'ring', accessory: '🚀', power: 'swift', price: 1000, rarity: 'epic' },
+  { id: 'lava', name: 'לבה', body: '#ef233c', accent: '#f97316', eyes: 'angry', pattern: 'spots', accessory: '🌋', power: 'brute', price: 1300, rarity: 'epic' },
+  { id: 'dragon', name: 'דרקון', body: '#14b8a6', accent: '#064e3b', eyes: 'angry', pattern: 'stripes', accessory: '🐉', power: 'master', price: 2200, rarity: 'legendary' },
   { id: 'champion', name: 'אלוף הטורניר', body: '#ffd166', accent: '#b8860b', eyes: 'angry', pattern: 'ring', accessory: '👑', power: 'swift', price: 0, rarity: 'exclusive' },
 ];
 

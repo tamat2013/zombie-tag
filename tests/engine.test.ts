@@ -2,11 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILT_IN_MAPS, HOSPITAL_ROWS, MALL_ROWS, BASE_ROWS, OBSTACLE_ROOKIE_ROWS, OBSTACLE_SAW_ROWS, mapFromAscii, mapToAscii } from '../src/data/maps.ts';
 import { BUILT_IN_SKINS } from '../src/data/skins.ts';
-import { GameEngine, assignRoles } from '../src/engine/GameEngine.ts';
+import { GameEngine, assignRoles, knockoutRoles } from '../src/engine/GameEngine.ts';
 import type { RosterEntry } from '../src/engine/entities.ts';
 import { validateMap, moveWithCollision, isSolid, tileAt, toTile, getTaskStations } from '../src/engine/map.ts';
 import { findPath } from '../src/engine/pathfinding.ts';
-import { AbilityManager } from '../src/engine/abilities.ts';
+import { AbilityManager, LEAP_DISTANCE, buildModifiers } from '../src/engine/abilities.ts';
+import { TOURNAMENT_SURVIVOR_SPEED_MUL, TOURNAMENT_ZOMBIE_SPEED_MUL } from '../src/engine/constants.ts';
 
 const skin = BUILT_IN_SKINS[0];
 
@@ -180,6 +181,8 @@ test('doctors heal without limit, but a doctor healed by a doctor loses the powe
     e.update(t += 20, { x: 0, y: 0 });
     assert.equal(v.role, 'survivor', `${id} should be healed`);
   }
+  assert.equal(me.cures, 3);
+  assert.equal(e.result().cures, 3);
   // Infect the second doctor, then heal them.
   me.x = doc2.x - 300; me.y = doc2.y;
   infect(e, z, doc2, t += 20);
@@ -209,6 +212,21 @@ test('doctor status travels over the network', () => {
   const remote = other.getPlayer('x')!;
   other.applyRemoteState('x', { ...s, d: 0 });
   assert.equal(remote.doctor, false);
+});
+
+test("a heal done on the patient's client is credited to the remote doctor", () => {
+  const m = BUILT_IN_MAPS[0];
+  const docClient = new GameEngine({ map: m, mode: 'classic', roster: roster(6, [5], 'x'), localId: 'bot1', isAuthority: false, startTime: 0 });
+  const doc = docClient.local!;
+  doc.doctor = true;
+  const patient = docClient.getPlayer('x')!;
+  const s = docClient.serialize(patient);
+  docClient.applyRemoteState('x', { ...s, r: 'z', ib: 'bot5', ia: 0 });
+  docClient.drainEvents();
+  docClient.applyRemoteState('x', { ...s, r: 's', cb: 'bot1' });
+  assert.equal(patient.role, 'survivor');
+  assert.equal(doc.cures, 1);
+  assert.ok(docClient.drainEvents().some((ev) => ev.type === 'cured' && ev.byId === 'bot1'));
 });
 
 test('ability manager respects cooldowns and suggests sprint when chased', () => {
@@ -338,4 +356,80 @@ test('zombies hear nearby survivors (sound waves)', () => {
   assert.deepEqual(e.heardSurvivors(z).map((p) => p.id), ['p0']);
   near.effects.invisible = Infinity;
   assert.equal(e.heardSurvivors(z).length, 0, 'invisible survivors make no sound');
+});
+
+test('knockout roles are half zombies, half survivors', () => {
+  const ids = Array.from({ length: 8 }, (_, i) => `p${i}`);
+  const roles = knockoutRoles(ids, () => 0.3);
+  assert.equal(Object.values(roles).filter((r) => r === 'zombie').length, 4);
+  assert.equal(Object.values(knockoutRoles(['a', 'b'])).filter((r) => r === 'zombie').length, 1);
+});
+
+test('tournament: survivors faster, zombies slower, and you win with your starting team', () => {
+  const m = BUILT_IN_MAPS[0];
+  const make = (mode: 'classic' | 'tournament') => {
+    const e = new GameEngine({ map: m, mode, roster: roster(4, [2, 3]), localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'dummy' });
+    e.update(10, { x: 0, y: 0 });
+    return e;
+  };
+  const c = make('classic');
+  const t = make('tournament');
+  const s = (e: GameEngine, id: string) => e.speedOf(e.getPlayer(id)!);
+  assert.ok(Math.abs(s(t, 'p0') - s(c, 'p0') * TOURNAMENT_SURVIVOR_SPEED_MUL) < 0.01);
+  assert.ok(Math.abs(s(t, 'bot2') - s(c, 'bot2') * TOURNAMENT_ZOMBIE_SPEED_MUL) < 0.01);
+
+  // p0 started as a survivor and got infected; the survivors still win on time, so p0 advances.
+  const e = new GameEngine({ map: m, mode: 'tournament', roster: roster(4, [2, 3]), localId: 'p0', isAuthority: true, startTime: 0, durationSec: 3, difficulty: 'dummy' });
+  e.update(10, { x: 0, y: 0 });
+  const z2 = e.getPlayer('bot2')!;
+  e.local!.role = 'zombie';
+  e.local!.x = z2.x; e.local!.y = z2.y; // away from the last survivor
+  for (let ms = 0; ms <= 4000; ms += 50) e.update(ms, { x: 0, y: 0 });
+  assert.equal(e.ended?.winner, 'survivor');
+  const r = e.result();
+  assert.equal(r.won, true);
+  assert.equal(r.roundSize, 4);
+  assert.equal(r.advancing, 2);
+});
+
+test('new abilities: smoke blinds zombies, frenzy speeds up, leap jumps, teleport escapes', () => {
+  const m = BUILT_IN_MAPS[0];
+  const loadout = { survivor: ['smoke', 'teleport'] as const, zombie: ['frenzy', 'leap'] as const };
+  const r = roster(2, [1]).map((x) => ({ ...x, loadout: { survivor: [...loadout.survivor], zombie: [...loadout.zombie] } }));
+  const e = new GameEngine({ map: m, mode: 'classic', roster: r, localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'dummy' });
+  e.update(10, { x: 0, y: 0 });
+  const me = e.local!;
+  const z = e.getPlayer('bot1')!;
+  z.x = me.x + 120; z.y = me.y;
+  const sight = e.visionRadius(z);
+  assert.ok(e.useAbility('smoke'));
+  assert.ok(e.visionRadius(z) < sight * 0.5, 'smoke shrinks zombie vision');
+
+  const before = { x: me.x, y: me.y };
+  assert.ok(e.useAbility('teleport'));
+  assert.ok(me.x !== before.x || me.y !== before.y, 'teleport moves the survivor');
+
+  const slow = e.speedOf(z);
+  e.activateAbility(z, 'frenzy');
+  assert.ok(e.speedOf(z) > slow * 1.3);
+
+  // Leap from open floor in each direction: never further than the leap, never into a wall.
+  const open = { x: me.x, y: me.y }; // teleport lands on a spawn tile's center
+  let best = 0;
+  for (const facing of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    z.x = open.x; z.y = open.y; z.facing = facing; z.cooldowns = {};
+    e.activateAbility(z, 'leap');
+    const d = Math.hypot(z.x - open.x, z.y - open.y);
+    assert.ok(d <= LEAP_DISTANCE + 1);
+    assert.ok(!isSolid(tileAt(m, toTile(z.x), toTile(z.y))));
+    best = Math.max(best, d);
+  }
+  assert.ok(best > 48, 'leap moves at least one tile somewhere');
+});
+
+test('new skin powers', () => {
+  const byPower = (power: string) => buildModifiers({ ...skin, power: power as never });
+  assert.ok(byPower('engineer').task > 1.2);
+  assert.ok(byPower('master').cooldown < 0.9);
+  assert.ok(byPower('brute').zombieSpeed > 1);
 });

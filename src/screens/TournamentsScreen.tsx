@@ -1,22 +1,14 @@
-// Tournament schedule: register, play while live, view the leaderboard, and claim prizes after the end.
+// Tournament schedule: register, play knockout runs while live, and view the leaderboard.
+// Knockout prizes are paid right after a run ends, so there is nothing to claim here.
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import type { ScreenProps } from '../navigation/types';
 import { Screen, ScreenHeader, Card, H, P, Pill } from '../components/ui';
 import { Button } from '../components/Button';
 import { useGame, useProfile } from '../state/GameContext';
-import {
-  claimTournamentPrize,
-  getTournamentById,
-  getTournaments,
-  prizeForRank,
-  rankOf,
-  registerForTournament,
-  tournamentStatus,
-} from '../logic/tournaments';
+import { CHAMPION_POINTS, getTournaments, PRIZE_LABELS, rankOf, registerForTournament, tournamentStatus } from '../logic/tournaments';
 import type { LeaderboardEntry, Tournament } from '../logic/tournaments';
 import { tournamentService } from '../services/tournamentService';
-import { findSkin } from '../data/skins';
 import { useNow } from './MissionsScreen';
 import { colors } from '../theme';
 import { haptic } from '../utils/haptics';
@@ -38,6 +30,7 @@ function clock(ms: number): string {
 }
 
 const RANK_ICONS = ['🥇', '🥈', '🥉'];
+const PRIZE_ICONS = ['🏆', '🥈', '🥉', '🎟️'];
 
 export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
   const now = useNow();
@@ -45,20 +38,13 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
   const { updateProfile, toast } = useGame();
   const [boards, setBoards] = useState<Record<string, LeaderboardEntry[] | 'loading'>>({});
   const [open, setOpen] = useState<string | null>(null);
-  const [claiming, setClaiming] = useState<string | null>(null);
 
   const list = getTournaments(now);
-  // Ended tournaments the player joined but has not claimed yet (may have scrolled out of the schedule).
-  const unclaimed = Object.values(profile.tournaments)
-    .filter((e) => !e.claimed && e.endsAt < now && !list.some((t) => t.id === e.tournamentId))
-    .map((e) => getTournamentById(e.tournamentId, now))
-    .filter((t): t is Tournament => !!t);
 
   const loadBoard = async (t: Tournament) => {
     setBoards((b) => ({ ...b, [t.id]: 'loading' }));
     const entries = await tournamentService.leaderboard(t, profile, Date.now());
     setBoards((b) => ({ ...b, [t.id]: entries }));
-    return entries;
   };
 
   const toggleBoard = (t: Tournament) => {
@@ -77,21 +63,6 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
   const play = (t: Tournament) => {
     if (!profile.tournaments[t.id]) register(t);
     navigation.navigate('SkinSelect', { flow: { mode: 'tournament', tournamentId: t.id } });
-  };
-
-  const claim = async (t: Tournament) => {
-    setClaiming(t.id);
-    try {
-      const entries = await loadBoard(t);
-      const rank = rankOf(entries, profile.uid);
-      const prize = prizeForRank(t, rank);
-      updateProfile((p) => claimTournamentPrize(p, t, rank, Date.now()) ?? p);
-      haptic('success');
-      const skin = prize.skin ? ` + סקין ${findSkin(prize.skin).name}` : '';
-      toast(`${rank >= 1 && rank <= 3 ? `מקום ${rank}! ` : ''}+${prize.coins} 🪙 +${prize.medals} 🏅${skin}`, { icon: '🏆', tone: 'good' });
-    } finally {
-      setClaiming(null);
-    }
   };
 
   const renderCard = (t: Tournament) => {
@@ -124,27 +95,24 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
         <View style={styles.prizes}>
           {t.prizes.map((pr, i) => (
             <View key={i} style={styles.prize}>
-              <Text style={styles.prizeRank}>{i < 3 ? RANK_ICONS[i] : '🎟️'}</Text>
+              <Text style={styles.prizeRank}>{PRIZE_ICONS[i] ?? '🎟️'}</Text>
               <Text style={styles.prizeText}>{pr.coins} 🪙</Text>
               {pr.medals ? <Text style={styles.prizeText}>{pr.medals} 🏅</Text> : null}
               {pr.skin ? <Text style={[styles.prizeText, { color: colors.purple }]}>סקין!</Text> : null}
-              <Text style={styles.prizeLabel}>{i < 3 ? `מקום ${i + 1}` : 'השתתפות'}</Text>
+              <Text style={styles.prizeLabel}>{PRIZE_LABELS[i] ?? 'השתתפות'}</Text>
             </View>
           ))}
         </View>
 
         {entry ? (
           <Text style={styles.mine}>
-            ✔ רשום · {entry.points} נקודות{entry.claimed ? ' · הפרס נאסף' : ''}
+            ✔ רשום · {entry.points} נקודות
           </Text>
         ) : null}
 
         <View style={styles.actions}>
           {status === 'live' ? <Button small title="שחק עכשיו" icon="▶️" onPress={() => play(t)} style={{ flex: 1 }} /> : null}
           {status === 'upcoming' && !entry ? <Button small title="הירשם" icon="📝" variant="blue" onPress={() => register(t)} style={{ flex: 1 }} /> : null}
-          {status === 'ended' && entry && !entry.claimed ? (
-            <Button small title="אסוף פרס" icon="🎁" variant="gold" loading={claiming === t.id} onPress={() => claim(t)} style={{ flex: 1 }} />
-          ) : null}
           <Button small title={open === t.id ? 'הסתר טבלה' : 'טבלת מובילים'} icon="📊" variant="dark" onPress={() => toggleBoard(t)} style={{ flex: 1 }} />
         </View>
 
@@ -183,15 +151,10 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
       <ScreenHeader title="טורנירים" />
       <Card style={{ marginBottom: 6 }}>
         <P dim>
-          כל משחק בטורניר צובר נקודות: ניצחון 100, משימה 10, הדבקה 15, ונקודה לכל 10 שניות הישרדות. בסוף הטורניר אוספים פרסים לפי המיקום.
+          טורניר נוקאאוט: 8 שחקנים, חצי זומבים וחצי שורדים. עולים שלב רק אם הקבוצה שהתחלת בה ניצחה, עד גמר של 2 שחקנים. בטורניר השורדים מהירים יותר והזומבים איטיים יותר.
+          הפרס מתקבל מיד כשהריצה נגמרת. כל משחק גם צובר נקודות לטבלה (ניצחון 100, משימה 10, הדבקה 15, אלוף +{CHAMPION_POINTS}).
         </P>
       </Card>
-      {[...unclaimed, ...ended.filter((t) => profile.tournaments[t.id] && !profile.tournaments[t.id].claimed)].length ? (
-        <H size={16} style={styles.section}>
-          🎁 פרסים לאיסוף
-        </H>
-      ) : null}
-      <View style={{ gap: 10 }}>{unclaimed.map(renderCard)}</View>
       {live.length ? (
         <H size={16} style={styles.section}>
           🔴 עכשיו

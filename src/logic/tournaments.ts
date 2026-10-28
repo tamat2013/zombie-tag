@@ -1,6 +1,16 @@
-// Scheduled tournaments. The schedule is computed from the clock so every client agrees on it
-// without a server; scores live in Firestore when online (simulated rivals when offline).
+// Scheduled knockout tournaments. The schedule is computed from the clock so every client agrees on it
+// without a server; leaderboard points live in Firestore when online (simulated rivals when offline).
+//
+// Each run is a knockout: 8 players, half zombies and half survivors. Only players whose STARTING
+// team wins move on (8 → 4 → 2). The winner of the final is the champion. Prizes are paid as soon
+// as the run ends.
 import type { MatchResult, Profile } from '../types.ts';
+
+export interface TournamentPrize {
+  coins: number;
+  medals: number;
+  skin?: string;
+}
 
 export interface Tournament {
   id: string;
@@ -9,7 +19,8 @@ export interface Tournament {
   icon: string;
   startsAt: number;
   endsAt: number;
-  prizes: { coins: number; medals: number; skin?: string }[]; // index = rank - 1; last = participation
+  /** [champion, final loser, semi-final loser, everyone else]. */
+  prizes: TournamentPrize[];
 }
 
 const HOUR = 3600_000;
@@ -22,11 +33,11 @@ function rush(start: Date): Tournament {
   return {
     id: `rush-${stamp(start)}-${String(start.getHours()).padStart(2, '0')}`,
     name: 'ריצת בהלה',
-    description: 'טורניר בזק של שעה. כל משחק טורניר צובר נקודות.',
+    description: 'טורניר נוקאאוט בזק של שעה. עולים שלב רק אם הקבוצה שלך מנצחת.',
     icon: '⚡',
     startsAt: start.getTime(),
     endsAt: start.getTime() + HOUR,
-    prizes: [{ coins: 400, medals: 4 }, { coins: 250, medals: 2 }, { coins: 150, medals: 1 }, { coins: 30, medals: 0 }],
+    prizes: [{ coins: 1200, medals: 8 }, { coins: 500, medals: 3 }, { coins: 250, medals: 1 }, { coins: 60, medals: 0 }],
   };
 }
 
@@ -34,11 +45,11 @@ function night(start: Date): Tournament {
   return {
     id: `night-${stamp(start)}`,
     name: 'התפרצות לילית',
-    description: 'כל ערב 20:00–22:00. פרסים גדולים למובילים.',
+    description: 'כל ערב 20:00–22:00. האלוף זוכה בסקין הבלעדי "אלוף הטורניר"!',
     icon: '🌙',
     startsAt: start.getTime(),
     endsAt: start.getTime() + 2 * HOUR,
-    prizes: [{ coins: 1000, medals: 8 }, { coins: 600, medals: 5 }, { coins: 300, medals: 3 }, { coins: 60, medals: 0 }],
+    prizes: [{ coins: 2500, medals: 15, skin: 'champion' }, { coins: 1000, medals: 6 }, { coins: 500, medals: 3 }, { coins: 100, medals: 0 }],
   };
 }
 
@@ -46,11 +57,11 @@ function cup(start: Date): Tournament {
   return {
     id: `cup-${stamp(start)}`,
     name: 'גביע האפוקליפסה',
-    description: 'טורניר סוף השבוע. המקום הראשון זוכה בסקין הבלעדי "אלוף הטורניר"!',
+    description: 'טורניר סוף השבוע עם הפרסים הכי גדולים, כולל הסקין הבלעדי "אלוף הטורניר"!',
     icon: '🏆',
     startsAt: start.getTime(),
     endsAt: start.getTime() + 28 * HOUR,
-    prizes: [{ coins: 3000, medals: 20, skin: 'champion' }, { coins: 1500, medals: 12 }, { coins: 800, medals: 6 }, { coins: 100, medals: 1 }],
+    prizes: [{ coins: 6000, medals: 40, skin: 'champion' }, { coins: 2500, medals: 15 }, { coins: 1200, medals: 8 }, { coins: 200, medals: 1 }],
   };
 }
 
@@ -97,13 +108,49 @@ export function tournamentStatus(t: Tournament, now: number): 'upcoming' | 'live
   return 'ended';
 }
 
+/** Bonus leaderboard points for winning a whole knockout run. */
+export const CHAMPION_POINTS = 300;
+
 export function tournamentPoints(r: MatchResult): number {
-  return (r.won ? 100 : 0) + r.tasks * 10 + r.infections * 15 + Math.floor(r.secondsSurvived / 10);
+  const champion = knockoutOutcome(r)?.kind === 'champion' ? CHAMPION_POINTS : 0;
+  return (r.won ? 100 : 0) + r.tasks * 10 + r.infections * 15 + Math.floor(r.secondsSurvived / 10) + champion;
 }
 
-export function prizeForRank(t: Tournament, rank: number) {
-  return rank >= 1 && rank <= 3 ? t.prizes[rank - 1] : t.prizes[t.prizes.length - 1];
+// ---- Knockout -------------------------------------------------------------------------------
+
+export type KnockoutOutcome =
+  | { kind: 'advance'; nextSize: number }
+  | { kind: 'champion' }
+  /** 2 = lost the final, 3 = lost the semi-final, 4 = out earlier. */
+  | { kind: 'out'; place: 2 | 3 | 4 };
+
+/** What a knockout round result means for the local player. */
+export function knockoutOutcome(r: MatchResult): KnockoutOutcome | null {
+  if (r.mode !== 'tournament') return null;
+  const size = r.roundSize ?? 2;
+  if (r.won) {
+    const next = r.advancing ?? 1;
+    return next <= 1 ? { kind: 'champion' } : { kind: 'advance', nextSize: next };
+  }
+  return { kind: 'out', place: size <= 2 ? 2 : size <= 4 ? 3 : 4 };
 }
+
+/** Name of the round played with `size` players. */
+export function roundName(size: number): string {
+  if (size <= 2) return 'גמר';
+  if (size <= 4) return 'חצי גמר';
+  if (size <= 8) return 'רבע גמר';
+  return 'סיבוב פתיחה';
+}
+
+/** The prize for finishing a run, or null while the run is still going. */
+export function knockoutPrize(t: Tournament, o: KnockoutOutcome): TournamentPrize | null {
+  if (o.kind === 'advance') return null;
+  if (o.kind === 'champion') return t.prizes[0];
+  return t.prizes[o.place - 1] ?? t.prizes[t.prizes.length - 1];
+}
+
+export const PRIZE_LABELS = ['אלוף', 'גמר', 'חצי גמר', 'השתתפות'];
 
 export interface LeaderboardEntry {
   uid: string;
@@ -150,16 +197,3 @@ export function registerForTournament(p: Profile, t: Tournament): Profile {
   return { ...p, tournaments: { ...p.tournaments, [t.id]: { tournamentId: t.id, points: 0, claimed: false, endsAt: t.endsAt } } };
 }
 
-export function claimTournamentPrize(p: Profile, t: Tournament, rank: number, now: number): Profile | null {
-  const entry = p.tournaments[t.id];
-  if (!entry || entry.claimed || now <= t.endsAt) return null;
-  const prize = prizeForRank(t, rank);
-  const ownedSkins = prize.skin && !p.ownedSkins.includes(prize.skin) ? [...p.ownedSkins, prize.skin] : p.ownedSkins;
-  return {
-    ...p,
-    coins: p.coins + prize.coins,
-    medals: p.medals + prize.medals,
-    ownedSkins,
-    tournaments: { ...p.tournaments, [t.id]: { ...entry, claimed: true } },
-  };
-}

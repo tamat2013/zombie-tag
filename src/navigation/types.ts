@@ -32,6 +32,8 @@ export interface ResultsParams {
   flow: PlayFlow;
   map: GameMap;
   roomCode?: string;
+  /** The match that just ended (used to build the next knockout round). */
+  setup?: MatchSetup;
   players: { name: string; role: 'survivor' | 'zombie'; startRole: 'survivor' | 'zombie'; skin: Skin; isBot: boolean; infections: number; tasks: number; isLocal: boolean }[];
 }
 

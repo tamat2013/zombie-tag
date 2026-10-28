@@ -14,11 +14,15 @@ export type AbilityId =
   | 'invisibility'
   | 'dash'
   | 'zombieVision'
-  | 'roar';
+  | 'roar'
+  | 'smoke'
+  | 'teleport'
+  | 'frenzy'
+  | 'leap';
 
 export type UpgradeId = 'speed' | 'cooldown' | 'vision' | 'taskSpeed' | 'reach';
 
-export type SkinPowerId = 'swift' | 'healer' | 'tank' | 'ghost' | 'alpha' | 'hunter' | 'scout';
+export type SkinPowerId = 'swift' | 'healer' | 'tank' | 'ghost' | 'alpha' | 'hunter' | 'scout' | 'engineer' | 'master' | 'brute';
 
 export type SkinPattern = 'none' | 'stripes' | 'spots' | 'split' | 'ring';
 export type SkinEyes = 'round' | 'angry' | 'sleepy' | 'cyclops';
@@ -147,9 +151,15 @@ export interface MatchResult {
   tasks: number;
   tasksByType: Partial<Record<TaskType, number>>;
   infections: number;
+  /** Frozen teammates healed as a doctor. */
+  cures?: number;
   secondsSurvived: number;
   abilitiesUsed: number;
   durationSec: number;
   obstacleTimeMs?: number;
   tournamentId?: string;
+  /** Knockout tournament: how many players started this round. */
+  roundSize?: number;
+  /** Knockout tournament: how many players move on (the winning starting team). */
+  advancing?: number;
 }

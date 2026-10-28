@@ -21,11 +21,13 @@ import {
   SURVIVOR_VISION,
   TASK_USE_RANGE,
   TRAINING_DURATION_SEC,
+  TOURNAMENT_SURVIVOR_SPEED_MUL,
+  TOURNAMENT_ZOMBIE_SPEED_MUL,
   ZOMBIE_SPEED,
   ZOMBIE_VISION,
 } from './constants.ts';
 import { EFFECT_KEYS, emptyEffects, isActive } from './entities.ts';
-import type { EffectKey, EnginePlayer, Noise, RosterEntry } from './entities.ts';
+import type { BuffKind, EffectKey, EnginePlayer, Noise, RosterEntry } from './entities.ts';
 import {
   getSaws,
   getSpawns,
@@ -55,7 +57,7 @@ export type EngineEvent =
 
 export interface OutgoingBuff {
   targetId: string;
-  kind: 'shield' | 'cure' | 'slow';
+  kind: BuffKind;
   durationMs: number;
   fromId: string;
 }
@@ -74,6 +76,8 @@ export interface NetPlayerState {
   it?: boolean;
   /** 1 while the player is a doctor who can still heal. */
   d?: 0 | 1;
+  /** Doctor who last healed this player. */
+  cb?: string | null;
   /** Stone used, and the active noise as [x, y, ms left]. */
   su?: 0 | 1;
   n?: [number, number, number] | null;
@@ -127,6 +131,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
   ended: { winner: Role | 'finish'; at: number } | null = null;
   events: EngineEvent[] = [];
   outbox: OutgoingBuff[] = [];
+  private survivorSpawns: Vec[] = [];
   rng: () => number;
   private released = false;
   private survivorSpawnIndex = 0;
@@ -148,6 +153,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
     this.saws = getSaws(cfg.map);
 
     const sSpawns = getSpawns(cfg.map, T.SURVIVOR_SPAWN);
+    this.survivorSpawns = sSpawns;
     const zSpawns = getSpawns(cfg.map, T.ZOMBIE_SPAWN);
     let zi = 0;
     for (const r of cfg.roster) {
@@ -182,6 +188,8 @@ export class GameEngine implements AbilityWorld, BotWorld {
         infectedAt: null,
         infectedBy: null,
         doctor: false,
+        cures: 0,
+        curedBy: null,
         stoneUsed: false,
         noise: null,
         inTask: false,
@@ -246,7 +254,8 @@ export class GameEngine implements AbilityWorld, BotWorld {
   }
 
   visionRadius(p: EnginePlayer): number {
-    return (p.role === 'survivor' ? SURVIVOR_VISION : ZOMBIE_VISION) * p.mods.vision;
+    const r = (p.role === 'survivor' ? SURVIVOR_VISION : ZOMBIE_VISION) * p.mods.vision;
+    return isActive(p, 'blinded', this.now) ? r * 0.3 : r;
   }
 
   /** Whether `viewer` can currently see `target` (used for rendering, fog and bot AI). */
@@ -260,14 +269,16 @@ export class GameEngine implements AbilityWorld, BotWorld {
     }
     // Zombie looking at a survivor.
     if (isActive(target, 'invisible', now)) return d < PLAYER_RADIUS * 3;
-    if (isActive(viewer, 'vision', now)) return true;
+    if (isActive(viewer, 'vision', now) && !isActive(viewer, 'blinded', now)) return true;
     const radius = this.visionRadius(viewer) * target.mods.detectability;
     return d <= radius && hasLineOfSight(this.map, viewer, target);
   }
 
   speedOf(p: EnginePlayer): number {
-    let s = (p.role === 'survivor' ? SURVIVOR_SPEED : ZOMBIE_SPEED) * p.mods.speed;
+    let s = (p.role === 'survivor' ? SURVIVOR_SPEED : ZOMBIE_SPEED * p.mods.zombieSpeed) * p.mods.speed;
+    if (this.mode === 'tournament') s *= p.role === 'survivor' ? TOURNAMENT_SURVIVOR_SPEED_MUL : TOURNAMENT_ZOMBIE_SPEED_MUL;
     if (isActive(p, 'sprint', this.now)) s *= 1.6;
+    if (isActive(p, 'frenzy', this.now)) s *= 1.35;
     if (isActive(p, 'dash', this.now)) s *= 2.1;
     if (isActive(p, 'slowed', this.now)) s *= 0.5;
     if (tileAt(this.map, toTile(p.x), toTile(p.y)) === T.MUD) s *= MUD_SLOW;
@@ -305,7 +316,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
   // ---- AbilityWorld / BotWorld -------------------------------------------------------------
 
   /** Applies a buff to a target this client owns, or queues it for the network. */
-  applyEffect(target: EnginePlayer, kind: 'shield' | 'cure' | 'slow', durationMs: number, from: EnginePlayer) {
+  applyEffect(target: EnginePlayer, kind: BuffKind, durationMs: number, from: EnginePlayer) {
     if (target.control === 'remote') {
       this.outbox.push({ targetId: target.id, kind, durationMs, fromId: from.id });
       return;
@@ -314,12 +325,36 @@ export class GameEngine implements AbilityWorld, BotWorld {
   }
 
   /** Called for buffs that arrive from the network or from local abilities. */
-  applyBuff(targetId: string, kind: 'shield' | 'cure' | 'slow', durationMs: number, fromId: string) {
+  applyBuff(targetId: string, kind: BuffKind, durationMs: number, fromId: string) {
     const t = this.getPlayer(targetId);
     if (!t || t.control === 'remote') return;
     if (kind === 'shield' && t.role === 'survivor') t.effects.shield = Math.max(t.effects.shield, this.now + durationMs);
     if (kind === 'slow' && t.role === 'survivor' && !isActive(t, 'shield', this.now)) t.effects.slowed = this.now + durationMs;
+    if (kind === 'blind' && t.role === 'zombie') t.effects.blinded = this.now + durationMs;
     if (kind === 'cure') this.cure(t, fromId);
+  }
+
+  leap(p: EnginePlayer, distance: number) {
+    moveWithCollision(this.map, p, Math.cos(p.facing) * distance, Math.sin(p.facing) * distance);
+  }
+
+  teleportToSafety(p: EnginePlayer) {
+    const zombies = this.players.filter((o) => o.role === 'zombie');
+    let best: Vec | null = null;
+    let bestD = -1;
+    for (const s of this.survivorSpawns) {
+      const d = zombies.length ? Math.min(...zombies.map((z) => Math.hypot(z.x - s.x, z.y - s.y))) : 0;
+      if (d > bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    if (!best) return;
+    p.x = best.x;
+    p.y = best.y;
+    p.vx = 0;
+    p.vy = 0;
+    if (p.brain) p.brain.path = [];
   }
 
   private cure(t: EnginePlayer, byId: string) {
@@ -327,6 +362,9 @@ export class GameEngine implements AbilityWorld, BotWorld {
     t.role = 'survivor';
     t.infectedAt = null;
     t.infectedBy = null;
+    t.curedBy = byId;
+    const doc = this.getPlayer(byId);
+    if (doc && doc.control !== 'remote') doc.cures++;
     // A doctor healed by another doctor can no longer heal.
     t.doctor = false;
     t.effects = emptyEffects();
@@ -534,6 +572,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
       ia: p.infectedAt === null ? null : Math.round(this.now - p.infectedAt),
       it: p.inTask,
       d: p.doctor ? 1 : 0,
+      cb: p.curedBy,
       su: p.stoneUsed ? 1 : 0,
       n: p.noise && p.noise.until > this.now ? [Math.round(p.noise.x), Math.round(p.noise.y), Math.round(p.noise.until - this.now)] : null,
     };
@@ -557,6 +596,12 @@ export class GameEngine implements AbilityWorld, BotWorld {
     } else if (p.role === 'zombie' && newRole === 'survivor') {
       p.infectedAt = null;
       p.infectedBy = null;
+      if (s.cb) {
+        p.curedBy = s.cb;
+        const doc = this.getPlayer(s.cb);
+        if (doc && doc.control !== 'remote') doc.cures++;
+        this.events.push({ type: 'cured', playerId: p.id, byId: s.cb });
+      }
     }
     p.role = newRole;
     p.netTarget = { x: s.x, y: s.y };
@@ -659,6 +704,8 @@ export class GameEngine implements AbilityWorld, BotWorld {
     const secondsSurvived = p.startRole === 'survivor' ? Math.max(0, Math.round((survivedUntil - this.startTime) / 1000)) : 0;
     let won = false;
     if (winner === 'finish') won = true;
+    // Knockout tournament: you advance with the team you started on, even if you got infected.
+    else if (this.mode === 'tournament') won = winner === p.startRole;
     else if (winner === 'survivor') won = p.role === 'survivor';
     else if (winner === 'zombie') won = p.role === 'zombie';
     return {
@@ -671,13 +718,23 @@ export class GameEngine implements AbilityWorld, BotWorld {
       tasks: p.completedStations.filter((i) => i >= 0).length,
       tasksByType: { ...p.tasksByType },
       infections: p.infections,
+      cures: p.cures,
       secondsSurvived,
       abilitiesUsed: p.abilitiesUsed,
       durationSec,
       obstacleTimeMs: p.finishedAt !== null ? p.finishedAt - this.startTime : undefined,
       tournamentId,
+      roundSize: this.mode === 'tournament' ? this.players.length : undefined,
+      advancing: this.mode === 'tournament' ? this.players.filter((o) => o.startRole === winner).length : undefined,
     };
   }
+}
+
+/** Knockout tournament: half the players start as zombies, half as survivors. */
+export function knockoutRoles(ids: string[], rng: () => number = Math.random): Record<string, Role> {
+  const shuffled = [...ids].sort(() => rng() - 0.5);
+  const zombies = new Set(shuffled.slice(0, Math.floor(ids.length / 2)));
+  return Object.fromEntries(ids.map((id) => [id, zombies.has(id) ? 'zombie' : 'survivor']));
 }
 
 /** Picks starting zombies: roughly one per five players, at least one. */
