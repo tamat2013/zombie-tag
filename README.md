@@ -1,6 +1,6 @@
-# Zombie Game
+# Zombie Tag
 
-A zombie game built with [Expo](https://expo.dev) and React Native.
+A Zombie Tag built with [Expo](https://expo.dev) and React Native.
 
 ## Getting started
 
