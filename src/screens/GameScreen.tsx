@@ -12,7 +12,7 @@ import type { EffectKey, EnginePlayer } from '../engine/entities';
 import { isActive } from '../engine/entities';
 import { findTiles, mergeTiles } from '../engine/map';
 import type { TaskStation } from '../engine/map';
-import { NETWORK_SEND_HZ, PLAYER_RADIUS, SAW_RADIUS, TILE } from '../engine/constants';
+import { NETWORK_SEND_HZ, NOISE_HEAR_RADIUS, NOISE_MS, PLAYER_RADIUS, SAW_RADIUS, SOUND_WAVE_RADIUS, TILE } from '../engine/constants';
 import { FirebaseTransport, LocalTransport } from '../services/matchTransport';
 import type { MatchTransport } from '../services/matchTransport';
 import { roomService } from '../services/roomService';
@@ -208,6 +208,15 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             pushFeed('אאוץ׳! חזרת לנקודת השמירה', colors.blood);
           }
           break;
+        case 'stone': {
+          const local = engine.local;
+          if (e.playerId === me) pushFeed('זרקת אבן! הזומבים ישמעו רעש שם 🪨', colors.gold);
+          else if (local?.role === 'zombie' && Math.hypot(e.x - local.x, e.y - local.y) <= NOISE_HEAR_RADIUS) {
+            haptic('light');
+            pushFeed('שמעת רעש! 🪨', colors.gold);
+          }
+          break;
+        }
         case 'released':
           haptic('medium');
           pushFeed('הזומבים שוחררו! 🧟‍♂️', colors.blood);
@@ -323,6 +332,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   // Keyboard controls on web: WASD / arrows to move, 1-3 abilities, E or Space for tasks.
   const useAbilityRef = useRef<(id: AbilityId) => void>(() => {});
   const openTaskRef = useRef<() => void>(() => {});
+  const throwStoneRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const doc = (globalThis as unknown as { document?: { addEventListener: (t: string, f: (e: { key: string; preventDefault(): void }) => void) => void; removeEventListener: (t: string, f: (e: { key: string; preventDefault(): void }) => void) => void } }).document;
@@ -339,6 +349,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         if (id) useAbilityRef.current(id);
       }
       if (key === 'e' || key === ' ') openTaskRef.current();
+      if (key === 'q') throwStoneRef.current();
     };
     const up = (e: { key: string; preventDefault(): void }) => keys.current.delete(e.key.toLowerCase());
     doc.addEventListener('keydown', down);
@@ -377,6 +388,11 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     }
   };
   useAbilityRef.current = useAbility;
+
+  const throwStone = () => {
+    if (engine.useStone()) haptic('medium');
+  };
+  throwStoneRef.current = throwStone;
 
   const station = engine.usableStation();
   const openTask = () => {
@@ -457,8 +473,17 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   const abilities = AbilityManager.available(local);
   const suggested = engine.suggestedAbility();
 
+  // Blue sound waves around survivors the zombie can hear, and stone noises.
+  const heard = isZombie && !obstacle ? engine.heardSurvivors(local) : [];
+  const noises = obstacle
+    ? []
+    : engine.activeNoises().filter((n) => !isZombie || Math.hypot(n.x - local.x, n.y - local.y) <= NOISE_HEAR_RADIUS);
+  const canStone = !obstacle && !isZombie;
+
   return (
     <View style={styles.root}>
+      {/* Zombies see the world in black and white. */}
+      <View style={[StyleSheet.absoluteFill, isZombie && !obstacle && styles.grayscale]} pointerEvents="none">
       {/* World */}
       <View style={[styles.world, { width: worldW, height: worldH, transform: worldTransform }]} pointerEvents="none">
         <TileLayer map={engine.map} />
@@ -510,6 +535,23 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           <PlayerSprite key={p.id} p={p} now={now} isLocal={p === local} localRole={local.role} frozenMs={engine.frozenLeftMs(p)} />
         ))}
       </View>
+      </View>
+
+      {/* Sound waves stay in color, above the black-and-white world. */}
+      {heard.length || noises.length ? (
+        <View style={[styles.world, { width: worldW, height: worldH, transform: worldTransform }]} pointerEvents="none">
+          {heard.map((p) => {
+            const strength = 1 - Math.hypot(p.x - local.x, p.y - local.y) / (SOUND_WAVE_RADIUS * p.mods.detectability);
+            return <Waves key={p.id} x={p.x} y={p.y} now={now} color="#3fa9ff" radius={70} strength={0.4 + strength * 0.6} />;
+          })}
+          {noises.map((n) => (
+            <React.Fragment key={`n${n.by}`}>
+              <Waves x={n.x} y={n.y} now={now} color="#ffd23f" radius={110} strength={Math.min(1, (n.until - now) / (NOISE_MS * 0.5))} />
+              <Text style={[styles.stone, { left: n.x - 12, top: n.y - 14 }]}>🪨</Text>
+            </React.Fragment>
+          ))}
+        </View>
+      ) : null}
 
       {/* Zombie screen filter */}
       {isZombie ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: filter.color, opacity: filter.opacity }]} /> : null}
@@ -613,6 +655,16 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           </Pressable>
         ) : null}
         <View style={styles.abilityRow}>
+          {canStone ? (
+            <Pressable
+              onPress={throwStone}
+              disabled={local.stoneUsed || !!engine.ended || beforeStart}
+              style={({ pressed }) => [styles.stoneBtn, local.stoneUsed && { opacity: 0.35 }, pressed && { transform: [{ scale: 0.92 }] }]}
+            >
+              <Text style={{ fontSize: 26 }}>🪨</Text>
+              <Text style={styles.stoneText}>{local.stoneUsed ? 'נזרקה' : Platform.OS === 'web' ? 'אבן (Q)' : 'אבן'}</Text>
+            </Pressable>
+          ) : null}
           {abilities.map((id, i) => {
             const rem = AbilityManager.remainingMs(local, id, now);
             const total = AbilityManager.cooldownMs(local, id, engine);
@@ -658,6 +710,34 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         </View>
       ) : null}
     </View>
+  );
+}
+
+/** Expanding rings that fade out, like sound spreading from a point. */
+function Waves({ x, y, now, color, radius, strength }: { x: number; y: number; now: number; color: string; radius: number; strength: number }) {
+  return (
+    <>
+      {[0, 1, 2].map((i) => {
+        const t = ((now / 900 + i / 3) % 1 + 1) % 1;
+        const r = 10 + t * radius;
+        return (
+          <View
+            key={i}
+            style={{
+              position: 'absolute',
+              left: x - r,
+              top: y - r,
+              width: r * 2,
+              height: r * 2,
+              borderRadius: r,
+              borderWidth: 3,
+              borderColor: color,
+              opacity: (1 - t) * strength,
+            }}
+          />
+        );
+      })}
+    </>
   );
 }
 
@@ -729,6 +809,10 @@ const styles = StyleSheet.create({
   saw: { position: 'absolute', width: SAW_RADIUS * 2, height: SAW_RADIUS * 2, borderRadius: SAW_RADIUS, backgroundColor: '#9ca3af', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#e5e7eb' },
   aura: { position: 'absolute', left: -8, top: -8, right: -8, bottom: -8, borderRadius: 40 },
   status: { position: 'absolute', top: -26, left: 20, fontSize: 14 },
+  grayscale: { filter: 'grayscale(1)' },
+  stone: { position: 'absolute', fontSize: 20 },
+  stoneBtn: { width: 62, height: 62, borderRadius: 31, backgroundColor: 'rgba(0,0,0,0.6)', borderWidth: 2, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
+  stoneText: { color: colors.text, fontSize: 9, fontWeight: '900', marginTop: -2 },
   doctorBadge: { position: 'absolute', top: -24, left: -6, fontSize: 14 },
   frozen: { position: 'absolute', top: -28, left: -4, width: PLAYER_RADIUS * 2 + 8, textAlign: 'center', fontSize: 13, fontWeight: '900', color: '#bfe6ff', textShadowColor: '#000', textShadowRadius: 3 },
   name: { position: 'absolute', top: PLAYER_RADIUS * 2 + 2, left: -30, width: PLAYER_RADIUS * 2 + 60, textAlign: 'center', fontSize: 11, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 3 },

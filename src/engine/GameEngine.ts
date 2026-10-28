@@ -11,6 +11,9 @@ import {
   INFECT_FREEZE_MS,
   INFECT_REACH,
   MUD_SLOW,
+  NOISE_MS,
+  SOUND_WAVE_RADIUS,
+  STONE_RANGE,
   PLAYER_RADIUS,
   SAW_PERIOD_SEC,
   SAW_RADIUS,
@@ -22,12 +25,13 @@ import {
   ZOMBIE_VISION,
 } from './constants.ts';
 import { EFFECT_KEYS, emptyEffects, isActive } from './entities.ts';
-import type { EffectKey, EnginePlayer, RosterEntry } from './entities.ts';
+import type { EffectKey, EnginePlayer, Noise, RosterEntry } from './entities.ts';
 import {
   getSaws,
   getSpawns,
   getTaskStations,
   hasLineOfSight,
+  isSolid,
   moveWithCollision,
   sawPosition,
   tileAt,
@@ -45,6 +49,7 @@ export type EngineEvent =
   | { type: 'checkpoint'; playerId: string }
   | { type: 'hazard'; playerId: string }
   | { type: 'finish'; playerId: string; timeMs: number }
+  | { type: 'stone'; playerId: string; x: number; y: number }
   | { type: 'released' }
   | { type: 'end'; winner: Role | 'finish' };
 
@@ -69,6 +74,9 @@ export interface NetPlayerState {
   it?: boolean;
   /** 1 while the player is a doctor who can still heal. */
   d?: 0 | 1;
+  /** Stone used, and the active noise as [x, y, ms left]. */
+  su?: 0 | 1;
+  n?: [number, number, number] | null;
 }
 
 export interface EngineConfig {
@@ -174,6 +182,8 @@ export class GameEngine implements AbilityWorld, BotWorld {
         infectedAt: null,
         infectedBy: null,
         doctor: false,
+        stoneUsed: false,
+        noise: null,
         inTask: false,
         abilitiesUsed: 0,
         lastNetUpdate: cfg.startTime,
@@ -339,7 +349,56 @@ export class GameEngine implements AbilityWorld, BotWorld {
     this.events.push({ type: 'task', playerId: p.id, taskType: s.type });
   }
 
+  // ---- Stone -------------------------------------------------------------------------------
+
+  canThrowStone(p: EnginePlayer): boolean {
+    return this.mode !== 'obstacle' && !this.ended && p.role === 'survivor' && !p.stoneUsed && !p.inTask && this.now >= this.startTime;
+  }
+
+  /** Throws the player's one stone along `angle` (default: facing); it stops before walls. */
+  throwStone(p: EnginePlayer, angle = p.facing): boolean {
+    if (!this.canThrowStone(p)) return false;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    let x = p.x;
+    let y = p.y;
+    for (let d = 8; d <= STONE_RANGE; d += 8) {
+      const nx = p.x + dx * d;
+      const ny = p.y + dy * d;
+      if (isSolid(tileAt(this.map, toTile(nx), toTile(ny)))) break;
+      x = nx;
+      y = ny;
+    }
+    p.stoneUsed = true;
+    p.noise = { x, y, at: this.now, until: this.now + NOISE_MS };
+    this.events.push({ type: 'stone', playerId: p.id, x, y });
+    return true;
+  }
+
+  /** Stone noises that are still sounding. */
+  activeNoises(): (Noise & { by: string })[] {
+    const out: (Noise & { by: string })[] = [];
+    for (const p of this.players) if (p.noise && p.noise.until > this.now) out.push({ ...p.noise, by: p.id });
+    return out;
+  }
+
+  /** Survivors close enough to a zombie that it "hears" them (drawn as blue sound waves). */
+  heardSurvivors(z: EnginePlayer): EnginePlayer[] {
+    if (z.role !== 'zombie') return [];
+    return this.players.filter(
+      (o) =>
+        o.role === 'survivor' &&
+        !isActive(o, 'invisible', this.now) &&
+        Math.hypot(o.x - z.x, o.y - z.y) <= SOUND_WAVE_RADIUS * o.mods.detectability,
+    );
+  }
+
   // ---- Local player API ---------------------------------------------------------------------
+
+  useStone(): boolean {
+    const p = this.local;
+    return !!p && this.throwStone(p);
+  }
 
   useAbility(id: AbilityId): boolean {
     const p = this.local;
@@ -475,6 +534,8 @@ export class GameEngine implements AbilityWorld, BotWorld {
       ia: p.infectedAt === null ? null : Math.round(this.now - p.infectedAt),
       it: p.inTask,
       d: p.doctor ? 1 : 0,
+      su: p.stoneUsed ? 1 : 0,
+      n: p.noise && p.noise.until > this.now ? [Math.round(p.noise.x), Math.round(p.noise.y), Math.round(p.noise.until - this.now)] : null,
     };
   }
 
@@ -502,6 +563,12 @@ export class GameEngine implements AbilityWorld, BotWorld {
     p.facing = s.f;
     p.inTask = !!s.it;
     if (s.d !== undefined) p.doctor = s.d === 1;
+    if (s.su) p.stoneUsed = true;
+    if (s.n && !(p.noise && p.noise.until > this.now)) {
+      const left = s.n[2];
+      p.noise = { x: s.n[0], y: s.n[1], at: this.now - (NOISE_MS - left), until: this.now + left };
+      this.events.push({ type: 'stone', playerId: p.id, x: s.n[0], y: s.n[1] });
+    }
     p.effects = emptyEffects();
     for (const k of EFFECT_KEYS) if (s.e?.[k]) p.effects[k] = this.now + s.e[k]!;
     p.infections = Math.max(p.infections, s.i);

@@ -33,7 +33,7 @@ export function RoleReveal({ role, doctor, skin, outfit, mode, secondsLeft }: Pr
       ? 'גע בשורדים כדי להדביק אותם. הפוך את כולם לזומבים!'
       : doctor
         ? 'שורד שנדבק קפוא ל-10 שניות – גע בו כדי לרפא אותו. אם רופא אחר ירפא אותך, תאבד את כוח הריפוי.'
-        : 'בצע משימות, השתמש ביכולות ושרוד עד סוף הזמן!';
+        : 'בצע משימות, השתמש ביכולות ושרוד עד סוף הזמן! יש לך אבן אחת לזרוק כדי למשוך זומבים למקום אחר 🪨';
   const tint = obstacle ? colors.gold : zombie ? colors.zombie : colors.survivor;
 
   return (

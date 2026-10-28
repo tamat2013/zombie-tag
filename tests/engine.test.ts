@@ -268,3 +268,74 @@ test('every arena map has all 5 task types', () => {
     assert.equal(types.size, 5, m.id);
   }
 });
+
+test('zombies are slower than survivors', () => {
+  const m = BUILT_IN_MAPS[0];
+  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(2, [1]), localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'dummy' });
+  e.update(10, { x: 0, y: 0 });
+  assert.ok(e.speedOf(e.getPlayer('bot1')!) < e.speedOf(e.local!));
+});
+
+test('a survivor throws one stone per match, it stops at walls and travels over the network', () => {
+  const m = BUILT_IN_MAPS[0];
+  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(3, [2]), localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 999, difficulty: 'dummy' });
+  e.update(10, { x: 0, y: 0 });
+  const me = e.local!;
+  assert.ok(e.useStone());
+  assert.equal(e.useStone(), false, 'only one stone per match');
+  const n = e.activeNoises();
+  assert.equal(n.length, 1);
+  assert.ok(!isSolid(tileAt(m, toTile(n[0].x), toTile(n[0].y))), 'stone landed inside a wall');
+  assert.ok(Math.hypot(n[0].x - me.x, n[0].y - me.y) <= 48 * 6 + 1);
+  assert.equal(e.drainEvents().filter((ev) => ev.type === 'stone').length, 1);
+  // Zombies cannot throw stones.
+  e.local!.role = 'zombie';
+  me.stoneUsed = false;
+  assert.equal(e.useStone(), false);
+  me.role = 'survivor';
+  me.stoneUsed = true;
+
+  const other = new GameEngine({ map: m, mode: 'classic', roster: roster(3, [2], 'x'), localId: 'bot1', isAuthority: false, startTime: 0 });
+  other.update(10, { x: 0, y: 0 });
+  other.applyRemoteState('x', e.serialize(me));
+  assert.equal(other.getPlayer('x')!.stoneUsed, true);
+  assert.equal(other.activeNoises().length, 1);
+  e.update(6000, { x: 0, y: 0 });
+  assert.equal(e.activeNoises().length, 0, 'noise fades out');
+});
+
+test('a stone pulls a zombie bot towards the noise', () => {
+  const m = BUILT_IN_MAPS[0];
+  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(2, [1]), localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'hard', seed: 5 });
+  const me = e.local!;
+  const z = e.getPlayer('bot1')!;
+  // Park the survivor far away and out of sight, then make a noise elsewhere near the zombie.
+  me.x = 48 * 1.5; me.y = 48 * 1.5;
+  e.update(10, { x: 0, y: 0 });
+  me.noise = { x: z.x, y: z.y, at: 10, until: 5010 };
+  // Find a walkable spot a few tiles away from the zombie for the noise.
+  for (const [dx, dy] of [[4, 0], [-4, 0], [0, 4], [0, -4], [3, 3], [-3, -3]]) {
+    const x = z.x + dx * 48, y = z.y + dy * 48;
+    if (!isSolid(tileAt(m, toTile(x), toTile(y)))) { me.noise = { x, y, at: 10, until: 5010 }; break; }
+  }
+  const start = Math.hypot(me.noise.x - z.x, me.noise.y - z.y);
+  let closest = start;
+  for (let t = 43; t < 3000; t += 33) {
+    e.update(t, { x: 0, y: 0 });
+    closest = Math.min(closest, Math.hypot(me.noise!.x - z.x, me.noise!.y - z.y));
+  }
+  assert.ok(closest < 30, `zombie did not reach the noise (closest ${Math.round(closest)} of ${Math.round(start)})`);
+});
+
+test('zombies hear nearby survivors (sound waves)', () => {
+  const m = BUILT_IN_MAPS[0];
+  const e = new GameEngine({ map: m, mode: 'classic', roster: roster(3, [2]), localId: 'bot2', isAuthority: true, startTime: 0, difficulty: 'dummy' });
+  const z = e.getPlayer('bot2')!;
+  const near = e.getPlayer('p0')!;
+  const far = e.getPlayer('bot1')!;
+  near.x = z.x + 100; near.y = z.y;
+  far.x = z.x + 1000; far.y = z.y;
+  assert.deepEqual(e.heardSurvivors(z).map((p) => p.id), ['p0']);
+  near.effects.invisible = Infinity;
+  assert.equal(e.heardSurvivors(z).length, 0, 'invisible survivors make no sound');
+});

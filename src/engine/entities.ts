@@ -20,6 +20,13 @@ export interface Modifiers {
   tankShield: boolean;
 }
 
+export interface Noise {
+  x: number;
+  y: number;
+  at: number;
+  until: number;
+}
+
 export interface BotBrain {
   mode: 'task' | 'work' | 'flee' | 'chase' | 'hunt' | 'wander' | 'idle';
   path: Vec[];
@@ -31,6 +38,9 @@ export interface BotBrain {
   stationIndex?: number;
   workUntil?: number;
   stuck: { x: number; y: number; at: number };
+  /** Noise this zombie already reacted to, and how long it ignores far survivors for it. */
+  heardNoise?: string;
+  distractedUntil?: number;
 }
 
 export interface EnginePlayer {
@@ -59,6 +69,9 @@ export interface EnginePlayer {
   infectedBy: string | null;
   /** Can heal frozen zombies. Lost for good once this player is healed back by another doctor. */
   doctor: boolean;
+  /** Each survivor gets one stone per match to make a noise somewhere else. */
+  stoneUsed: boolean;
+  noise: Noise | null;
   inTask: boolean;
   abilitiesUsed: number;
   lastNetUpdate: number;

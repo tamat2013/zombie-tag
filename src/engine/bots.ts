@@ -1,8 +1,8 @@
 import type { AbilityId, BotDifficulty, GameMap } from '../types.ts';
 import { AbilityManager } from './abilities.ts';
 import type { AbilityWorld } from './abilities.ts';
-import { TASK_USE_RANGE, TILE } from './constants.ts';
-import type { BotBrain, EnginePlayer } from './entities.ts';
+import { NOISE_HEAR_RADIUS, TASK_USE_RANGE, TILE } from './constants.ts';
+import type { BotBrain, EnginePlayer, Noise } from './entities.ts';
 import { hasLineOfSight, isSolid, tileAt, tileCenter, toTile, walkableTiles } from './map.ts';
 import type { TaskStation, Vec } from './map.ts';
 import { findPath } from './pathfinding.ts';
@@ -41,6 +41,8 @@ export interface BotWorld extends AbilityWorld {
   rng(): number;
   completeTask(p: EnginePlayer, stationIndex: number): void;
   activateAbility(p: EnginePlayer, id: AbilityId): void;
+  throwStone(p: EnginePlayer, angle?: number): boolean;
+  activeNoises(): (Noise & { by: string })[];
 }
 
 export interface BotIntent {
@@ -175,6 +177,12 @@ function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level:
       brain.repathAt = now + 700 * level.think + 250;
     }
     maybeUseAbility(world, p, level, now);
+    // Throw the stone to the side so the zombie goes after the noise instead.
+    if (!p.stoneUsed && nearestThreat < 230 && level.abilityChance > 0 && world.rng() < 0.03 * level.abilityChance) {
+      const t = threats.reduce((a, b) => (Math.hypot(a.x - p.x, a.y - p.y) <= Math.hypot(b.x - p.x, b.y - p.y) ? a : b));
+      const side = world.rng() < 0.5 ? 1 : -1;
+      world.throwStone(p, Math.atan2(t.y - p.y, t.x - p.x) + (side * Math.PI) / 2);
+    }
     return steer(p, brain);
   }
 
@@ -233,7 +241,20 @@ function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level:
 
 function thinkZombie(world: BotWorld, p: EnginePlayer, brain: BotBrain, level: BotLevel, now: number): BotIntent {
   if (world.isFrozen(p, now)) return { x: 0, y: 0 };
-  const visible = world.players.filter((o) => o.role === 'survivor' && world.canSee(p, o, now));
+  // A stone noise nearby pulls the zombie over and distracts it for a few seconds.
+  for (const n of world.activeNoises()) {
+    const key = `${n.by}:${Math.round(n.at)}`;
+    if (brain.heardNoise === key || Math.hypot(n.x - p.x, n.y - p.y) > NOISE_HEAR_RADIUS) continue;
+    brain.heardNoise = key;
+    brain.distractedUntil = now + 3000;
+    brain.lastSeen = { x: n.x, y: n.y, at: now };
+    brain.mode = 'wander';
+    brain.path = [];
+  }
+  const distracted = now < (brain.distractedUntil ?? 0);
+  const visible = world.players.filter(
+    (o) => o.role === 'survivor' && world.canSee(p, o, now) && (!distracted || Math.hypot(o.x - p.x, o.y - p.y) < 110),
+  );
   if (visible.length) {
     const target = visible.reduce((a, b) => (Math.hypot(a.x - p.x, a.y - p.y) <= Math.hypot(b.x - p.x, b.y - p.y) ? a : b));
     brain.mode = 'chase';
