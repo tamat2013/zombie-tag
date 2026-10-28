@@ -54,7 +54,10 @@ function nativeInputsHash() {
   hash.update(JSON.stringify([pkg.dependencies, pkg.devDependencies]));
   const assets = path.join(root, 'assets');
   if (fs.existsSync(assets)) {
-    for (const name of fs.readdirSync(assets).sort()) hash.update(name).update(fs.readFileSync(path.join(assets, name)));
+    // Only top-level files (icons, splash). Subfolders such as sounds/ are bundled by Metro, not prebuild.
+    for (const entry of fs.readdirSync(assets, { withFileTypes: true }).filter((e) => e.isFile()).sort((a, b) => a.name.localeCompare(b.name))) {
+      hash.update(entry.name).update(fs.readFileSync(path.join(assets, entry.name)));
+    }
   }
   return hash.digest('hex');
 }

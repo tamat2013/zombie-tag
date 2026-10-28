@@ -50,6 +50,7 @@ export type RootStackParamList = {
   Missions: undefined;
   Tournaments: undefined;
   Profile: undefined;
+  Settings: undefined;
 };
 
 export type ShopTab = 'skins' | 'outfits' | 'abilities' | 'upgrades' | 'filters' | 'coins';

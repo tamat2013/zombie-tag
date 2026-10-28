@@ -4,6 +4,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
+import { playSfx } from '../services/sound';
 
 type Variant = 'primary' | 'danger' | 'gold' | 'ghost' | 'dark' | 'blue';
 
@@ -40,6 +41,7 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
         onPressOut={() => pressTo(1)}
         onPress={() => {
           haptic('light');
+          playSfx('click', 0.7);
           onPress?.();
         }}
       >

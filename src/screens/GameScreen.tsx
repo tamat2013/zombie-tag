@@ -30,6 +30,15 @@ import { TaskModal } from '../tasks/TaskModal';
 import { TASK_INFO } from '../tasks/TaskGames';
 import { colors, tileColors } from '../theme';
 import { haptic } from '../utils/haptics';
+import { playSfx, updateSoundSettings, useSoundSettings } from '../services/sound';
+import type { SfxId } from '../services/sound';
+import { distanceVolume, heartbeatInterval } from '../logic/soundSettings';
+
+/** A survivor hears their heartbeat when an active zombie is this close, and zombie groans a bit farther out. */
+const HEARTBEAT_RANGE = 320;
+const GROAN_RANGE = 520;
+/** Distance walked between footsteps. */
+const STRIDE = { survivor: 44, zombie: 58 };
 
 const ABILITY_EFFECT: Record<AbilityId, EffectKey> = {
   sprint: 'sprint',
@@ -117,6 +126,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   const { setup } = route.params;
   const { profile, updateProfile, toast } = useGame();
   const dims = useWindowDimensions();
+  const sound = useSoundSettings();
 
   const engineRef = useRef<GameEngine | null>(null);
   if (!engineRef.current) {
@@ -161,6 +171,17 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
 
   const nameOf = useCallback((id: string | null) => (id ? engine.getPlayer(id)?.name ?? '???' : 'מלכודת'), [engine]);
 
+  /** Plays a sound coming from a player, quieter the farther they are from you. */
+  const soundAt = useCallback(
+    (id: SfxId, playerId: string | null, range = 700) => {
+      const local = engine.local;
+      const p = playerId ? engine.getPlayer(playerId) : undefined;
+      if (!local || !p) return;
+      playSfx(id, distanceVolume(Math.hypot(p.x - local.x, p.y - local.y), range));
+    },
+    [engine],
+  );
+
   const handleEvent = useCallback(
     (e: EngineEvent) => {
       const me = engine.localId;
@@ -171,15 +192,20 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             setFlash(colors.blood);
             setTimeout(() => setFlash(null), 450);
             setTask(null);
+            playSfx('infected');
             pushFeed('נדבקת! קפוא ל-10 שניות – רק רופא יכול לרפא אותך 🩺', colors.zombie);
           } else if (e.byId === me) {
             haptic('success');
+            playSfx('bite');
             pushFeed(`הדבקת את ${nameOf(e.victimId)}! 🧟`, colors.zombie);
           } else {
+            soundAt('bite', e.victimId);
             pushFeed(`${nameOf(e.victimId)} הפך לזומבי`, colors.blood);
           }
           break;
         case 'cured':
+          if (e.playerId === me || e.byId === me) playSfx('heal');
+          else soundAt('heal', e.playerId);
           if (e.playerId === me) {
             haptic('success');
             pushFeed(`הרופא ${nameOf(e.byId)} ריפא אותך! 🩺`, colors.survivor);
@@ -189,20 +215,28 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           } else pushFeed(`${nameOf(e.byId)} ריפא את ${nameOf(e.playerId)} 🩺`, colors.survivor);
           break;
         case 'blocked':
-          if (e.playerId === me) pushFeed('שריון הטנק חסם את ההדבקה! 🛡️', colors.gold);
+          if (e.playerId === me) {
+            playSfx('shield');
+            pushFeed('שריון הטנק חסם את ההדבקה! 🛡️', colors.gold);
+          }
           break;
         case 'task':
           if (e.playerId === me) {
             haptic('success');
+            playSfx('task');
             pushFeed(`${TASK_INFO[e.taskType].title} הושלמה ✔️`, colors.toxic);
           }
           break;
         case 'checkpoint':
-          if (e.playerId === me) pushFeed('נקודת שמירה! 🚩', colors.toxic);
+          if (e.playerId === me) {
+            playSfx('checkpoint');
+            pushFeed('נקודת שמירה! 🚩', colors.toxic);
+          }
           break;
         case 'hazard':
           if (e.playerId === me) {
             haptic('error');
+            playSfx('hurt');
             setFlash('#ff6b00');
             setTimeout(() => setFlash(null), 300);
             pushFeed('אאוץ׳! חזרת לנקודת השמירה', colors.blood);
@@ -210,8 +244,14 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           break;
         case 'stone': {
           const local = engine.local;
+          const dist = local ? Math.hypot(e.x - local.x, e.y - local.y) : Infinity;
+          const hears = local?.role === 'zombie' && dist <= NOISE_HEAR_RADIUS;
+          if (e.playerId === me) {
+            playSfx('throw');
+            setTimeout(() => playSfx('stoneHit', 0.6), 380);
+          } else playSfx('stoneHit', hears ? Math.max(0.45, distanceVolume(dist, NOISE_HEAR_RADIUS)) : distanceVolume(dist, 600));
           if (e.playerId === me) pushFeed('זרקת אבן! הזומבים ישמעו רעש שם 🪨', colors.gold);
-          else if (local?.role === 'zombie' && Math.hypot(e.x - local.x, e.y - local.y) <= NOISE_HEAR_RADIUS) {
+          else if (hears) {
             haptic('light');
             pushFeed('שמעת רעש! 🪨', colors.gold);
           }
@@ -219,13 +259,14 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         }
         case 'released':
           haptic('medium');
+          playSfx('released');
           pushFeed('הזומבים שוחררו! 🧟‍♂️', colors.blood);
           break;
         default:
           break;
       }
     },
-    [engine, nameOf, pushFeed],
+    [engine, nameOf, pushFeed, soundAt],
   );
 
   const finish = useCallback(() => {
@@ -286,6 +327,48 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     return () => transport.close();
   }, [engine, transport, pushFeed]);
 
+  // Footsteps, heartbeat, zombie groans and the release countdown, checked every frame.
+  const audio = useRef({ x: NaN, y: NaN, walked: 0, foot: false, nextBeat: 0, nextGroan: 0, lastTick: 0 });
+  const ambientSounds = useCallback(
+    (now: number) => {
+      const local = engine.local;
+      if (!local) return;
+      const a = audio.current;
+      const zombie = local.role === 'zombie';
+      const moved = Math.hypot(local.x - a.x, local.y - a.y);
+      if (moved < 60) a.walked += moved; // larger jumps are respawns, not steps
+      a.x = local.x;
+      a.y = local.y;
+      if (a.walked >= (zombie ? STRIDE.zombie : STRIDE.survivor)) {
+        a.walked = 0;
+        a.foot = !a.foot;
+        playSfx(zombie ? 'zstep' : a.foot ? 'step1' : 'step2', zombie ? 0.55 : 0.4);
+      }
+      if (engine.mode === 'obstacle') return;
+
+      const left = Math.ceil((engine.releaseAt - now) / 1000);
+      if (left >= 1 && left <= 5 && left !== a.lastTick) {
+        a.lastTick = left;
+        playSfx('tick', 0.7);
+      }
+
+      if (zombie || now < engine.releaseAt) return;
+      let nearest = Infinity;
+      for (const p of engine.players) {
+        if (p.role === 'zombie' && !engine.isFrozen(p, now)) nearest = Math.min(nearest, Math.hypot(p.x - local.x, p.y - local.y));
+      }
+      if (nearest < HEARTBEAT_RANGE && now >= a.nextBeat) {
+        playSfx('heartbeat', 0.35 + 0.65 * (1 - nearest / HEARTBEAT_RANGE));
+        a.nextBeat = now + heartbeatInterval(nearest, HEARTBEAT_RANGE);
+      }
+      if (nearest < GROAN_RANGE && now >= a.nextGroan) {
+        playSfx('groan', 0.25 + 0.75 * distanceVolume(nearest, GROAN_RANGE));
+        a.nextGroan = now + 4000 + Math.random() * 5000;
+      }
+    },
+    [engine],
+  );
+
   // Main loop.
   useEffect(() => {
     let raf = 0;
@@ -304,6 +387,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         }
         engine.update(now, { x: mx, y: my });
         for (const e of engine.drainEvents()) handleEvent(e);
+        if (!engine.ended) ambientSounds(now);
         if (transport.networked) {
           for (const b of engine.drainOutbox()) transport.sendBuff(b);
           if (now - lastSend > 1000 / NETWORK_SEND_HZ) {
@@ -327,7 +411,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [engine, transport, handleEvent, finish, setup.isAuthority]);
+  }, [engine, transport, handleEvent, ambientSounds, finish, setup.isAuthority]);
 
   // Keyboard controls on web: WASD / arrows to move, 1-3 abilities, E or Space for tasks.
   const useAbilityRef = useRef<(id: AbilityId) => void>(() => {});
@@ -381,6 +465,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   const useAbility = (id: AbilityId) => {
     if (engine.useAbility(id)) {
       haptic('medium');
+      playSfx(id === 'roar' ? 'groan' : 'ability');
       if (id === 'scan') pushFeed('סורק: כל הזומבים נחשפו! 📡', colors.survivor);
       if (id === 'zombieVision') pushFeed('ראיית זומבי: רואה דרך קירות 👁️', colors.zombie);
       if (id === 'medic') pushFeed('מגן רפואי הופעל 💊', colors.survivor);
@@ -611,6 +696,9 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           </Text>
         </View>
         <View style={styles.topRight}>
+          <Pressable style={styles.smallBtn} onPress={() => updateSoundSettings({ muted: !sound.muted })} accessibilityLabel={sound.muted ? 'הפעל סאונד' : 'השתק'}>
+            <Text style={styles.smallBtnText}>{sound.muted ? '🔇' : '🔊'}</Text>
+          </Pressable>
           <Pressable style={styles.smallBtn} onPress={() => setConfirmExit(true)}>
             <Text style={styles.smallBtnText}>✕</Text>
           </Pressable>
@@ -820,7 +908,7 @@ const styles = StyleSheet.create({
   topBar: { position: 'absolute', top: 8, left: 10, right: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   topLeft: { width: 160 },
   topCenter: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 14 },
-  topRight: { width: 160, alignItems: 'flex-end' },
+  topRight: { width: 160, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 8 },
   timer: { color: colors.text, fontSize: 26, fontWeight: '900', fontVariant: ['tabular-nums'] },
   counts: { color: colors.text, fontSize: 13, fontWeight: '800' },
   roleTag: { fontSize: 12, fontWeight: '900' },

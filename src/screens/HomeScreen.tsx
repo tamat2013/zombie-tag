@@ -14,6 +14,7 @@ import { getTournaments, tournamentStatus } from '../logic/tournaments';
 import { authService } from '../services/authService';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
+import { playSfx } from '../services/sound';
 
 interface ModeRow {
   mode: GameMode;
@@ -51,6 +52,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
 
   const startMode = (mode: GameMode) => {
     haptic('light');
+    playSfx('click', 0.7);
     if (mode === 'tournament') navigation.navigate('Tournaments');
     else navigation.navigate('SkinSelect', { flow: { mode } });
   };
@@ -59,6 +61,10 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     <Screen scroll>
       <View style={styles.headerRow}>
         <Text style={styles.logo}>זומבי: התפרצות</Text>
+        <View style={{ flex: 1 }} />
+        <Pressable onPress={() => navigation.navigate('Settings')} accessibilityLabel="הגדרות סאונד" style={[styles.iconBtn, { marginRight: 8 }]} hitSlop={6}>
+          <Text style={styles.iconBtnText}>⚙️</Text>
+        </Pressable>
         <Pressable onPress={signOut} accessibilityLabel="התנתקות" style={styles.iconBtn} hitSlop={6}>
           <Text style={styles.iconBtnText}>⎋</Text>
         </Pressable>
@@ -143,7 +149,13 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
 
 function NavItem({ icon, label, onPress, badge, active }: { icon: string; label: string; onPress?: () => void; badge?: number; active?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={[styles.navItem, active && styles.navItemActive]}>
+    <Pressable
+      onPress={() => {
+        if (onPress) playSfx('click', 0.6);
+        onPress?.();
+      }}
+      style={[styles.navItem, active && styles.navItemActive]}
+    >
       <Text style={styles.navIcon}>{icon}</Text>
       <Text style={[styles.navLabel, active && { color: colors.toxic, fontWeight: '700' }]}>{label}</Text>
       {badge ? (

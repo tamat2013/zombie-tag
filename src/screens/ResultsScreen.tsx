@@ -8,6 +8,7 @@ import { Character } from '../components/Character';
 import { ACHIEVEMENTS, formatSeconds, medalName, obstacleMedal } from '../logic/progression';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
+import { playSfx } from '../services/sound';
 
 export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
   const { result, rewards, levelBefore, levelAfter, achievementIds, tournamentPoints, flow, map, roomCode, players } = route.params;
@@ -16,6 +17,7 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
 
   useEffect(() => {
     haptic(result.won ? 'success' : 'error');
+    playSfx(result.won ? 'win' : 'lose');
     Animated.sequence([
       Animated.spring(pop, { toValue: 1, friction: 5, useNativeDriver: true }),
       Animated.stagger(

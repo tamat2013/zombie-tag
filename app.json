@@ -29,13 +29,26 @@
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
-    "platforms": ["android", "ios", "web"],
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
     "experiments": {
       "baseUrl": "/zombie-tag"
     },
     "extra": {
       "supportsRTL": false
     },
-    "plugins": []
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-asset"
+    ]
   }
 }

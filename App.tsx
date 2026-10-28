@@ -1,8 +1,8 @@
 // App root: providers, intro animation, auth gate and the navigation stack.
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, I18nManager, Platform, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import type { Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -25,6 +25,8 @@ import { ShopScreen } from './src/screens/ShopScreen';
 import { MissionsScreen } from './src/screens/MissionsScreen';
 import { TournamentsScreen } from './src/screens/TournamentsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { initSound, setMusic } from './src/services/sound';
 
 // Layouts are written with explicit row-reverse / right alignment for Hebrew,
 // so keep the native layout direction LTR to avoid double-flipping.
@@ -50,16 +52,27 @@ function Loading({ text }: { text: string }) {
   );
 }
 
+// Tense music during a match, silence on the results screen (it plays its own jingle), calm music elsewhere.
+function musicForRoute(name: string | undefined) {
+  setMusic(name === 'Game' ? 'game' : name === 'Results' ? null : 'menu');
+}
+
 function Root() {
   const { user, profile } = useGame();
   const [introDone, setIntroDone] = useState(false);
+  const navRef = useNavigationContainerRef<RootStackParamList>();
+  useEffect(() => {
+    initSound();
+    setMusic('menu');
+  }, []);
+  const syncMusic = () => musicForRoute(navRef.getCurrentRoute()?.name);
 
   if (!introDone) return <IntroScreen onDone={() => setIntroDone(true)} />;
   if (user === undefined) return <Loading text="טוען..." />;
   if (user && !profile) return <Loading text="טוען את הפרופיל..." />;
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navRef} theme={navTheme} onReady={syncMusic} onStateChange={syncMusic}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_left', contentStyle: { backgroundColor: colors.bg } }}>
         {!user ? (
           <Stack.Screen name="Auth" component={AuthScreen} options={{ animation: 'fade' }} />
@@ -77,6 +90,7 @@ function Root() {
             <Stack.Screen name="Missions" component={MissionsScreen} />
             <Stack.Screen name="Tournaments" component={TournamentsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
           </>
         )}
       </Stack.Navigator>
