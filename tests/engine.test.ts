@@ -43,16 +43,16 @@ test('ascii round trip', () => {
 
 test('collision keeps players out of walls', () => {
   const m = BUILT_IN_MAPS[0];
-  const pos = { x: 48 * 1.5, y: 48 * 1.5 };
+  const pos = { x: 48 * 2.5, y: 48 * 2.5 }; // inside the room; walls are 2 tiles thick
   for (let i = 0; i < 200; i++) moveWithCollision(m, pos, -7, -7);
   assert.ok(!isSolid(tileAt(m, toTile(pos.x), toTile(pos.y))));
-  assert.ok(pos.x >= 48 + 15 && pos.y >= 48 + 15, `pushed inside the room: ${pos.x},${pos.y}`);
+  assert.ok(pos.x >= 96 + 15 && pos.y >= 96 + 15, `pushed inside the room: ${pos.x},${pos.y}`);
 });
 
 test('pathfinding finds a route across the hospital', () => {
   const m = BUILT_IN_MAPS[0];
-  const path = findPath(m, { tx: 1, ty: 1 }, { tx: 29, ty: 18 });
-  assert.ok(path && path.length > 10);
+  const path = findPath(m, { tx: 2, ty: 2 }, { tx: 58, ty: 36 });
+  assert.ok(path && path.length > 40);
 });
 
 test('zombies are held until release, then a hard zombie bot infects a dummy survivor', () => {

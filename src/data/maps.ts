@@ -1,5 +1,6 @@
 import type { GameMap } from '../types.ts';
 import { T } from '../types.ts';
+import { generateRows, scaleRows } from './mapGen.ts';
 
 // ASCII legend used by built-in maps and the map editor export:
 //  # wall   . floor   C crate   T task station   S survivor spawn   Z zombie spawn
@@ -166,10 +167,24 @@ export const OBSTACLE_SAW_ROWS = [
   '################################',
 ];
 
+// The three hand-made arenas are doubled in size (64x40) with extra task stations;
+// the rest are generated from a seed (rooms + corridors) and range up to 96x56.
+export const BIG_HOSPITAL_ROWS = scaleRows(HOSPITAL_ROWS, 2, 10, 101);
+export const BIG_MALL_ROWS = scaleRows(MALL_ROWS, 2, 10, 102);
+export const BIG_BASE_ROWS = scaleRows(BASE_ROWS, 2, 10, 103);
+export const LAB_ROWS = generateRows(11, 64, 40);
+export const PRISON_ROWS = generateRows(23, 72, 44, { clutter: 0.8, loops: 0.5 });
+export const CITY_ROWS = generateRows(37, 80, 48, { minLeaf: 12, mud: 0.35, loops: 0.5 });
+export const BUNKER_ROWS = generateRows(51, 96, 56, { minLeaf: 12, clutter: 0.7, loops: 0.6 });
+
 export const BUILT_IN_MAPS: GameMap[] = [
-  mapFromAscii('hospital', 'בית חולים נטוש', HOSPITAL_ROWS),
-  mapFromAscii('mall', 'הקניון המת', MALL_ROWS),
-  mapFromAscii('base', 'מחנה צבאי', BASE_ROWS),
+  mapFromAscii('hospital', 'בית חולים נטוש', BIG_HOSPITAL_ROWS),
+  mapFromAscii('mall', 'הקניון המת', BIG_MALL_ROWS),
+  mapFromAscii('base', 'מחנה צבאי', BIG_BASE_ROWS),
+  mapFromAscii('lab', 'מעבדה סודית', LAB_ROWS),
+  mapFromAscii('prison', 'כלא מחמירה', PRISON_ROWS),
+  mapFromAscii('city', 'עיר רפאים', CITY_ROWS),
+  mapFromAscii('bunker', 'בונקר ענק', BUNKER_ROWS),
   mapFromAscii('obstacle_rookie', 'מסלול טירונים', OBSTACLE_ROOKIE_ROWS, 'obstacle', { medalTimes: [30, 45, 70] }),
   mapFromAscii('obstacle_saw', 'עמק המסורים', OBSTACLE_SAW_ROWS, 'obstacle', { medalTimes: [35, 55, 80] }),
 ];
