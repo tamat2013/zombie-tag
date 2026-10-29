@@ -14,11 +14,11 @@ import { useGame, useProfile } from '../state/GameContext';
 import { findSkin } from '../data/skins';
 import { outfitEmoji } from '../data/catalog';
 import { levelInfo } from '../logic/progression';
-import { claimableCount } from '../logic/missions';
 import { getTournaments, tournamentStatus } from '../logic/tournaments';
 import { authService } from '../services/authService';
 import { colors, fonts, radius } from '../theme';
 import { haptic } from '../utils/haptics';
+import { useDevice } from '../utils/device';
 import { playSfx } from '../services/sound';
 
 interface ModeRow {
@@ -37,11 +37,11 @@ const MODES: ModeRow[] = [
 
 export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   useLanguage();
+  const { isDesktop } = useDevice();
   const profile = useProfile();
   const { signOut } = useGame();
   const skin = findSkin(profile.selectedSkinId, profile.customSkins);
   const lvl = levelInfo(profile.xp);
-  const missionsReady = claimableCount(profile, Date.now());
   const liveTournament = getTournaments(Date.now()).some((t) => tournamentStatus(t, Date.now()) === 'live');
 
   const bob = useRef(new Animated.Value(0)).current;
@@ -64,7 +64,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   };
 
   return (
-    <Screen scroll>
+    <Screen scroll shell="Home">
+      {!isDesktop ? (
       <View style={styles.headerRow}>
         <Text style={styles.logo}>ZOMBIE TAG</Text>
         <View style={{ flex: 1 }} />
@@ -75,6 +76,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           <Icon name="logout" color={colors.textDim} directional />
         </Pressable>
       </View>
+      ) : null}
       {!authService.isOnline ? <Text style={styles.offline}>Offline mode · playing against bots</Text> : null}
 
       <Pressable onPress={() => navigation.navigate('Profile')} style={({ pressed }) => [styles.playerCard, pressed && styles.pressed]}>
@@ -107,7 +109,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         </View>
       </Pressable>
 
-      <View style={styles.hero}>
+      <View style={isDesktop ? styles.deskRow : undefined}>
+      <View style={[styles.hero, isDesktop && styles.heroDesk]}>
         <HazardStripe height={14} style={styles.heroStripe} />
         <View style={styles.heroBody}>
           <Tag text="Main mode · 10 minutes" />
@@ -127,7 +130,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         </View>
       </View>
 
-      <View style={{ gap: 10, marginTop: 14 }}>
+      <View style={[{ gap: 10, marginTop: 14 }, isDesktop && { flex: 1, marginTop: 0 }]}>
         {MODES.map((m) => (
           <Pressable key={m.mode} onPress={() => startMode(m.mode)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
             <View style={[styles.rowIcon, { backgroundColor: m.tint }]}>
@@ -148,6 +151,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         ))}
       </View>
 
+      </View>
+
       <View style={styles.quick}>
         <Pressable onPress={() => navigation.navigate('SkinDesigner')} style={({ pressed }) => [styles.quickBtn, pressed && styles.pressed]}>
           <Icon name="pencil-outline" size={18} color={colors.textDim} />
@@ -159,13 +164,6 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         </Pressable>
       </View>
 
-      <View style={styles.nav}>
-        <NavItem icon="home-variant-outline" label="Home" active />
-        <NavItem icon="shopping-outline" label="Shop" onPress={() => navigation.navigate('Shop')} />
-        <NavItem icon="clipboard-check-outline" label="Missions" badge={missionsReady} onPress={() => navigation.navigate('Missions')} />
-        <NavItem icon="tshirt-crew-outline" label="Skins" onPress={() => navigation.navigate('SkinSelect')} />
-        <NavItem icon="account-outline" label="Profile" onPress={() => navigation.navigate('Profile')} />
-      </View>
     </Screen>
   );
 }
@@ -193,28 +191,7 @@ function ZombieArt() {
   );
 }
 
-function NavItem({ icon, label, onPress, badge, active }: { icon: IconName; label: string; onPress?: () => void; badge?: number; active?: boolean }) {
-  return (
-    <Pressable
-      onPress={() => {
-        if (onPress) playSfx('click', 0.6);
-        onPress?.();
-      }}
-      style={[styles.navItem, active && styles.navItemActive]}
-      accessibilityState={{ selected: !!active }}
-    >
-      <Icon name={icon} size={22} color={active ? colors.gold : colors.textDim} />
-      <Text style={[styles.navLabel, active && { color: colors.gold, fontWeight: '700' }]}>{label}</Text>
-      {badge ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      ) : null}
-    </Pressable>
-  );
-}
-
-const ink = { borderWidth: 2, borderColor: colors.ink };
+const ink = { borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' };
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -231,14 +208,16 @@ const styles = StyleSheet.create({
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.bgAlt, borderRadius: 10, ...ink, paddingHorizontal: 9, paddingVertical: 3 },
   statText: { fontWeight: '700', fontSize: 14 },
   hero: { marginTop: 14, borderRadius: radius.lg, backgroundColor: colors.panel, ...ink, borderBottomWidth: 6, overflow: 'hidden' },
-  heroStripe: { borderBottomWidth: 2, borderColor: colors.ink },
-  heroBody: { minHeight: 210, padding: 18, paddingBottom: 20, alignItems: 'flex-start', gap: 8 },
+  heroStripe: { borderBottomWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
+  heroBody: { minHeight: 240, padding: 18, paddingBottom: 20, alignItems: 'flex-start', gap: 8 },
   heroTitle: { color: colors.text, fontSize: 46, fontWeight: '900', lineHeight: 50, letterSpacing: -1, marginTop: 4 },
   heroSub: { color: colors.textDim, fontSize: 14, textAlign: 'left', maxWidth: 196, lineHeight: 20 },
   heroBtnShadow: { marginTop: 8, borderRadius: 18, backgroundColor: colors.ink, paddingBottom: 4, zIndex: 2 },
   heroBtn: { height: 56, paddingHorizontal: 30, borderRadius: 18, backgroundColor: colors.toxic, ...ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   heroBtnText: { color: colors.ink, fontSize: 17, fontWeight: '800' },
   heroArt: { position: 'absolute', right: 12, bottom: 14 },
+  deskRow: { flexDirection: 'row', gap: 20, marginTop: 14, alignItems: 'stretch' },
+  heroDesk: { flex: 1.4, marginTop: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 70, paddingHorizontal: 14, borderRadius: radius.md, ...ink, borderBottomWidth: 5, backgroundColor: colors.panel },
   rowIcon: { width: 44, height: 44, borderRadius: 12, ...ink, alignItems: 'center', justifyContent: 'center' },
   rowTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'left' },

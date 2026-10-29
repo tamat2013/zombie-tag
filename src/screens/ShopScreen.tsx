@@ -6,8 +6,10 @@ import { Text } from '../i18n/Text';
 import type { ScreenProps, ShopTab } from '../navigation/types';
 import type { AbilityId, Role, Skin, UpgradeId } from '../types';
 import { Screen, ScreenHeader, Card, H, P, Tabs, ProgressBar, Chip, Coin, Tag, HazardStripe } from '../components/ui';
+import { Pressable } from '../i18n/Layout';
+import { useDevice } from '../utils/device';
 import { Button } from '../components/Button';
-import { Icon } from '../components/Icon';
+import { Icon, Glyph } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { Character } from '../components/Character';
 import { useGame, useProfile } from '../state/GameContext';
@@ -18,8 +20,12 @@ import { ABILITIES, MAX_LOADOUT } from '../engine/abilities';
 import { buyAbility, buyFilter, buyOutfit, buySkin, buySkinWithMedals, buyUpgrade, convertMedals, toggleLoadout } from '../logic/shop';
 import type { ShopResult } from '../logic/shop';
 import { levelInfo } from '../logic/progression';
-import { colors } from '../theme';
+import { colors, fonts, radius } from '../theme';
 import { haptic } from '../utils/haptics';
+
+const TAB_ICONS: Record<ShopTab, IconName> = {
+  skins: 'tshirt-crew-outline', outfits: 'hat-fedora', abilities: 'flash-outline', upgrades: 'arrow-up-bold-circle-outline', filters: 'virus-outline', coins: 'medal-outline',
+};
 
 const TABS: { id: ShopTab; label: string }[] = [
   { id: 'skins', label: 'Skins' },
@@ -72,7 +78,7 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
   const [tab, setTab] = useState<ShopTab>(route.params?.tab ?? 'skins');
   const { updateProfile, toast } = useGame();
 
-  const apply: Apply = (r, success, icon = '🛒') => {
+  const apply: Apply = (r, success, icon = undefined) => {
     if (r.ok) {
       updateProfile(r.profile);
       haptic('success');
@@ -83,11 +89,9 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
     }
   };
 
-  return (
-    <Screen scroll>
-      <ScreenHeader title="Shop" />
-      <Tabs tabs={TABS} value={tab} onChange={setTab} />
-      <View style={{ marginTop: 14 }}>
+  const { isDesktop } = useDevice();
+  const content = (
+      <View style={{ marginTop: isDesktop ? 0 : 14, flex: isDesktop ? 1 : undefined }}>
         {tab === 'skins' ? <SkinsTab apply={apply} /> : null}
         {tab === 'outfits' ? <OutfitsTab apply={apply} /> : null}
         {tab === 'abilities' ? <AbilitiesTab apply={apply} /> : null}
@@ -95,7 +99,111 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
         {tab === 'filters' ? <FiltersTab apply={apply} /> : null}
         {tab === 'coins' ? <MedalShopTab apply={apply} /> : null}
       </View>
+  );
+
+  return (
+    <Screen scroll shell="Shop">
+      <ScreenHeader title="Shop" />
+      {isDesktop ? (
+        <View style={{ flexDirection: 'row', gap: 24, alignItems: 'flex-start' }}>
+          <View style={styles.rail}>
+            {TABS.map((t) => (
+              <Pressable key={t.id} onPress={() => setTab(t.id)} style={[styles.railItem, tab === t.id && styles.railItemOn]}>
+                <Icon name={TAB_ICONS[t.id]} size={22} color={tab === t.id ? colors.ink : colors.textDim} />
+                <Text style={[styles.railText, tab === t.id && { color: colors.ink }]}>{t.label}</Text>
+              </Pressable>
+            ))}
+            <Locker />
+          </View>
+          {content}
+        </View>
+      ) : (
+        <>
+          <Tabs tabs={TABS} value={tab} onChange={setTab} />
+          {content}
+        </>
+      )}
     </Screen>
+  );
+}
+
+/** Desktop rail footer: the player's current look, level and balances, so purchases can be judged at a glance. */
+function Locker() {
+  const profile = useProfile();
+  const li = levelInfo(profile.xp);
+  const outfit = OUTFITS.find((o) => o.id === profile.equippedOutfit);
+  return (
+    <View style={styles.locker}>
+      <View style={styles.lockerArt}>
+        <Character skin={findSkin(profile.selectedSkinId, profile.customSkins)} size={96} outfit={outfit?.emoji} />
+      </View>
+      <Text style={styles.lockerLevel}>Level {li.level}</Text>
+      <ProgressBar value={li.progress} style={{ alignSelf: "stretch" }} color={colors.toxic} />
+      <View style={styles.lockerBal}>
+        <View style={styles.lockerChip}>
+          <Coin size={14} />
+          <Text style={styles.lockerNum}>{profile.coins.toLocaleString()}</Text>
+        </View>
+        <View style={styles.lockerChip}>
+          <Icon name="medal" size={16} color={colors.medal} />
+          <Text style={styles.lockerNum}>{profile.medals}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** Storefront tile: a tinted stage with the item art, a ribbon tag, name, blurb and one action. */
+function Showcase({ accent, tag, art, title, sub, action, selected }: { accent: string; tag?: string; art: React.ReactNode; title: string; sub?: string; action: React.ReactNode; selected?: boolean }) {
+  return (
+    <View style={[styles.show, selected && { borderColor: colors.toxic }]}>
+      <View style={[styles.stage, { backgroundColor: accent + '33' }]}>
+        <View style={[styles.stageGlow, { backgroundColor: accent + '40' }]} />
+        {art}
+        {tag ? (
+          <View style={[styles.ribbon, { backgroundColor: accent }]}>
+            <Text style={styles.ribbonText}>{tag}</Text>
+          </View>
+        ) : null}
+        {selected ? (
+          <View style={styles.tick}>
+            <Icon name="check-bold" size={14} color={colors.ink} />
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.showBody}>
+        <Text style={styles.itemName} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={styles.power} numberOfLines={2}>
+          {sub ?? ' '}
+        </Text>
+        {action}
+      </View>
+    </View>
+  );
+}
+
+/** Wide slot for abilities, upgrades and filters: icon plate, title and blurb on top, meta and action in a footer. */
+function Slot({ accent, plate, title, desc, meta, action, selected }: { accent: string; plate: React.ReactNode; title: string; desc: string; meta?: React.ReactNode; action: React.ReactNode; selected?: boolean }) {
+  return (
+    <View style={[styles.slot, selected && { borderColor: colors.toxic }]}>
+      <View style={styles.slotHead}>
+        <View style={[styles.slotPlate, { backgroundColor: accent }]}>{plate}</View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.slotTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={styles.slotDesc} numberOfLines={3}>
+            {desc}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.slotFoot}>
+        <View style={{ flex: 1 }}>{meta}</View>
+        {action}
+      </View>
+    </View>
   );
 }
 
@@ -147,25 +255,25 @@ function SkinCard({ s, apply }: { s: Skin; apply: Apply }) {
   const owned = profile.ownedSkins.includes(s.id);
   const selected = profile.selectedSkinId === s.id;
   return (
-    <Card style={styles.item} highlight={selected ? colors.toxic : undefined}>
-      <Tag text={RARITY_LABEL[s.rarity]} color={RARITY_COLORS[s.rarity]} tilt={-4} style={styles.cornerTag} />
-      <Character skin={s} size={60} />
-      <Text style={styles.itemName} numberOfLines={1}>
-        {s.name}
-      </Text>
-      <Text style={styles.power} numberOfLines={2}>
-        {s.power ? SKIN_POWERS[s.power].description : ' '}
-      </Text>
-      {owned ? (
-        <Button small title={selected ? 'Selected' : 'Select'} variant={selected ? 'dark' : 'primary'} disabled={selected} onPress={() => updateProfile((p) => ({ ...p, selectedSkinId: s.id }))} />
-      ) : s.rarity === 'exclusive' ? (
-        <Button small title="Tournament prize" variant="dark" lead={<Icon name="trophy-outline" size={14} color={colors.gold} />} disabled />
-      ) : s.medalPrice ? (
-        <PriceButton price={s.medalPrice} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`, '🏅')} />
-      ) : (
-        <PriceButton price={s.price} onPress={() => apply(buySkin(profile, s.id), `The ${s.name} skin is yours!`, '🎨')} />
-      )}
-    </Card>
+    <Showcase
+      accent={RARITY_COLORS[s.rarity]}
+      tag={RARITY_LABEL[s.rarity]}
+      selected={selected}
+      art={<Character skin={s} size={64} />}
+      title={s.name}
+      sub={s.power ? SKIN_POWERS[s.power].description : undefined}
+      action={
+        owned ? (
+          <Button small title={selected ? 'Selected' : 'Select'} variant={selected ? 'dark' : 'primary'} disabled={selected} onPress={() => updateProfile((p) => ({ ...p, selectedSkinId: s.id }))} />
+        ) : s.rarity === 'exclusive' ? (
+          <Button small title="Tournament prize" variant="dark" lead={<Icon name="trophy-outline" size={14} color={colors.gold} />} disabled />
+        ) : s.medalPrice ? (
+          <PriceButton price={s.medalPrice} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`, undefined)} />
+        ) : (
+          <PriceButton price={s.price} onPress={() => apply(buySkin(profile, s.id), `The ${s.name} skin is yours!`, undefined)} />
+        )
+      }
+    />
   );
 }
 
@@ -198,18 +306,19 @@ function FeaturedSkin({ s, apply }: { s: Skin; apply: Apply }) {
   const profile = useProfile();
   return (
     <View style={styles.featured}>
-      <HazardStripe height={10} color={colors.medal} />
-      <View style={styles.featuredBody}>
-        <View style={styles.featuredArt}>
-          <Character skin={s} size={84} />
+      <View style={[styles.featuredStage, { backgroundColor: colors.medal + '33' }]}>
+        <View style={[styles.stageGlow, { width: 170, height: 170, borderRadius: 85, backgroundColor: colors.medal + '45' }]} />
+        <Character skin={s} size={96} />
+      </View>
+      <View style={styles.featuredInfo}>
+        <View style={styles.featuredKicker}>
+          <Icon name="star-four-points" size={14} color={colors.medal} />
+          <Text style={styles.featuredKickerText}>Featured medal skin</Text>
         </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Tag text="Medal skin" color={colors.medal} />
-          <Text style={styles.featuredName}>{s.name}</Text>
-          {s.power ? <Text style={styles.power}>{SKIN_POWERS[s.power].description}</Text> : null}
-          <View style={{ alignSelf: 'flex-start', marginTop: 4 }}>
-            <PriceButton price={s.medalPrice!} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`, '🏅')} />
-          </View>
+        <Text style={styles.featuredName}>{s.name}</Text>
+        {s.power ? <Text style={styles.featuredPower}>{SKIN_POWERS[s.power].description}</Text> : null}
+        <View style={{ alignSelf: 'flex-start', marginTop: 6 }}>
+          <PriceButton price={s.medalPrice!} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`, undefined)} />
         </View>
       </View>
     </View>
@@ -224,23 +333,25 @@ function OutfitCard({ o, apply }: { o: Outfit; apply: Apply }) {
   const owned = profile.ownedOutfits.includes(o.id);
   const equipped = profile.equippedOutfit === o.id;
   return (
-    <Card style={styles.item} highlight={equipped ? colors.toxic : undefined}>
-      {o.medalPrice ? <Tag text="Medals" color={colors.medal} tilt={-4} style={styles.cornerTag} /> : null}
-      <Character skin={findSkin(profile.selectedSkinId, profile.customSkins)} size={56} outfit={o.emoji} />
-      <Text style={styles.itemName} numberOfLines={1}>
-        {o.name}
-      </Text>
-      {owned ? (
-        <Button small title={equipped ? 'Remove' : 'Wear'} variant={equipped ? 'dark' : 'primary'} onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: equipped ? null : o.id }))} />
-      ) : (
-        <PriceButton
-          price={o.medalPrice ?? o.price}
-          medals={!!o.medalPrice}
-          needLevel={o.medalPrice ? undefined : o.minLevel}
-          onPress={() => apply(buyOutfit(profile, o.id), `Bought ${o.name}`, o.emoji)}
-        />
-      )}
-    </Card>
+    <Showcase
+      accent={o.medalPrice ? colors.medal : colors.blue}
+      tag={o.medalPrice ? 'Medals' : undefined}
+      selected={equipped}
+      art={<Character skin={findSkin(profile.selectedSkinId, profile.customSkins)} size={60} outfit={o.emoji} />}
+      title={o.name}
+      action={
+        owned ? (
+          <Button small title={equipped ? 'Remove' : 'Wear'} variant={equipped ? 'dark' : 'primary'} onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: equipped ? null : o.id }))} />
+        ) : (
+          <PriceButton
+            price={o.medalPrice ?? o.price}
+            medals={!!o.medalPrice}
+            needLevel={o.medalPrice ? undefined : o.minLevel}
+            onPress={() => apply(buyOutfit(profile, o.id), `Bought ${o.name}`, o.emoji)}
+          />
+        )
+      }
+    />
   );
 }
 
@@ -280,6 +391,7 @@ function AbilitiesTab({ apply }: { apply: Apply }) {
       {roles.map(({ role, title, color }) => (
         <View key={role} style={{ gap: 8 }}>
           <SectionTitle text={title} color={color} count={`${profile.loadout[role].length}/${MAX_LOADOUT}`} />
+          <View style={styles.slots}>
           {Object.values(ABILITIES)
             .filter((a) => a.role === role)
             .sort((a, b) => (ABILITY_PRICES[a.id]?.minLevel ?? 0) - (ABILITY_PRICES[b.id]?.minLevel ?? 0))
@@ -288,32 +400,36 @@ function AbilitiesTab({ apply }: { apply: Apply }) {
               const equipped = profile.loadout[role].includes(a.id);
               const price = ABILITY_PRICES[a.id as AbilityId];
               return (
-                <Card key={a.id} style={styles.row} highlight={equipped ? colors.toxic : undefined}>
-                  <View style={[styles.badge, { backgroundColor: color }]}>
-                    <Text style={{ fontSize: 24 }}>{a.icon}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <H size={15}>{a.name}</H>
-                    <P dim>{a.description}</P>
+                <Slot
+                  key={a.id}
+                  accent={color}
+                  selected={equipped}
+                  plate={<Glyph emoji={a.icon} size={26} color={colors.ink} />}
+                  title={a.name}
+                  desc={a.description}
+                  meta={
                     <View style={styles.meta}>
                       <Icon name="timer-sand" size={13} color={colors.textMuted} />
                       <Text style={styles.metaText}>{a.cooldownSec}s</Text>
                     </View>
-                  </View>
-                  {owned ? (
-                    <Button
-                      small
-                      title={equipped ? 'Equipped' : 'Equip'}
-                      lead={equipped ? <Icon name="check-bold" size={14} color={colors.text} /> : undefined}
-                      variant={equipped ? 'dark' : 'primary'}
-                      onPress={() => apply(toggleLoadout(profile, role, a.id), equipped ? `${a.name} removed` : `${a.name} equipped`, a.icon)}
-                    />
-                  ) : price ? (
-                    <PriceButton price={price.price} needLevel={price.minLevel} onPress={() => apply(buyAbility(profile, a.id), `${a.name} unlocked!`, a.icon)} />
-                  ) : null}
-                </Card>
+                  }
+                  action={
+                    owned ? (
+                      <Button
+                        small
+                        title={equipped ? 'Equipped' : 'Equip'}
+                        lead={equipped ? <Icon name="check-bold" size={14} color={colors.text} /> : undefined}
+                        variant={equipped ? 'dark' : 'primary'}
+                        onPress={() => apply(toggleLoadout(profile, role, a.id), equipped ? `${a.name} removed` : `${a.name} equipped`, a.icon)}
+                      />
+                    ) : price ? (
+                      <PriceButton price={price.price} needLevel={price.minLevel} onPress={() => apply(buyAbility(profile, a.id), `${a.name} unlocked!`, a.icon)} />
+                    ) : null
+                  }
+                />
               );
             })}
+          </View>
         </View>
       ))}
     </View>
@@ -329,32 +445,36 @@ function UpgradesTab({ apply }: { apply: Apply }) {
       {UPGRADE_GROUPS.map((g) => (
         <View key={g.title} style={{ gap: 8 }}>
           <SectionTitle text={g.title} color={g.color} />
+          <View style={styles.slots}>
           {g.ids.map((id) => {
             const u = UPGRADES.find((x) => x.id === id)!;
             const cur = profile.upgrades[u.id] ?? 0;
             const max = cur >= u.maxLevel;
             return (
-              <Card key={u.id} style={styles.row}>
-                <View style={[styles.badge, { backgroundColor: g.color }]}>
-                  <Icon name={UPGRADE_ICON[u.id]} size={24} color={colors.ink} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <H size={15}>{u.name}</H>
-                  <P dim>{u.description}</P>
+              <Slot
+                key={u.id}
+                accent={g.color}
+                plate={<Icon name={UPGRADE_ICON[u.id]} size={24} color={colors.ink} />}
+                title={u.name}
+                desc={u.description}
+                meta={
                   <View style={styles.pips}>
                     {Array.from({ length: u.maxLevel }, (_, i) => (
                       <View key={i} style={[styles.pip, i < cur && { backgroundColor: g.color }]} />
                     ))}
                   </View>
-                </View>
-                {max ? (
-                  <Tag text="Max" color={colors.toxic} tilt={3} />
-                ) : (
-                  <PriceButton price={upgradePrice(u, cur)} needLevel={upgradeMinLevel(cur)} onPress={() => apply(buyUpgrade(profile, u.id), `${u.name} upgraded to level ${cur + 1}`, u.icon)} />
-                )}
-              </Card>
+                }
+                action={
+                  max ? (
+                    <Tag text="Max" color={colors.toxic} tilt={3} />
+                  ) : (
+                    <PriceButton price={upgradePrice(u, cur)} needLevel={upgradeMinLevel(cur)} onPress={() => apply(buyUpgrade(profile, u.id), `${u.name} upgraded to level ${cur + 1}`, u.icon)} />
+                  )
+                }
+              />
             );
           })}
+          </View>
         </View>
       ))}
     </View>
@@ -369,30 +489,35 @@ function FilterRow({ f, apply }: { f: ZombieFilter; apply: Apply }) {
   const owned = profile.ownedFilters.includes(f.id);
   const equipped = profile.equippedFilter === f.id;
   return (
-    <Card style={styles.row} highlight={equipped ? colors.toxic : undefined}>
-      <View style={[styles.filterSwatch, { backgroundColor: f.vignette }]}>
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: f.color, opacity: f.opacity * 3 }]} />
-        <Text style={{ fontSize: 22 }}>🧟</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={styles.titleRow}>
-          <H size={15}>{f.name}</H>
-          {f.medalPrice ? <Tag text="Medals" color={colors.medal} tilt={-3} /> : null}
+    <Slot
+      accent={f.medalPrice ? colors.medal : colors.zombie}
+      selected={equipped}
+      plate={
+        <View style={[styles.filterSwatch, { backgroundColor: f.vignette }]}>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: f.color, opacity: f.opacity * 3 }]} />
+          <Icon name="virus-outline" size={22} color={colors.toxic} />
         </View>
-        <P dim>{f.description}</P>
-        {Object.keys(f.bonus).length ? (
+      }
+      title={f.name}
+      desc={f.description}
+      meta={
+        Object.keys(f.bonus).length ? (
           <View style={styles.meta}>
             <Icon name="arrow-up-bold" size={13} color={colors.toxic} />
-            <Text style={styles.perk}>{f.perk}</Text>
+            <Text style={styles.perk} numberOfLines={1}>
+              {f.perk}
+            </Text>
           </View>
-        ) : null}
-      </View>
-      {owned ? (
-        <Button small title={equipped ? 'Active' : 'Use'} variant={equipped ? 'dark' : 'primary'} disabled={equipped} onPress={() => updateProfile((p) => ({ ...p, equippedFilter: f.id }))} />
-      ) : (
-        <PriceButton price={f.medalPrice ?? f.price} medals={!!f.medalPrice} onPress={() => apply(buyFilter(profile, f.id), `Bought the ${f.name} filter`, '🧟')} />
-      )}
-    </Card>
+        ) : undefined
+      }
+      action={
+        owned ? (
+          <Button small title={equipped ? 'Active' : 'Use'} variant={equipped ? 'dark' : 'primary'} disabled={equipped} onPress={() => updateProfile((p) => ({ ...p, equippedFilter: f.id }))} />
+        ) : (
+          <PriceButton price={f.medalPrice ?? f.price} medals={!!f.medalPrice} onPress={() => apply(buyFilter(profile, f.id), `Bought the ${f.name} filter`, undefined)} />
+        )
+      }
+    />
   );
 }
 
@@ -403,9 +528,11 @@ function FiltersTab({ apply }: { apply: Apply }) {
     <View style={{ gap: 10 }}>
       <P dim>A filter tints your screen while you are a zombie, and each filter gives your zombie a bonus in the match.</P>
       <SectionTitle text="Zombie filters" color={colors.zombie} count={`${profile.ownedFilters.length}/${ZOMBIE_FILTERS.length}`} />
-      {list.map((f) => (
-        <FilterRow key={f.id} f={f} apply={apply} />
-      ))}
+      <View style={styles.slots}>
+        {list.map((f) => (
+          <FilterRow key={f.id} f={f} apply={apply} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -420,7 +547,9 @@ function MedalShopTab({ apply }: { apply: Apply }) {
   return (
     <View style={{ gap: 14 }}>
       <View style={styles.medalHero}>
-        <Icon name="medal" size={44} color={colors.ink} />
+        <View style={styles.medalDisc}>
+          <Icon name="medal" size={40} color={colors.medal} />
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.medalCount}>{profile.medals}</Text>
           <Text style={styles.medalHint}>Earn medals in tournaments and obstacle runs. Spend them on items you cannot buy with coins.</Text>
@@ -442,13 +571,23 @@ function MedalShopTab({ apply }: { apply: Apply }) {
       </View>
 
       <SectionTitle text="Medal filters" color={colors.medal} />
-      {filters.map((f) => (
-        <FilterRow key={f.id} f={f} apply={apply} />
-      ))}
+      <View style={styles.slots}>
+        {filters.map((f) => (
+          <FilterRow key={f.id} f={f} apply={apply} />
+        ))}
+      </View>
 
       <SectionTitle text="Swap medals for coins" color={colors.gold} />
-      <Card>
-        <P dim>Each medal is worth {MEDAL_TO_COINS} coins.</P>
+      <View style={styles.slot}>
+        <View style={styles.slotHead}>
+          <View style={[styles.slotPlate, { backgroundColor: colors.gold }]}>
+            <Icon name="swap-horizontal-bold" size={26} color={colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.slotTitle}>Medal exchange</Text>
+            <Text style={styles.slotDesc}>Each medal is worth {MEDAL_TO_COINS} coins.</Text>
+          </View>
+        </View>
         <View style={styles.convert}>
           {[1, 5, 10].map((n) => (
             <Button
@@ -458,17 +597,41 @@ function MedalShopTab({ apply }: { apply: Apply }) {
               title={`${n} → ${n * MEDAL_TO_COINS}`}
               lead={<Coin size={12} />}
               disabled={profile.medals < n}
-              onPress={() => apply(convertMedals(profile, n), `You got ${n * MEDAL_TO_COINS} coins`, '🪙')}
+              onPress={() => apply(convertMedals(profile, n), `You got ${n * MEDAL_TO_COINS} coins`, undefined)}
             />
           ))}
-          <Button small variant="gold" title="Convert all" disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, profile.medals), `You got ${profile.medals * MEDAL_TO_COINS} coins`, '🪙')} />
+          <Button small variant="gold" title="Convert all" disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, profile.medals), `You got ${profile.medals * MEDAL_TO_COINS} coins`, undefined)} />
         </View>
-      </Card>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  rail: { width: 220, gap: 6, backgroundColor: colors.panel, borderRadius: radius.lg, padding: 10 },
+  railItem: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 48, paddingHorizontal: 14, borderRadius: radius.md },
+  railItemOn: { backgroundColor: colors.toxic },
+  railText: { color: colors.textDim, fontWeight: '800', fontSize: 15 },
+  locker: { marginTop: 10, borderRadius: radius.md, backgroundColor: colors.bgAlt, padding: 12, alignItems: 'center', gap: 8, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
+  lockerArt: { width: 124, height: 124, borderRadius: 62, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
+  lockerLevel: { color: colors.text, fontWeight: '900', fontSize: 16 },
+  lockerBal: { flexDirection: 'row', gap: 8 },
+  lockerChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.panel, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
+  lockerNum: { color: colors.text, fontWeight: '900', fontSize: 14 },
+  show: { width: 168, backgroundColor: colors.panel, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.08)' },
+  stage: { height: 104, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  stageGlow: { position: 'absolute', width: 120, height: 120, borderRadius: 60 },
+  ribbon: { position: 'absolute', top: 8, left: 0, paddingHorizontal: 9, paddingVertical: 2, borderTopRightRadius: 8, borderBottomRightRadius: 8 },
+  ribbonText: { color: colors.ink, fontWeight: '900', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' },
+  tick: { position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.toxic, alignItems: 'center', justifyContent: 'center' },
+  showBody: { padding: 10, gap: 5, alignItems: 'center' },
+  slots: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  slot: { flexGrow: 1, flexBasis: '47%', minWidth: 280, backgroundColor: colors.panel, borderRadius: radius.lg, padding: 12, gap: 10, borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.08)' },
+  slotHead: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  slotPlate: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  slotTitle: { color: colors.text, fontWeight: '900', fontSize: 15, textAlign: 'left' },
+  slotDesc: { color: colors.textDim, fontSize: 12, textAlign: 'left', marginTop: 2 },
+  slotFoot: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   item: { width: 150, alignItems: 'center', gap: 6, paddingTop: 20, paddingBottom: 12 },
@@ -477,22 +640,26 @@ const styles = StyleSheet.create({
   power: { color: colors.textDim, fontSize: 11, textAlign: 'center', minHeight: 28 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  badge: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.ink },
+  badge: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   metaText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
   pips: { flexDirection: 'row', gap: 4, marginTop: 6 },
-  pip: { flex: 1, maxWidth: 28, height: 8, borderRadius: 3, backgroundColor: colors.bgAlt, borderWidth: 2, borderColor: colors.ink },
-  filterSwatch: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2, borderColor: colors.ink },
+  pip: { flex: 1, maxWidth: 28, height: 8, borderRadius: 3, backgroundColor: colors.bgAlt, borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
+  filterSwatch: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
   perk: { color: colors.toxic, fontWeight: '700', fontSize: 12, flexShrink: 1 },
   section: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  sectionBar: { width: 6, height: 18, borderRadius: 2, borderWidth: 1.5, borderColor: colors.ink },
+  sectionBar: { width: 6, height: 18, borderRadius: 2, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)' },
   sectionText: { color: colors.text, fontSize: 17, fontWeight: '900', flex: 1, textAlign: 'left' },
   sectionCount: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
-  featured: { borderRadius: 16, borderWidth: 2, borderBottomWidth: 6, borderColor: colors.ink, backgroundColor: colors.panel, overflow: 'hidden' },
-  featuredBody: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14 },
-  featuredArt: { width: 104, height: 104, borderRadius: 14, backgroundColor: colors.bgAlt, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.ink },
-  featuredName: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'left' },
-  medalHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.medal, borderRadius: 16, padding: 16, borderWidth: 2, borderBottomWidth: 6, borderColor: colors.ink },
+  featured: { flexDirection: 'row', borderRadius: 16, borderWidth: 2, borderBottomWidth: 6, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: colors.panel, overflow: 'hidden' },
+  featuredStage: { width: 170, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', paddingVertical: 16 },
+  featuredInfo: { flex: 1, padding: 16, gap: 4, justifyContent: 'center' },
+  featuredKicker: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  featuredKickerText: { color: colors.medal, fontWeight: '900', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  featuredName: { color: colors.text, fontSize: 26, fontWeight: '900', textAlign: 'left', fontFamily: fonts.logo },
+  featuredPower: { color: colors.textDim, fontSize: 13, textAlign: 'left' },
+  medalDisc: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
+  medalHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.medal, borderRadius: 16, padding: 16, borderWidth: 2, borderBottomWidth: 6, borderColor: 'rgba(255,255,255,0.12)' },
   medalCount: { color: colors.ink, fontSize: 34, fontWeight: '900', textAlign: 'left' },
   medalHint: { color: colors.ink, fontSize: 13, fontWeight: '500', textAlign: 'left', opacity: 0.8 },
   convert: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },

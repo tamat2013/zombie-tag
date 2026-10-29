@@ -1,4 +1,5 @@
 // Daily and weekly missions with progress, rewards and reset countdowns.
+import { useDevice } from '../utils/device';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { View } from '../i18n/Layout';
@@ -8,6 +9,7 @@ import { Button } from '../components/Button';
 import { useGame, useProfile } from '../state/GameContext';
 import { claimMission, currentMissions, isClaimed, missionProgress, nextDailyReset, nextWeeklyReset } from '../logic/missions';
 import type { MissionDef, MissionPeriod } from '../logic/missions';
+import { Icon, Glyph } from '../components/Icon';
 import { colors } from '../theme';
 import { haptic } from '../utils/haptics';
 
@@ -31,14 +33,21 @@ export function useNow(intervalMs = 1000): number {
 }
 
 export function MissionsScreen() {
+  const { isDesktop } = useDevice();
   const now = useNow();
   const { daily, weekly } = currentMissions(now);
 
   return (
-    <Screen scroll>
+    <Screen scroll shell="Missions" style={undefined}>
       <ScreenHeader title="Missions" />
-      <Section title="☀️ Daily missions" period="daily" list={daily} resetIn={nextDailyReset(now) - now} />
-      <Section title="📅 Weekly missions" period="weekly" list={weekly} resetIn={nextWeeklyReset(now) - now} />
+      <View style={isDesktop ? { flexDirection: 'row', gap: 24, alignItems: 'flex-start' } : undefined}>
+        <View style={isDesktop ? { flex: 1 } : undefined}>
+          <Section title="Daily missions" glyph="weather-sunny" period="daily" list={daily} resetIn={nextDailyReset(now) - now} />
+        </View>
+        <View style={isDesktop ? { flex: 1 } : undefined}>
+          <Section title="Weekly missions" glyph="calendar-week" period="weekly" list={weekly} resetIn={nextWeeklyReset(now) - now} />
+        </View>
+      </View>
       <P dim style={{ marginTop: 14, textAlign: 'center' }}>
         Progress counts in every mode — Classic, Tournaments, Obstacle Course and Training.
       </P>
@@ -46,7 +55,7 @@ export function MissionsScreen() {
   );
 }
 
-function Section({ title, period, list, resetIn }: { title: string; period: MissionPeriod; list: MissionDef[]; resetIn: number }) {
+function Section({ title, glyph, period, list, resetIn }: { title: string; glyph: 'weather-sunny' | 'calendar-week'; period: MissionPeriod; list: MissionDef[]; resetIn: number }) {
   const profile = useProfile();
   const { updateProfile, toast } = useGame();
 
@@ -55,14 +64,20 @@ function Section({ title, period, list, resetIn }: { title: string; period: Miss
     if (!next) return;
     updateProfile((p) => claimMission(p, m, period) ?? p);
     haptic('success');
-    toast(`+${m.coins} 🪙 · +${m.xp} XP`, { icon: m.icon, tone: 'good' });
+    toast(`+${m.coins} coins · +${m.xp} XP`, { icon: m.icon, tone: 'good' });
   };
 
   return (
     <View style={{ marginTop: 14, gap: 8 }}>
       <View style={styles.sectionHead}>
-        <H size={18}>{title}</H>
-        <Text style={styles.reset}>⏳ {countdown(resetIn)}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Icon name={glyph} size={22} color={colors.gold} />
+          <H size={20}>{title}</H>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          <Icon name="timer-sand" size={16} color={colors.textDim} />
+          <Text style={styles.reset}>{countdown(resetIn)}</Text>
+        </View>
       </View>
       {list.map((m) => {
         const prog = missionProgress(profile, m, period);
@@ -70,13 +85,13 @@ function Section({ title, period, list, resetIn }: { title: string; period: Miss
         const done = prog >= m.target;
         return (
           <Card key={m.id} style={[styles.row, claimed && { opacity: 0.55 }]} highlight={done && !claimed ? colors.toxic : undefined}>
-            <Text style={{ fontSize: 30 }}>{m.icon}</Text>
+            <Glyph emoji={m.icon} size={30} color={colors.gold} />
             <View style={{ flex: 1, gap: 4 }}>
               <H size={15}>{m.title}</H>
               <ProgressBar value={prog / m.target} color={done ? colors.toxic : colors.blue} height={8} />
               <View style={styles.meta}>
                 <Text style={styles.reward}>
-                  🪙 {m.coins} · ⭐ {m.xp} XP
+                  +{m.coins} coins · +{m.xp} XP
                 </Text>
                 <Text style={styles.count}>
                   {prog}/{m.target}
@@ -84,7 +99,9 @@ function Section({ title, period, list, resetIn }: { title: string; period: Miss
               </View>
             </View>
             {claimed ? (
-              <Text style={styles.claimed}>✔</Text>
+              <View style={styles.claimed}>
+                <Icon name="check-circle" size={30} color={colors.toxic} />
+              </View>
             ) : (
               <Button small title="Claim" variant="gold" disabled={!done} onPress={() => claim(m)} />
             )}
@@ -102,5 +119,5 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', justifyContent: 'space-between' },
   reward: { color: colors.coin, fontWeight: '800', fontSize: 12 },
   count: { color: colors.textDim, fontWeight: '800', fontSize: 12 },
-  claimed: { color: colors.toxic, fontSize: 26, fontWeight: '900', width: 50, textAlign: 'center' },
+  claimed: { width: 50, alignItems: 'center' },
 });

@@ -6,11 +6,13 @@ import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { Skin } from '../types';
 import { Screen, ScreenHeader, Card, H, P } from '../components/ui';
+import { Glyph } from '../components/Icon';
 import { Button } from '../components/Button';
 import { Character } from '../components/Character';
 import { useGame, useProfile } from '../state/GameContext';
 import { BUILT_IN_SKINS, RARITY_COLORS, SKIN_POWERS, findSkin } from '../data/skins';
 import { OUTFITS, outfitEmoji } from '../data/catalog';
+import { Icon } from '../components/Icon';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
@@ -30,7 +32,7 @@ export function SkinSelectScreen({ navigation, route }: ScreenProps<'SkinSelect'
   };
 
   return (
-    <Screen scroll>
+    <Screen scroll shell={route.params?.flow ? undefined : 'SkinSelect'}>
       <ScreenHeader title={flow ? `Choose skin · ${MODE_NAMES[flow.mode]}` : 'My skins'} />
 
       <Card style={styles.preview}>
@@ -40,7 +42,7 @@ export function SkinSelectScreen({ navigation, route }: ScreenProps<'SkinSelect'
           <Text style={[styles.rarity, { color: RARITY_COLORS[selected.rarity] }]}>{selected.custom ? 'Custom design' : selected.rarity.toUpperCase()}</Text>
           {selected.power ? (
             <P dim>
-              ⚡ {SKIN_POWERS[selected.power].name}: {SKIN_POWERS[selected.power].description}
+              {SKIN_POWERS[selected.power].name}: {SKIN_POWERS[selected.power].description}
             </P>
           ) : (
             <P dim>No special power</P>
@@ -67,18 +69,18 @@ export function SkinSelectScreen({ navigation, route }: ScreenProps<'SkinSelect'
             <View style={[styles.rarityDot, { backgroundColor: s.custom ? colors.purple : RARITY_COLORS[s.rarity] }]} />
             {s.custom ? (
               <Pressable hitSlop={8} onPress={() => navigation.navigate('SkinDesigner', { skinId: s.id })} style={styles.edit}>
-                <Text style={{ fontSize: 12 }}>✏️</Text>
+                <Icon name="pencil" size={13} color={colors.text} />
               </Pressable>
             ) : null}
           </Pressable>
         ))}
         <Pressable onPress={() => navigation.navigate('SkinDesigner')} style={[styles.skin, styles.add]}>
-          <Text style={{ fontSize: 30 }}>➕</Text>
+          <Icon name="plus" size={32} color={colors.textDim} />
           <Text style={styles.skinName}>Design skin</Text>
         </Pressable>
         {lockedCount > 0 ? (
           <Pressable onPress={() => navigation.navigate('Shop', { tab: 'skins' })} style={[styles.skin, styles.add]}>
-            <Text style={{ fontSize: 30 }}>🔒</Text>
+            <Icon name="lock" size={30} color={colors.textMuted} />
             <Text style={styles.skinName}>{lockedCount} in shop</Text>
           </Pressable>
         ) : null}
@@ -109,8 +111,8 @@ export function SkinSelectScreen({ navigation, route }: ScreenProps<'SkinSelect'
 
 function OutfitChip({ label, emoji, active, onPress }: { label: string; emoji: string; active?: boolean; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.outfit, active && { borderColor: colors.toxic, backgroundColor: '#1f3a17' }]}>
-      <Text style={{ fontSize: 24 }}>{emoji}</Text>
+    <Pressable onPress={onPress} style={[styles.outfit, active && { borderColor: colors.toxic, backgroundColor: 'rgba(198,255,61,0.16)' }]}>
+      <Glyph emoji={emoji} size={26} color={colors.gold} />
       <Text style={styles.outfitLabel}>{label}</Text>
     </Pressable>
   );

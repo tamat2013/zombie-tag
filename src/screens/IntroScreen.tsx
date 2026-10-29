@@ -2,9 +2,11 @@
 // and the screen flickers. Tap anywhere to skip.
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
-import { Text } from '../i18n/Text';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../theme';
+import { colors, fonts } from '../theme';
+import { Character } from '../components/Character';
+import { Icon } from '../components/Icon';
+import { BUILT_IN_SKINS } from '../data/skins';
 
 const TITLE = 'ZOMBIE';
 const SUBTITLE = 'OUTBREAK';
@@ -47,8 +49,8 @@ export function IntroScreen({ onDone }: { onDone: () => void }) {
   return (
     <Pressable style={{ flex: 1 }} onPress={finish}>
       <Animated.View style={{ flex: 1, opacity: fadeOut }}>
-        <LinearGradient colors={['#000000', '#0d1a08', '#1d0606']} style={styles.wrap}>
-          <Animated.Text
+        <LinearGradient colors={[colors.bgAlt, colors.bg, '#4b1fa8']} style={styles.wrap}>
+          <Animated.View
             style={[
               styles.zombie,
               {
@@ -59,8 +61,8 @@ export function IntroScreen({ onDone }: { onDone: () => void }) {
               },
             ]}
           >
-            🧟
-          </Animated.Text>
+            <Character skin={BUILT_IN_SKINS[9]} size={150} role="zombie" />
+          </Animated.View>
           <View style={styles.ground} />
           <View style={styles.titleRow}>
             {letters.map((v, i) => (
@@ -85,8 +87,10 @@ export function IntroScreen({ onDone }: { onDone: () => void }) {
           <Animated.Text style={[styles.sub, { opacity: sub, transform: [{ scale: sub.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }]}>
             {SUBTITLE}
           </Animated.Text>
-          <Text style={styles.skip}>Tap to skip</Text>
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#e5383b', opacity: flicker.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }) }]} />
+          <View style={styles.skip}>
+            <Icon name="gesture-tap" size={30} color={colors.textDim} />
+          </View>
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.blood, opacity: flicker.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }) }]} />
         </LinearGradient>
       </Animated.View>
     </Pressable>
@@ -95,10 +99,10 @@ export function IntroScreen({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  zombie: { fontSize: 110 },
-  ground: { width: 260, height: 10, borderRadius: 10, backgroundColor: '#2a1a0d', marginTop: -10, marginBottom: 20 },
+  zombie: { alignItems: 'center' },
+  ground: { width: 260, height: 10, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.35)', marginTop: -10, marginBottom: 20 },
   titleRow: { flexDirection: 'row' },
-  letter: { color: colors.toxic, fontSize: 64, fontWeight: '900', marginHorizontal: 2, textShadowColor: '#3f9b1f', textShadowRadius: 18 },
-  sub: { color: colors.blood, fontSize: 34, fontWeight: '900', marginTop: 4, letterSpacing: 4, textShadowColor: '#000', textShadowRadius: 8 },
-  skip: { position: 'absolute', bottom: 30, color: colors.textMuted, fontSize: 13 },
+  letter: { fontFamily: fonts.logo, color: colors.toxic, fontSize: 64, fontWeight: '900', marginHorizontal: 2, textShadowColor: colors.toxicDark, textShadowOffset: { width: 0, height: 6 }, textShadowRadius: 0 },
+  sub: { fontFamily: fonts.logo, color: colors.blood, fontSize: 34, fontWeight: '900', marginTop: 4, letterSpacing: 4, textShadowColor: colors.ink, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0 },
+  skip: { position: 'absolute', bottom: 30, opacity: 0.7 },
 });

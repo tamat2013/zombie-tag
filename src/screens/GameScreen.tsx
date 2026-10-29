@@ -1,6 +1,9 @@
 // The match itself: runs the engine in a requestAnimationFrame loop, renders the world with a
 // fog-of-war circle, and wires input, abilities, tasks and networking together.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Icon, Glyph } from '../components/Icon';
+import { Hud, RoundButton } from '../components/Hud';
+import { useDevice } from '../utils/device';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { tr, useLanguage } from '../i18n/language';
 import { Text } from '../i18n/Text';
@@ -108,17 +111,17 @@ const TileLayer = React.memo(function TileLayer({ map }: { map: GameMap }) {
     }
     for (const t of findTiles(map, T.HAZARD)) {
       out.push(
-        <Text key={k++} style={[styles.tileEmoji, { left: t.x * TILE, top: t.y * TILE + 10 }]}>
-          ☢️
-        </Text>,
+        <View key={k++} style={[styles.tileEmoji, { left: t.x * TILE, top: t.y * TILE + 10 }]}>
+          <Icon name="radioactive" size={26} color="#ffd23f" />
+        </View>,
       );
     }
     for (const t of findTiles(map, T.CHECKPOINT)) {
       out.push(<View key={k++} style={{ position: 'absolute', left: t.x * TILE, top: t.y * TILE, width: TILE, height: TILE, backgroundColor: 'rgba(45,106,79,0.6)' }} />);
       out.push(
-        <Text key={k++} style={[styles.tileEmoji, { left: t.x * TILE, top: t.y * TILE + 10 }]}>
-          🚩
-        </Text>,
+        <View key={k++} style={[styles.tileEmoji, { left: t.x * TILE, top: t.y * TILE + 10 }]}>
+          <Icon name="flag" size={26} color="#ff4fa3" />
+        </View>,
       );
     }
     for (const t of findTiles(map, T.FINISH)) {
@@ -145,7 +148,7 @@ const TileLayer = React.memo(function TileLayer({ map }: { map: GameMap }) {
 function StationView({ s, done, mine }: { s: TaskStation; done: boolean; mine: boolean }) {
   return (
     <View style={[styles.station, { left: s.tx * TILE + 2, top: s.ty * TILE + 2, borderColor: done ? colors.toxic : mine ? colors.gold : '#5aa9e6' }]}>
-      <Text style={{ fontSize: 22 }}>{done ? '✅' : TASK_INFO[s.type].icon}</Text>
+      {done ? <Icon name="check-circle" size={24} color={colors.toxic} /> : <Glyph emoji={TASK_INFO[s.type].icon} size={22} />}
     </View>
   );
 }
@@ -157,6 +160,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   const { setup } = route.params;
   const { profile, updateProfile, toast } = useGame();
   const dims = useWindowDimensions();
+  const { isDesktop } = useDevice();
   const sound = useSoundSettings();
 
   const engineRef = useRef<GameEngine | null>(null);
@@ -226,11 +230,11 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             setTimeout(() => setFlash(null), 450);
             setTask(null);
             playSfx('infected');
-            pushFeed('You were bitten! Frozen for 10 seconds – only a doctor can cure you 🩺', colors.zombie);
+            pushFeed('You were bitten! Frozen for 10 seconds – only a doctor can cure you', colors.zombie);
           } else if (e.byId === me) {
             haptic('success');
             playSfx('bite');
-            pushFeed(`You infected ${nameOf(e.victimId)}! 🧟`, colors.zombie);
+            pushFeed(`You infected ${nameOf(e.victimId)}!`, colors.zombie);
           } else {
             soundAt('bite', e.victimId);
             pushFeed(`${nameOf(e.victimId)} turned into a zombie`, colors.blood);
@@ -241,29 +245,29 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           else soundAt('heal', e.playerId);
           if (e.playerId === me) {
             haptic('success');
-            pushFeed(`Doctor ${nameOf(e.byId)} cured you! 🩺`, colors.survivor);
+            pushFeed(`Doctor ${nameOf(e.byId)} cured you!`, colors.survivor);
           } else if (e.byId === me) {
             haptic('success');
-            pushFeed(`You cured ${nameOf(e.playerId)}! 🩺`, colors.survivor);
-          } else pushFeed(`${nameOf(e.byId)} cured ${nameOf(e.playerId)} 🩺`, colors.survivor);
+            pushFeed(`You cured ${nameOf(e.playerId)}!`, colors.survivor);
+          } else pushFeed(`${nameOf(e.byId)} cured ${nameOf(e.playerId)}`, colors.survivor);
           break;
         case 'blocked':
           if (e.playerId === me) {
             playSfx('shield');
-            pushFeed('Tank armor blocked the infection! 🛡️', colors.gold);
+            pushFeed('Tank armor blocked the infection!', colors.gold);
           }
           break;
         case 'task':
           if (e.playerId === me) {
             haptic('success');
             playSfx('task');
-            pushFeed(`${TASK_INFO[e.taskType].title} done ✔️ · timer cut by ${TASK_TIME_BONUS_SEC}s`, colors.toxic);
+            pushFeed(`${TASK_INFO[e.taskType].title} done · timer cut by ${TASK_TIME_BONUS_SEC}s`, colors.toxic);
           }
           break;
         case 'checkpoint':
           if (e.playerId === me) {
             playSfx('checkpoint');
-            pushFeed('Checkpoint! 🚩', colors.toxic);
+            pushFeed('Checkpoint!', colors.toxic);
           }
           break;
         case 'hazard':
@@ -283,7 +287,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             playSfx('throw');
             setTimeout(() => playSfx('stoneHit', 0.6), 380);
           } else playSfx('stoneHit', hears ? Math.max(0.45, distanceVolume(dist, NOISE_HEAR_RADIUS)) : distanceVolume(dist, 600));
-          if (e.playerId === me) pushFeed('You threw a stone! Zombies will hear a noise there 🪨', colors.gold);
+          if (e.playerId === me) pushFeed('You threw a stone! Zombies will hear a noise there', colors.gold);
           else if (hears) {
             haptic('light');
             pushFeed('You heard a noise!', colors.gold);
@@ -293,7 +297,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         case 'released':
           haptic('medium');
           playSfx('released');
-          pushFeed('The zombies are loose! 🧟‍♂️', colors.blood);
+          pushFeed('The zombies are loose!', colors.blood);
           break;
         default:
           break;
@@ -518,14 +522,14 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     if (engine.useAbility(id)) {
       haptic('medium');
       playSfx(id === 'roar' || id === 'howl' ? 'groan' : 'ability');
-      if (id === 'scan') pushFeed('Scan: all zombies revealed! 📡', colors.survivor);
-      if (id === 'zombieVision') pushFeed('Zombie vision: seeing through walls 👁️', colors.zombie);
-      if (id === 'sniff') pushFeed('Sniff: you smell every survivor 👃', colors.zombie);
-      if (id === 'medic') pushFeed('Medic shield on 💊', colors.survivor);
-      if (id === 'bubble') pushFeed('Bubble shield on 🫧', colors.survivor);
-      if (id === 'flashbang') pushFeed('Flashbang! Nearby zombies blinded 💥', colors.survivor);
-      if (id === 'roar') pushFeed('Roar! Nearby survivors slowed 📢', colors.zombie);
-      if (id === 'howl') pushFeed('Howl! Survivors far and wide slowed 🐺', colors.zombie);
+      if (id === 'scan') pushFeed('Scan: all zombies revealed!', colors.survivor);
+      if (id === 'zombieVision') pushFeed('Zombie vision: seeing through walls', colors.zombie);
+      if (id === 'sniff') pushFeed('Sniff: you smell every survivor', colors.zombie);
+      if (id === 'medic') pushFeed('Medic shield on', colors.survivor);
+      if (id === 'bubble') pushFeed('Bubble shield on', colors.survivor);
+      if (id === 'flashbang') pushFeed('Flashbang! Nearby zombies blinded', colors.survivor);
+      if (id === 'roar') pushFeed('Roar! Nearby survivors slowed', colors.zombie);
+      if (id === 'howl') pushFeed('Howl! Survivors far and wide slowed', colors.zombie);
     }
   };
   useAbilityRef.current = useAbility;
@@ -641,7 +645,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         ))}
         {engine.sawPositions.map((s, i) => (
           <View key={i} style={[styles.saw, { left: s.x - SAW_RADIUS, top: s.y - SAW_RADIUS, transform: [{ rotate: `${(now / 3) % 360}deg` }] }]}>
-            <Text style={{ fontSize: 26, lineHeight: 34 }}>⚙️</Text>
+            <Icon name="cog" size={26} color={colors.text} />
           </View>
         ))}
       </View>
@@ -696,7 +700,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           {noises.map((n) => (
             <React.Fragment key={`n${n.by}`}>
               <Waves x={n.x} y={n.y} now={now} color="#3fa9ff" radius={70} strength={0.4 + 0.6 * Math.min(1, (n.until - now) / (NOISE_MS * 0.5))} />
-              {!isZombie ? <Text style={[styles.stone, { left: n.x - 12, top: n.y - 14 }]}>🪨</Text> : null}
+              {!isZombie ? <View style={[styles.stone, { left: n.x - 12, top: n.y - 14 }]}><Icon name="circle-multiple" size={18} color={'#9aa0a6'} /></View> : null}
             </React.Fragment>
           ))}
         </View>
@@ -720,7 +724,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             },
           ]}
         >
-          <Text style={styles.arrowText}>➤</Text>
+          <Icon name="navigation" size={22} color={colors.gold} />
         </View>
       ) : null}
 
@@ -732,56 +736,46 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             pointerEvents="none"
             style={[styles.patientArrow, { left: dims.width / 2 + Math.cos(pa.angle) * r - 30, top: dims.height / 2 + Math.sin(pa.angle) * r - 30 }]}
           >
-            <Text style={[styles.patientArrowText, { transform: [{ rotate: `${pa.angle}rad` }] }]}>➤</Text>
-            <Text style={styles.patientArrowLabel}>🥶{pa.sec}</Text>
+            <View style={{ transform: [{ rotate: `${pa.angle}rad` }] }}><Icon name="arrow-right-bold" size={24} color="#7fd0ff" /></View>
+            <Text style={styles.patientArrowLabel}>{pa.sec}</Text>
           </View>
         );
       })}
 
       {/* Joystick: left 55% of the screen */}
-      <View style={[styles.joyZone, { width: dims.width * 0.55 }]}>
-        <Joystick output={input} />
-      </View>
+      {!isDesktop ? (
+        <View style={[styles.joyZone, { width: dims.width * 0.55 }]}>
+          <Joystick output={input} />
+        </View>
+      ) : null}
 
       {/* HUD: top */}
-      <View style={styles.topBar} pointerEvents="box-none">
-        <View style={styles.topLeft} pointerEvents="box-none">
-          {showMinimap && !obstacle ? (
+      <Hud
+        isDesktop={isDesktop}
+        timeText={timeText}
+        urgent={!obstacle && engine.timeLeftMs < 30000}
+        role={isZombie ? 'zombie' : 'survivor'}
+        roleLabel={`${obstacle ? 'Obstacle Course' : isZombie ? 'Zombie' : local.doctor ? 'Survivor · Doctor' : 'Survivor'}${mode === 'training' ? ' · Training' : mode === 'tournament' ? ' · Tournament' : ''}`}
+        obstacle={obstacle}
+        deaths={local.deaths}
+        medalTimes={engine.map.medalTimes as any}
+        survivors={survivors}
+        zombies={zombies}
+        tasks={myTasks}
+        taskTotal={engine.stations.length}
+        muted={sound.muted}
+        onMute={() => updateSoundSettings({ muted: !sound.muted })}
+        onExit={() => setConfirmExit(true)}
+        left={
+          showMinimap && !obstacle ? (
             <Pressable onPress={() => setShowMinimap(false)}>
               <MiniMap engine={engine} local={local} visible={visiblePlayers} />
             </Pressable>
           ) : (
-            <Pressable style={styles.smallBtn} onPress={() => setShowMinimap(true)}>
-              <Text style={styles.smallBtnText}>🗺️</Text>
-            </Pressable>
-          )}
-        </View>
-        <View style={styles.topCenter} pointerEvents="none">
-          <Text style={[styles.timer, !obstacle && engine.timeLeftMs < 30000 && { color: colors.blood }]}>{timeText}</Text>
-          {obstacle ? (
-            <Text style={styles.counts}>
-              💀 {local.deaths}
-              {engine.map.medalTimes ? `   🥇 ${engine.map.medalTimes[0]}s  🥈 ${engine.map.medalTimes[1]}s  🥉 ${engine.map.medalTimes[2]}s` : ''}
-            </Text>
-          ) : (
-            <Text style={styles.counts}>
-              🧍 {survivors}   🧟 {zombies}   🔧 {myTasks}/{engine.stations.length}
-            </Text>
-          )}
-          <Text style={[styles.roleTag, { color: isZombie ? colors.zombie : colors.survivor }]}>
-            {obstacle ? 'Obstacle Course' : isZombie ? 'Zombie' : local.doctor ? 'Survivor · Doctor 🩺' : 'Survivor'}
-            {mode === 'training' ? ' · Training' : mode === 'tournament' ? ' · Tournament' : ''}
-          </Text>
-        </View>
-        <View style={styles.topRight}>
-          <Pressable style={styles.smallBtn} onPress={() => updateSoundSettings({ muted: !sound.muted })} accessibilityLabel={tr(sound.muted ? 'Unmute' : 'Mute')}>
-            <Text style={styles.smallBtnText}>{sound.muted ? '🔇' : '🔊'}</Text>
-          </Pressable>
-          <Pressable style={styles.smallBtn} onPress={() => setConfirmExit(true)}>
-            <Text style={styles.smallBtnText}>✕</Text>
-          </Pressable>
-        </View>
-      </View>
+            <RoundButton icon="map-outline" onPress={() => setShowMinimap(true)} />
+          )
+        }
+      />
 
       {!obstacle && !beforeStart && releaseIn > 0 ? (
         <View style={styles.banner} pointerEvents="none">
@@ -793,12 +787,12 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
 
       {!obstacle && myFrozenSec > 0 ? (
         <View style={styles.banner} pointerEvents="none">
-          <Text style={styles.bannerText}>🥶 Frozen! A doctor can still cure you: {myFrozenSec}s</Text>
+          <Text style={styles.bannerText}>Frozen! A doctor can still cure you: {myFrozenSec}s</Text>
         </View>
       ) : patient ? (
         <View style={[styles.banner, { backgroundColor: 'rgba(42,111,151,0.9)' }]} pointerEvents="none">
           <Text style={styles.bannerText}>
-            🩺 Touch {patient.name} to cure them ({Math.ceil(engine.frozenLeftMs(patient) / 1000)})
+            Touch {patient.name} to cure them ({Math.ceil(engine.frozenLeftMs(patient) / 1000)})
           </Text>
         </View>
       ) : null}
@@ -812,11 +806,21 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         ))}
       </View>
 
+      {isDesktop ? (
+        <View style={styles.keyHint} pointerEvents="none">
+          {['WASD move', 'E task', 'Q stone', '1-3 abilities'].map((k) => (
+            <Text key={k} style={styles.keyHintText}>
+              {k}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
       {/* HUD: abilities + action */}
       <View style={styles.actions} pointerEvents="box-none">
         {station && !task ? (
           <Pressable onPress={openTask} style={({ pressed }) => [styles.useBtn, pressed && { transform: [{ scale: 0.94 }] }]}>
-            <Text style={{ fontSize: 30 }}>{TASK_INFO[station.type].icon}</Text>
+            <Glyph emoji={TASK_INFO[station.type].icon} size={30} />
             <Text style={styles.useText}>{TASK_INFO[station.type].title}</Text>
           </Pressable>
         ) : null}
@@ -827,7 +831,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
               disabled={local.stoneUsed || !!engine.ended || beforeStart}
               style={({ pressed }) => [styles.stoneBtn, local.stoneUsed && { opacity: 0.35 }, pressed && { transform: [{ scale: 0.92 }] }]}
             >
-              <Text style={{ fontSize: 26 }}>🪨</Text>
+              <Icon name="circle-multiple" size={26} color={'#9aa0a6'} />
               <Text style={styles.stoneText}>{local.stoneUsed ? 'Thrown' : Platform.OS === 'web' ? 'Stone (Q)' : 'Stone'}</Text>
             </Pressable>
           ) : null}
@@ -869,7 +873,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       {engine.ended ? (
         <View style={styles.endOverlay} pointerEvents="none">
           <Text style={[styles.endText, { color: engine.ended.winner === 'zombie' ? colors.zombie : engine.ended.winner === 'finish' ? colors.gold : colors.survivor }]}>
-            {engine.ended.winner === 'finish' ? 'Finished! 🏁' : engine.ended.winner === 'zombie' ? 'Zombies win! 🧟' : 'Survivors win! 🧍'}
+            {engine.ended.winner === 'finish' ? 'Finished!' : engine.ended.winner === 'zombie' ? 'Zombies win!' : 'Survivors win!'}
           </Text>
         </View>
       ) : null}
@@ -928,12 +932,12 @@ function PlayerSprite({ p, now, isLocal, localRole, frozenMs }: { p: EnginePlaye
       {zombie ? <View style={[styles.aura, { backgroundColor: isActive(p, 'dash', now) ? 'rgba(255,220,0,0.35)' : 'rgba(124,255,79,0.18)' }]} /> : null}
       {isActive(p, 'sprint', now) ? <View style={[styles.aura, { backgroundColor: 'rgba(79,195,247,0.3)' }]} /> : null}
       {isActive(p, 'frenzy', now) ? <View style={[styles.aura, { backgroundColor: 'rgba(255,40,40,0.4)' }]} /> : null}
-      {isActive(p, 'slowed', now) ? <Text style={styles.status}>🐌</Text> : null}
-      {isActive(p, 'blinded', now) ? <Text style={styles.status}>🌫️</Text> : null}
-      {p.inTask ? <Text style={styles.status}>🔧</Text> : null}
-      {p.doctor && !zombie ? <Text style={styles.doctorBadge}>🩺</Text> : null}
+      {isActive(p, 'slowed', now) ? <View style={styles.status}><Icon name="snail" size={16} color={'#ffd23f'} /></View> : null}
+      {isActive(p, 'blinded', now) ? <View style={styles.status}><Icon name="eye-off" size={16} color={'#cbb8ff'} /></View> : null}
+      {p.inTask ? <View style={styles.status}><Icon name="wrench" size={16} color={colors.gold} /></View> : null}
+      {p.doctor && !zombie ? <View style={styles.doctorBadge}><Icon name="medical-bag" size={16} color={colors.survivor} /></View> : null}
       {frozenMs > 0 ? <View style={[styles.aura, { backgroundColor: 'rgba(120,200,255,0.35)' }]} /> : null}
-      {frozenMs > 0 ? <Text style={styles.frozen}>🥶{Math.ceil(frozenMs / 1000)}</Text> : null}
+      {frozenMs > 0 ? <Text style={styles.frozen}>{Math.ceil(frozenMs / 1000)}</Text> : null}
       <Character
         skin={p.skin}
         size={size}
@@ -983,37 +987,39 @@ const styles = StyleSheet.create({
   world: { position: 'absolute', left: 0, top: 0 },
   crate: { position: 'absolute', width: TILE - 6, height: TILE - 6, backgroundColor: tileColors[T.CRATE], borderWidth: 3, borderColor: '#4a3418', borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   crateBar: { width: '120%', height: 4, backgroundColor: '#4a3418', transform: [{ rotate: '45deg' }] },
-  tileEmoji: { position: 'absolute', width: TILE, textAlign: 'center', fontSize: 20 },
+  tileEmoji: { position: 'absolute', width: TILE, alignItems: 'center' },
   station: { position: 'absolute', width: TILE - 4, height: TILE - 4, borderRadius: 8, backgroundColor: tileColors[T.TASK], borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   saw: { position: 'absolute', width: SAW_RADIUS * 2, height: SAW_RADIUS * 2, borderRadius: SAW_RADIUS, backgroundColor: '#9ca3af', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#e5e7eb' },
   aura: { position: 'absolute', left: -8, top: -8, right: -8, bottom: -8, borderRadius: 40 },
   status: { position: 'absolute', top: -26, left: 20, fontSize: 14 },
   grayscale: { filter: 'grayscale(1)' },
   stone: { position: 'absolute', fontSize: 20 },
-  stoneBtn: { width: 62, height: 62, borderRadius: 31, backgroundColor: 'rgba(0,0,0,0.6)', borderWidth: 2, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
+  stoneBtn: { width: 66, height: 66, borderRadius: 33, backgroundColor: 'rgba(13,10,31,0.78)', borderWidth: 2, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
   stoneText: { color: colors.text, fontSize: 9, fontWeight: '900', marginTop: -2 },
   doctorBadge: { position: 'absolute', top: -24, left: -6, fontSize: 14 },
   frozen: { position: 'absolute', top: -28, left: -4, width: PLAYER_RADIUS * 2 + 8, textAlign: 'center', fontSize: 16, fontWeight: '900', color: '#bfe6ff', textShadowColor: '#000', textShadowRadius: 3 },
   name: { position: 'absolute', top: PLAYER_RADIUS * 2 + 2, left: -30, width: PLAYER_RADIUS * 2 + 60, textAlign: 'center', fontSize: 11, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 3 },
+  keyHint: { position: 'absolute', left: 24, bottom: 20, flexDirection: 'row', gap: 8 },
+  keyHintText: { color: colors.textDim, fontSize: 12, fontWeight: '800', backgroundColor: 'rgba(13,10,31,0.72)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, overflow: 'hidden' },
   joyZone: { position: 'absolute', left: 0, bottom: 0, top: 90 },
   topBar: { position: 'absolute', top: 8, left: 10, right: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   topLeft: { width: 160 },
-  topCenter: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 14 },
+  topCenter: { alignItems: 'center', backgroundColor: 'rgba(13,10,31,0.72)', paddingHorizontal: 20, paddingVertical: 6, borderRadius: 22, borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)' },
   topRight: { width: 160, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 8 },
-  timer: { color: colors.text, fontSize: 26, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  timer: { color: colors.toxic, fontSize: 28, fontWeight: '900', fontVariant: ['tabular-nums'] },
   counts: { color: colors.text, fontSize: 13, fontWeight: '800' },
   roleTag: { fontSize: 12, fontWeight: '900' },
-  smallBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  smallBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(13,10,31,0.72)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)' },
   smallBtnText: { color: colors.text, fontSize: 18, fontWeight: '900' },
   minimap: { borderWidth: 2, borderColor: colors.border, borderRadius: 6, opacity: 0.85 },
   mmDot: { position: 'absolute', width: 5, height: 5, borderRadius: 4 },
-  banner: { position: 'absolute', top: 92, alignSelf: 'center', backgroundColor: 'rgba(139,30,32,0.85)', paddingHorizontal: 18, paddingVertical: 8, borderRadius: 12 },
+  banner: { position: 'absolute', top: 92, alignSelf: 'center', backgroundColor: 'rgba(255,79,163,0.92)', paddingHorizontal: 20, paddingVertical: 9, borderRadius: 22 },
   bannerText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   feed: { position: 'absolute', right: 12, top: 64, alignItems: 'flex-end', gap: 3, maxWidth: '40%' },
   feedText: { fontWeight: '900', fontSize: 13, textShadowColor: '#000', textShadowRadius: 4, backgroundColor: 'rgba(0,0,0,0.35)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   actions: { position: 'absolute', right: 10, bottom: 12, alignItems: 'flex-end', gap: 10 },
   abilityRow: { flexDirection: 'row', gap: 4 },
-  useBtn: { backgroundColor: 'rgba(42,111,151,0.95)', borderColor: colors.gold, borderWidth: 3, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', marginRight: 70 },
+  useBtn: { backgroundColor: colors.blue, borderColor: colors.ink, borderWidth: 3, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', marginRight: 70 },
   useText: { color: '#fff', fontWeight: '900', fontSize: 13 },
   arrow: { position: 'absolute', width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   arrowText: { color: colors.gold, fontSize: 28, textShadowColor: '#000', textShadowRadius: 4 },
@@ -1023,7 +1029,7 @@ const styles = StyleSheet.create({
   endOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
   endText: { fontSize: 46, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 12 },
   confirm: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  confirmPanel: { backgroundColor: colors.panel, padding: 22, borderRadius: 18, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  confirmPanel: { backgroundColor: colors.panel, padding: 24, borderRadius: 26, borderWidth: 2, borderColor: colors.border, alignItems: 'center' },
   confirmTitle: { color: colors.text, fontSize: 22, fontWeight: '900' },
   confirmSub: { color: colors.textDim, marginTop: 6 },
 });

@@ -9,18 +9,35 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, radius } from '../theme';
 import { useGame } from '../state/GameContext';
 import { levelInfo } from '../logic/progression';
-import { Icon } from './Icon';
+import { Icon, Glyph } from './Icon';
+import { SideBar, TabBar } from './AppShell';
+import type { ShellKey } from './AppShell';
+import { useDevice } from '../utils/device';
 
-export function Screen({ children, scroll, style }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle> }) {
+export function Screen({ children, scroll, style, shell }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle>; shell?: ShellKey }) {
+  const { isDesktop } = useDevice();
+  // Desktop keeps content in a centered column; menu screens get a sidebar (desktop) or tab bar (phone).
+  const column = isDesktop ? { width: '100%' as const, maxWidth: 1080, alignSelf: 'center' as const } : null;
+  const body = scroll ? (
+    <ScrollView contentContainerStyle={[{ padding: isDesktop ? 32 : 16, paddingBottom: 40 }, column, style]} showsVerticalScrollIndicator={false}>
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={[{ flex: 1, padding: 12 }, column, style]}>{children}</View>
+  );
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'top', 'bottom']}>
-        {scroll ? (
-          <ScrollView contentContainerStyle={[{ padding: 16, paddingBottom: 40 }, style]} showsVerticalScrollIndicator={false}>
-            {children}
-          </ScrollView>
+        {shell && isDesktop ? (
+          <View style={{ flex: 1, flexDirection: 'row' }}>
+            <SideBar active={shell} />
+            <View style={{ flex: 1 }}>{body}</View>
+          </View>
         ) : (
-          <View style={[{ flex: 1, padding: 12 }, style]}>{children}</View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>{body}</View>
+            {shell ? <TabBar active={shell} /> : null}
+          </View>
         )}
       </SafeAreaView>
     </View>
@@ -57,7 +74,7 @@ export function ScreenHeader({ title, right, onBack }: { title: string; right?: 
 
 /** A flat gold coin: a circle with an ink outline. */
 export function Coin({ size = 14 }: { size?: number }) {
-  return <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.coin, borderWidth: 2, borderColor: colors.ink }} />;
+  return <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.coin, borderWidth: 2, borderColor: '#b8860b' }} />;
 }
 
 export function CurrencyBar({ compact }: { compact?: boolean }) {
@@ -111,8 +128,8 @@ export function ProgressBar({ value, color = colors.toxic, height = 10, style }:
     Animated.timing(anim, { toValue: Math.max(0, Math.min(1, value)), duration: 450, useNativeDriver: false }).start();
   }, [value, anim]);
   return (
-    <View style={[{ height, borderRadius: 6, backgroundColor: colors.bgAlt, borderWidth: 2, borderColor: colors.ink, overflow: 'hidden' }, style]}>
-      <Animated.View style={{ height: '100%', backgroundColor: color, width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
+    <View style={[{ height, borderRadius: height / 2, backgroundColor: 'rgba(0,0,0,0.35)', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ height: '100%', borderRadius: 99, backgroundColor: color, width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
     </View>
   );
 }
@@ -170,33 +187,34 @@ function ToastItem({ text, icon, tone }: { text: string; icon?: string; tone?: '
   const border = tone === 'good' ? colors.toxic : tone === 'bad' ? colors.blood : colors.gold;
   return (
     <Animated.View style={[styles.toast, { borderColor: border, opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] }]}>
-      <Text style={styles.toastText}>
-        {text} {icon ?? ''}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+        {icon ? <Glyph emoji={icon} size={18} color={border} /> : null}
+        <Text style={styles.toastText}>{text}</Text>
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   headerSide: { alignItems: 'flex-end' },
-  headerTitle: { flex: 1, color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'left' },
-  back: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderBottomWidth: 4, borderColor: colors.ink },
+  headerTitle: { flex: 1, color: colors.text, fontSize: 28, fontWeight: '900', textAlign: 'left' },
+  back: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 4, borderColor: 'rgba(0,0,0,0.3)' },
   pressed: { transform: [{ translateY: 2 }], opacity: 0.85 },
   currency: { flexDirection: 'row', gap: 6 },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.bgAlt, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 2, borderColor: colors.ink },
-  pillText: { fontWeight: '700', fontSize: 13 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(13,10,31,0.55)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 2, borderColor: 'rgba(255,255,255,0.14)' },
+  pillText: { fontWeight: '800', fontSize: 14 },
   pillIcon: { fontSize: 13 },
-  tag: { alignSelf: 'flex-start', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 2, borderColor: colors.ink },
-  tagText: { color: colors.ink, fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  card: { backgroundColor: colors.panel, borderRadius: radius.md, padding: 12, borderWidth: 2, borderBottomWidth: 5, borderColor: colors.ink },
-  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.panel, borderWidth: 2, borderColor: colors.ink },
-  tabActive: { backgroundColor: colors.gold, borderBottomWidth: 4 },
-  tabText: { color: colors.textDim, fontWeight: '500', fontSize: 14 },
-  tabTextActive: { color: colors.ink, fontWeight: '800' },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 2, borderColor: colors.ink, backgroundColor: colors.panel },
-  chipText: { color: colors.text, fontWeight: '500', fontSize: 13 },
+  tag: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
+  tagText: { color: colors.ink, fontSize: 11, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
+  card: { backgroundColor: colors.panel, borderRadius: radius.md, padding: 14, borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.1)', borderBottomColor: 'rgba(0,0,0,0.35)' },
+  tab: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.panel, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
+  tabActive: { backgroundColor: colors.toxic, borderColor: colors.toxicDark, borderBottomWidth: 4 },
+  tabText: { color: colors.textDim, fontWeight: '800', fontSize: 14 },
+  tabTextActive: { color: colors.ink, fontWeight: '900' },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: colors.panel },
+  chipText: { color: colors.text, fontWeight: '800', fontSize: 13 },
   toastHost: { position: 'absolute', top: 18, left: 0, right: 0, alignItems: 'center', gap: 6, zIndex: 999 },
-  toast: { backgroundColor: colors.panel, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 2, borderBottomWidth: 5, maxWidth: '80%' },
+  toast: { backgroundColor: colors.panel, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 22, borderWidth: 2, borderBottomWidth: 5, maxWidth: '80%' },
   toastText: { color: colors.text, fontWeight: '700', fontSize: 14, textAlign: 'center' },
 });

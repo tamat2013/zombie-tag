@@ -1,4 +1,5 @@
 // Pick a map for the match: built-in, your own, community maps, or import one by share code.
+import { useDevice } from '../utils/device';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
 import { Pressable, TextInput, View } from '../i18n/Layout';
@@ -24,6 +25,7 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
   const profile = useProfile();
   const { toast } = useGame();
   const { width } = useWindowDimensions();
+  const { isDesktop } = useDevice();
   const kind: GameMap['kind'] = flow.mode === 'obstacle' ? 'obstacle' : 'arena';
   // Tournaments are played on official maps only so scores are comparable.
   const officialOnly = flow.mode === 'tournament';
@@ -51,7 +53,7 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
   }, [source, community.length]);
 
   const list = (source === 'builtin' ? BUILT_IN_MAPS : source === 'mine' ? mine : community).filter((m) => m.kind === kind);
-  const cardW = Math.min(220, (Math.min(width, 900) - 32 - 12) / 2);
+  const cardW = isDesktop ? 200 : Math.min(220, (Math.min(width, 900) - 32 - 12) / 2);
 
   const importCode = async () => {
     if (code.trim().length < 4) return;
@@ -75,8 +77,9 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
     <Screen scroll>
       <ScreenHeader title={kind === 'obstacle' ? 'Choose a course' : 'Choose a map'} />
 
-      <View style={styles.selected}>
-        <MapPreview map={selected} width={Math.min(width - 32, 520)} />
+      <View style={isDesktop ? { flexDirection: 'row', gap: 28, alignItems: 'flex-start' } : undefined}>
+      <View style={[styles.selected, isDesktop && { width: 400 }]}>
+        <MapPreview map={selected} width={isDesktop ? 380 : Math.min(width - 32, 520)} />
         <View style={{ marginTop: 8 }}>
           <H size={18}>{selected.name}</H>
           <P dim>
@@ -87,6 +90,7 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
         </View>
       </View>
 
+      <View style={isDesktop ? { flex: 1 } : undefined}>
       {!officialOnly ? (
         <Tabs<Source>
           tabs={[
@@ -139,6 +143,8 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
         <Button title="Continue to lobby" icon="▶️" style={{ flex: 2 }} onPress={() => navigation.navigate('Lobby', { flow, map: selected })} />
         {!officialOnly ? <Button title="Create map" icon="✏️" variant="dark" style={{ flex: 1 }} onPress={() => navigation.navigate('MapCreator')} /> : null}
+      </View>
+      </View>
       </View>
     </Screen>
   );

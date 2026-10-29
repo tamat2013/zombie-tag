@@ -1,4 +1,5 @@
 // Personal skin designer: body/accent colors, eyes, pattern, accessory and name, with a live preview.
+import { useDevice } from '../utils/device';
 import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Pressable, ScrollView, TextInput, View } from '../i18n/Layout';
@@ -6,6 +7,7 @@ import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { Role, Skin, SkinEyes, SkinPattern } from '../types';
 import { Screen, ScreenHeader, Card, Chip, H } from '../components/ui';
+import { Glyph, Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { Character } from '../components/Character';
 import { useGame, useProfile } from '../state/GameContext';
@@ -32,6 +34,7 @@ const PATTERNS: { id: SkinPattern; label: string }[] = [
 const MAX_CUSTOM = 12;
 
 export function SkinDesignerScreen({ navigation, route }: ScreenProps<'SkinDesigner'>) {
+  const { isDesktop } = useDevice();
   const profile = useProfile();
   const { updateProfile, toast } = useGame();
   const existing = profile.customSkins.find((s) => s.id === route.params?.skinId);
@@ -106,16 +109,19 @@ export function SkinDesignerScreen({ navigation, route }: ScreenProps<'SkinDesig
     <Screen scroll>
       <ScreenHeader title={existing ? 'Edit skin' : 'Skin designer'} />
 
-      <Card style={styles.preview}>
+      <View style={isDesktop ? { flexDirection: 'row', gap: 28, alignItems: 'flex-start' } : undefined}>
+      <Card style={[styles.preview, isDesktop && { width: 340 }]}>
         <View style={styles.stage}>
           <Character skin={skin} size={140} role={previewRole} />
         </View>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
           <Chip label="Survivor" active={previewRole === 'survivor'} onPress={() => setPreviewRole('survivor')} color={colors.survivor} />
           <Chip label="Zombie" active={previewRole === 'zombie'} onPress={() => setPreviewRole('zombie')} />
-          <Chip label="🎲 Random" onPress={randomize} color={colors.gold} />
+          <Chip label="Random" onPress={randomize} color={colors.gold} />
         </View>
       </Card>
+
+      <View style={isDesktop ? { flex: 1 } : undefined}>
 
       <Section title="Name">
         <TextInput value={name} onChangeText={setName} maxLength={14} style={styles.input} placeholderTextColor={colors.textMuted} />
@@ -148,7 +154,7 @@ export function SkinDesignerScreen({ navigation, route }: ScreenProps<'SkinDesig
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, flexDirection: 'row' }}>
           {SKIN_ACCESSORIES.map((a) => (
             <Pressable key={a || 'none'} onPress={() => setAccessory(a)} style={[styles.acc, accessory === a && { borderColor: colors.toxic }]}>
-              <Text style={{ fontSize: 24 }}>{a || '🚫'}</Text>
+              {a ? <Glyph emoji={a} size={26} color={colors.gold} /> : <Icon name="cancel" size={24} color={colors.textDim} />}
             </Pressable>
           ))}
         </ScrollView>
@@ -157,6 +163,8 @@ export function SkinDesignerScreen({ navigation, route }: ScreenProps<'SkinDesig
       <Text style={styles.note}>Custom skins are cosmetic only (no special power) to keep the game fair.</Text>
       <Button title={existing ? 'Save changes' : 'Save and select'} icon="💾" onPress={save} style={{ marginTop: 12 }} />
       {existing ? <Button title="Delete skin" icon="🗑️" variant="danger" small onPress={remove} style={{ marginTop: 10 }} /> : null}
+      </View>
+      </View>
     </Screen>
   );
 }
@@ -184,8 +192,8 @@ function Swatches({ value, onChange }: { value: string; onChange: (c: string) =>
 
 const styles = StyleSheet.create({
   preview: { alignItems: 'center', paddingVertical: 20 },
-  stage: { width: 200, height: 200, borderRadius: 100, backgroundColor: '#0e160c', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
-  input: { backgroundColor: '#0a0f09', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, textAlign: 'left' },
+  stage: { width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(13,10,31,0.55)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  input: { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, textAlign: 'left' },
   swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)' },
   swatchActive: { borderColor: '#fff', borderWidth: 3, transform: [{ scale: 1.15 }] },

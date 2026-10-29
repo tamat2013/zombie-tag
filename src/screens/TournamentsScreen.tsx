@@ -1,17 +1,20 @@
 // Tournament schedule: register, play knockout runs while live, and view the leaderboard.
 // Knockout prizes are paid right after a run ends, so there is nothing to claim here.
+import { useDevice } from '../utils/device';
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import { Screen, ScreenHeader, Card, H, P, Pill } from '../components/ui';
+import { Glyph } from '../components/Icon';
 import { Button } from '../components/Button';
 import { useGame, useProfile } from '../state/GameContext';
 import { CHAMPION_POINTS, getTournaments, PRIZE_LABELS, rankOf, registerForTournament, tournamentStatus } from '../logic/tournaments';
 import type { LeaderboardEntry, Tournament } from '../logic/tournaments';
 import { tournamentService } from '../services/tournamentService';
 import { useNow } from './MissionsScreen';
+import { Icon } from '../components/Icon';
 import { colors } from '../theme';
 import { haptic } from '../utils/haptics';
 
@@ -35,6 +38,7 @@ const RANK_ICONS = ['🥇', '🥈', '🥉'];
 const PRIZE_ICONS = ['🏆', '🥈', '🥉', '🎟️'];
 
 export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
+  const { isDesktop } = useDevice();
   const now = useNow();
   const profile = useProfile();
   const { updateProfile, toast } = useGame();
@@ -73,17 +77,17 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
     const board = boards[t.id];
     const statusPill =
       status === 'live' ? (
-        <Pill text={`Live · ${timeLeft(t.endsAt - now)} left`} icon="🔴" color={colors.blood} />
+        <Pill text={`Live · ${timeLeft(t.endsAt - now)} left`} lead={<Icon name="record-circle" size={14} color={colors.blood} />} color={colors.blood} />
       ) : status === 'upcoming' ? (
-        <Pill text={`Starts in ${timeLeft(t.startsAt - now)}`} icon="⏳" color={colors.gold} />
+        <Pill text={`Starts in ${timeLeft(t.startsAt - now)}`} lead={<Icon name="timer-sand" size={14} color={colors.gold} />} color={colors.gold} />
       ) : (
-        <Pill text="Ended" icon="🏁" color={colors.textDim} />
+        <Pill text="Ended" lead={<Icon name="flag-checkered" size={14} color={colors.textDim} />} color={colors.textDim} />
       );
 
     return (
       <Card key={t.id} highlight={status === 'live' ? colors.blood : undefined} style={{ gap: 8 }}>
         <View style={styles.head}>
-          <Text style={{ fontSize: 36 }}>{t.icon}</Text>
+          <Glyph emoji={t.icon} size={36} color={colors.gold} />
           <View style={{ flex: 1 }}>
             <H size={17}>{t.name}</H>
             <P dim style={{ fontSize: 12 }}>
@@ -98,8 +102,8 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
           {t.prizes.map((pr, i) => (
             <View key={i} style={styles.prize}>
               <Text style={styles.prizeRank}>{PRIZE_ICONS[i] ?? '🎟️'}</Text>
-              <Text style={styles.prizeText}>{pr.coins} 🪙</Text>
-              {pr.medals ? <Text style={styles.prizeText}>{pr.medals} 🏅</Text> : null}
+              <Text style={styles.prizeText}>{pr.coins} coins</Text>
+              {pr.medals ? <Text style={styles.prizeText}>{pr.medals} medals</Text> : null}
               {pr.skin ? <Text style={[styles.prizeText, { color: colors.purple }]}>Skin!</Text> : null}
               <Text style={styles.prizeLabel}>{PRIZE_LABELS[i] ?? 'Participation'}</Text>
             </View>
@@ -108,14 +112,14 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
 
         {entry ? (
           <Text style={styles.mine}>
-            ✔ Registered · {entry.points} points
+            Registered · {entry.points} points
           </Text>
         ) : null}
 
         <View style={styles.actions}>
-          {status === 'live' ? <Button small title="Play now" icon="▶️" onPress={() => play(t)} style={{ flex: 1 }} /> : null}
-          {status === 'upcoming' && !entry ? <Button small title="Register" icon="📝" variant="blue" onPress={() => register(t)} style={{ flex: 1 }} /> : null}
-          <Button small title={open === t.id ? 'Hide board' : 'Leaderboard'} icon="📊" variant="dark" onPress={() => toggleBoard(t)} style={{ flex: 1 }} />
+          {status === 'live' ? <Button small title="Play now" lead={<Icon name="play" size={16} color={colors.ink} />} onPress={() => play(t)} style={{ flex: 1 }} /> : null}
+          {status === 'upcoming' && !entry ? <Button small title="Register" lead={<Icon name="pencil-outline" size={16} color={colors.ink} />} variant="blue" onPress={() => register(t)} style={{ flex: 1 }} /> : null}
+          <Button small title={open === t.id ? 'Hide board' : 'Leaderboard'} lead={<Icon name="podium" size={16} color={colors.text} />} variant="dark" onPress={() => toggleBoard(t)} style={{ flex: 1 }} />
         </View>
 
         {open === t.id ? (
@@ -149,7 +153,7 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
   const ended = list.filter((t) => tournamentStatus(t, now) === 'ended');
 
   return (
-    <Screen scroll>
+    <Screen scroll style={isDesktop ? { maxWidth: 760 } : undefined}>
       <ScreenHeader title="Tournaments" />
       <Card style={{ marginBottom: 6 }}>
         <P dim>
@@ -159,17 +163,17 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
       </Card>
       {live.length ? (
         <H size={16} style={styles.section}>
-          🔴 Live now
+          Live now
         </H>
       ) : null}
       <View style={{ gap: 10 }}>{live.map(renderCard)}</View>
       <H size={16} style={styles.section}>
-        ⏳ Upcoming
+        Upcoming
       </H>
       <View style={{ gap: 10 }}>{upcoming.map(renderCard)}</View>
       {ended.length ? (
         <H size={16} style={styles.section}>
-          🏁 Ended
+          Ended
         </H>
       ) : null}
       <View style={{ gap: 10 }}>{ended.map(renderCard)}</View>

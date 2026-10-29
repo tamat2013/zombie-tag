@@ -1,4 +1,5 @@
 // End-of-match screen: winner, rewards, level-ups, achievements and the scoreboard.
+import { useDevice } from '../utils/device';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 import { View } from '../i18n/Layout';
@@ -7,6 +8,8 @@ import type { ScreenProps } from '../navigation/types';
 import { Screen, Card, H, P } from '../components/ui';
 import { Button } from '../components/Button';
 import { Character } from '../components/Character';
+import { Icon, Glyph } from '../components/Icon';
+import type { IconName } from '../components/Icon';
 import { ACHIEVEMENTS, formatSeconds, medalName, obstacleMedal } from '../logic/progression';
 import { knockoutOutcome, roundName } from '../logic/tournaments';
 import { nextKnockoutSetup } from '../utils/matchSetup';
@@ -15,6 +18,7 @@ import { haptic } from '../utils/haptics';
 import { playSfx } from '../services/sound';
 
 export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
+  const { isDesktop } = useDevice();
   const { result, rewards, levelBefore, levelAfter, achievementIds, tournamentPoints, flow, map, roomCode, players, setup } = route.params;
   const ko = knockoutOutcome(result);
   const pop = useRef(new Animated.Value(0)).current;
@@ -44,26 +48,29 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
         ? 'Zombies took over!'
         : 'Match over';
   const tint = obstacle ? colors.gold : result.winner === 'zombie' ? colors.zombie : colors.survivor;
+  const bigIcon: IconName = obstacle ? (medal ? 'medal' : result.won ? 'flag-checkered' : 'timer-sand') : result.won ? 'trophy' : 'skull';
   const achievements = ACHIEVEMENTS.filter((a) => achievementIds.includes(a.id));
   const sorted = [...players].sort((a, b) => b.infections * 15 + b.tasks * 10 - (a.infections * 15 + a.tasks * 10));
 
   return (
     <Screen scroll>
       <Animated.View style={[styles.banner, { opacity: pop, transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }] }]}>
-        <Text style={styles.big}>{obstacle ? (medal ? { gold: '🥇', silver: '🥈', bronze: '🥉' }[medal] : result.won ? '🏁' : '⌛') : result.won ? '🏆' : '💀'}</Text>
+        <View style={[styles.badge, { backgroundColor: tint }]}>
+          <Icon name={bigIcon} size={64} color={colors.ink} />
+        </View>
         <Text style={[styles.title, { color: tint }]}>{title}</Text>
         <Text style={[styles.outcome, { color: result.won ? colors.toxic : colors.blood }]}>{result.won ? 'Victory' : 'Defeat'}</Text>
         {ko ? (
           <Text style={[styles.knockout, { color: ko.kind === 'out' ? colors.blood : colors.gold }]}>
             {ko.kind === 'champion'
-              ? '🏆 Tournament champion! 🏆'
+              ? 'Tournament champion!'
               : ko.kind === 'advance'
-                ? `⏭️ Advanced to the ${roundName(ko.nextSize)}!`
+                ? `Advanced to the ${roundName(ko.nextSize)}!`
                 : ko.place === 2
-                  ? '🥈 Second place in the tournament'
+                  ? 'Second place in the tournament'
                   : ko.place === 3
-                    ? '🥉 Knocked out in the semi-final'
-                    : '💀 Knocked out of the tournament'}
+                    ? 'Knocked out in the semi-final'
+                    : 'Knocked out of the tournament'}
           </Text>
         ) : null}
         {obstacle && result.obstacleTimeMs !== undefined ? (
@@ -79,30 +86,32 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
 
       {levelAfter > levelBefore ? (
         <Card highlight={colors.gold} style={styles.levelUp}>
-          <Text style={styles.levelUpText}>⭐ Level up! You are now level {levelAfter}! ⭐</Text>
+          <Text style={styles.levelUpText}>Level up! You are now level {levelAfter}!</Text>
           <P dim style={{ textAlign: 'center' }}>New items may have unlocked in the shop</P>
         </Card>
       ) : null}
 
+      <View style={isDesktop ? { flexDirection: 'row', gap: 20, alignItems: 'flex-start' } : undefined}>
+      <View style={isDesktop ? { flex: 1 } : undefined}>
       <Card style={{ marginTop: 12 }}>
         <H size={16}>Rewards</H>
         {rewards.lines.map((l, i) => (
           <Animated.View key={i} style={[styles.line, { opacity: lines[i], transform: [{ translateX: lines[i].interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) }] }]}>
             <Text style={styles.lineValues}>
               {l.xp ? `+${l.xp} XP ` : ''}
-              {l.coins ? `+${l.coins} 🪙 ` : ''}
-              {l.medals ? `+${l.medals} 🏅` : ''}
+              {l.coins ? `+${l.coins} coins ` : ''}
+              {l.medals ? `+${l.medals} medals` : ''}
             </Text>
             <Text style={styles.lineLabel}>{l.label}</Text>
           </Animated.View>
         ))}
         <View style={styles.total}>
           <Text style={styles.totalText}>
-            +{rewards.xp} XP · +{rewards.coins} 🪙{rewards.medals ? ` · +${rewards.medals} 🏅` : ''}
+            +{rewards.xp} XP · +{rewards.coins} 🪙{rewards.medals ? ` · +${rewards.medals} medals` : ''}
           </Text>
           <Text style={styles.lineLabel}>Total</Text>
         </View>
-        {tournamentPoints > 0 ? <Text style={styles.tournament}>🏆 +{tournamentPoints} tournament points</Text> : null}
+        {tournamentPoints > 0 ? <Text style={styles.tournament}>+{tournamentPoints} tournament points</Text> : null}
       </Card>
 
       {achievements.length ? (
@@ -111,23 +120,26 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
           {achievements.map((a) => (
             <View key={a.id} style={styles.line}>
               <Text style={styles.lineValues}>
-                {a.coins ? `+${a.coins} 🪙 ` : ''}
-                {a.medals ? `+${a.medals} 🏅` : ''}
+                {a.coins ? `+${a.coins} coins ` : ''}
+                {a.medals ? `+${a.medals} medals` : ''}
               </Text>
-              <Text style={styles.lineLabel}>
-                {a.badge} {a.title}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Glyph emoji={a.badge} size={16} color={colors.gold} fallbackStyle={styles.lineLabel} />
+                <Text style={styles.lineLabel}>{a.title}</Text>
+              </View>
             </View>
           ))}
         </Card>
       ) : null}
 
+      </View>
+      <View style={isDesktop ? { flex: 1 } : undefined}>
       {!obstacle ? (
         <Card style={{ marginTop: 12 }}>
           <H size={16}>Scoreboard</H>
           <View style={[styles.row, { borderBottomWidth: 1 }]}>
-            <Text style={styles.colHead}>🧟</Text>
-            <Text style={styles.colHead}>🔧</Text>
+            <View style={{ width: 36, alignItems: 'center' }}><Icon name="virus" size={16} color={colors.textDim} /></View>
+            <View style={{ width: 36, alignItems: 'center' }}><Icon name="wrench" size={16} color={colors.textDim} /></View>
             <Text style={[styles.colHead, { flex: 1, textAlign: 'left' }]}>Player</Text>
           </View>
           {sorted.map((p, i) => (
@@ -138,7 +150,7 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
                 <Character skin={p.skin} size={28} role={p.role} />
                 <Text style={[styles.pName, p.isLocal && { color: colors.toxic }]} numberOfLines={1}>
                   {p.name}
-                  {p.isBot ? ' 🤖' : ''}
+                  {p.isBot ? ' (bot)' : ''}
                 </Text>
                 <Text style={{ color: p.role === 'zombie' ? colors.zombie : colors.survivor, fontSize: 11 }}>{p.role === 'zombie' ? 'Zombie' : 'Survivor'}</Text>
               </View>
@@ -146,6 +158,9 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
           ))}
         </Card>
       ) : null}
+
+      </View>
+      </View>
 
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
         {ko?.kind === 'advance' && !roomCode && setup ? (
@@ -176,8 +191,8 @@ export function ResultsScreen({ navigation, route }: ScreenProps<'Results'>) {
 
 const styles = StyleSheet.create({
   banner: { alignItems: 'center', marginTop: 16, marginBottom: 6 },
-  big: { fontSize: 76 },
-  title: { fontSize: 34, fontWeight: '900', textAlign: 'center', textShadowColor: '#000', textShadowRadius: 10 },
+  badge: { width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 6, borderBottomColor: 'rgba(0,0,0,0.35)', marginBottom: 8 },
+  title: { fontSize: 40, fontWeight: '900', textAlign: 'center', textShadowColor: colors.ink, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0 },
   outcome: { fontSize: 18, fontWeight: '900', marginTop: 2 },
   knockout: { fontSize: 20, fontWeight: '900', marginTop: 6, textAlign: 'center' },
   levelUp: { marginTop: 12, alignItems: 'center' },

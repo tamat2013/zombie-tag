@@ -59,7 +59,7 @@ export const fonts = {
   bold: 'Rubik_700Bold',
   extraBold: 'Rubik_800ExtraBold',
   black: 'Rubik_900Black',
-  logo: 'RubikWetPaint_400Regular',
+  logo: 'LilitaOne_400Regular',
 };
 
 /** Picks the Rubik file that matches a fontWeight. */

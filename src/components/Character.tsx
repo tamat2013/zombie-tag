@@ -1,5 +1,6 @@
 // Draws a player from a Skin: round body, pattern, eyes, accessory and outfit.
 // Zombies get a sickly green tint, stitches and glowing eyes.
+import { Glyph } from './Icon';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from '../i18n/Text';
@@ -89,8 +90,8 @@ function CharacterImpl({ skin, size, role = 'survivor', outfit, facing = 0, shie
       ) : (
         [eye(size * 0.2), eye(size * 0.6)]
       )}
-      {skin.accessory ? <Text style={[styles.emoji, { fontSize: size * 0.42, left: size * 0.55, top: -size * 0.22 }]}>{skin.accessory}</Text> : null}
-      {outfit ? <Text style={[styles.emoji, { fontSize: size * 0.5, left: size * 0.22, top: -size * 0.42 }]}>{outfit}</Text> : null}
+      {skin.accessory ? <View style={[styles.emoji, { left: size * 0.55, top: -size * 0.22 }]}><Glyph emoji={skin.accessory} size={size * 0.42} color="#ffd23f" /></View> : null}
+      {outfit ? <View style={[styles.emoji, { left: size * 0.22, top: -size * 0.42 }]}><Glyph emoji={outfit} size={size * 0.5} color="#ffd23f" /></View> : null}
     </View>
   );
 }

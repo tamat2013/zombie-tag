@@ -15,6 +15,8 @@ import { ABILITIES, MAX_LOADOUT } from '../engine/abilities';
 import { ACHIEVEMENTS, MAX_LEVEL, formatSeconds, levelInfo } from '../logic/progression';
 import { toggleLoadout } from '../logic/shop';
 import { authService } from '../services/authService';
+import { useDevice } from '../utils/device';
+import { Icon, Glyph } from '../components/Icon';
 import { colors } from '../theme';
 import { haptic } from '../utils/haptics';
 
@@ -37,6 +39,7 @@ const STAT_ROWS: { key: keyof PlayerStats; label: string; icon: string; format?:
 ];
 
 export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
+  const { isDesktop } = useDevice();
   const profile = useProfile();
   const { updateProfile, signOut, toast } = useGame();
   const [tab, setTab] = useState<Tab>('stats');
@@ -55,8 +58,10 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
   };
 
   return (
-    <Screen scroll>
+    <Screen scroll shell="Profile">
       <ScreenHeader title="Profile" />
+      <View style={isDesktop ? { flexDirection: 'row', gap: 24, alignItems: 'flex-start' } : undefined}>
+      <View style={isDesktop ? { width: 340 } : undefined}>
       <Card style={styles.hero}>
         <Character skin={skin} size={96} outfit={outfitEmoji(profile.equippedOutfit)} />
         <View style={{ flex: 1, gap: 4 }}>
@@ -67,12 +72,12 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
             </View>
           ) : (
             <Text style={styles.name} onPress={() => setEditingName(true)}>
-              {profile.displayName} ✏️
+              {profile.displayName}
             </Text>
           )}
           <P dim style={{ fontSize: 12 }}>{profile.email}</P>
           <Text style={styles.level}>
-            ⭐ Level {info.level}
+            Level {info.level}
             {info.level >= MAX_LEVEL ? ' (max)' : ''}
           </Text>
           <ProgressBar value={info.progress} color={colors.gold} height={9} />
@@ -83,18 +88,20 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
       </Card>
 
       <View style={styles.pills}>
-        <Pill icon="🪙" text={profile.coins.toLocaleString()} color={colors.coin} />
-        <Pill icon="🏅" text={String(profile.medals)} color={colors.medal} />
-        <Pill icon="🎖️" text={`${profile.achievements.length}/${ACHIEVEMENTS.length}`} color={colors.purple} />
-        <Pill icon="📈" text={`${winRate}% wins`} color={colors.toxic} />
-        <Pill icon={authService.isOnline ? '🌐' : '📴'} text={authService.isOnline ? 'Cloud synced' : 'Local mode'} color={authService.isOnline ? colors.survivor : colors.textDim} />
+        <Pill lead={<Icon name="circle-multiple" size={15} color={colors.coin} />} text={profile.coins.toLocaleString()} color={colors.coin} />
+        <Pill lead={<Icon name="medal-outline" size={15} color={colors.medal} />} text={String(profile.medals)} color={colors.medal} />
+        <Pill lead={<Icon name="trophy-award" size={15} color={colors.purple} />} text={`${profile.achievements.length}/${ACHIEVEMENTS.length}`} color={colors.purple} />
+        <Pill lead={<Icon name="chart-line" size={15} color={colors.toxic} />} text={`${winRate}% wins`} color={colors.toxic} />
+        <Pill lead={<Icon name={authService.isOnline ? 'cloud-check-outline' : 'cloud-off-outline'} size={15} color={authService.isOnline ? colors.survivor : colors.textDim} />} text={authService.isOnline ? 'Cloud synced' : 'Local mode'} color={authService.isOnline ? colors.survivor : colors.textDim} />
       </View>
 
+      </View>
+      <View style={isDesktop ? { flex: 1 } : undefined}>
       <Tabs
         tabs={[
-          { id: 'stats', label: '📊 Stats' },
-          { id: 'achievements', label: '🎖️ Achievements' },
-          { id: 'loadout', label: '⚡ Abilities' },
+          { id: 'stats', label: 'Stats' },
+          { id: 'achievements', label: 'Achievements' },
+          { id: 'loadout', label: 'Abilities' },
         ]}
         value={tab}
         onChange={setTab}
@@ -105,7 +112,7 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
           <View style={styles.grid}>
             {STAT_ROWS.map((s) => (
               <View key={s.key} style={styles.stat}>
-                <Text style={{ fontSize: 22 }}>{s.icon}</Text>
+                <Glyph emoji={s.icon} size={22} color={colors.toxic} />
                 <Text style={styles.statValue}>{s.format ? s.format(profile.stats[s.key]) : profile.stats[s.key].toLocaleString()}</Text>
                 <Text style={styles.statLabel}>{s.label}</Text>
               </View>
@@ -117,9 +124,7 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
           <View style={{ gap: 8 }}>
             <View style={styles.badges}>
               {ACHIEVEMENTS.filter((a) => profile.achievements.includes(a.id)).map((a) => (
-                <Text key={a.id} style={styles.badge}>
-                  {a.badge}
-                </Text>
+                <Glyph key={a.id} emoji={a.badge} size={28} color={colors.gold} />
               ))}
               {profile.achievements.length === 0 ? <P dim>No badges yet. Play to unlock achievements!</P> : null}
             </View>
@@ -128,14 +133,14 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
               const [cur, target] = a.progress(profile);
               return (
                 <Card key={a.id} style={[styles.row, !done && { opacity: 0.85 }]} highlight={done ? colors.gold : undefined}>
-                  <Text style={[styles.achBadge, !done && { opacity: 0.3 }]}>{a.badge}</Text>
+                  <View style={!done && { opacity: 0.3 }}><Glyph emoji={a.badge} size={30} color={colors.gold} /></View>
                   <View style={{ flex: 1, gap: 3 }}>
                     <H size={15}>{a.title}</H>
                     <P dim style={{ fontSize: 12 }}>{a.description}</P>
                     {!done ? <ProgressBar value={target ? cur / target : 0} color={colors.purple} height={6} /> : null}
                   </View>
                   <View style={{ alignItems: 'center' }}>
-                    {done ? <Text style={styles.done}>✔</Text> : <Text style={styles.prog}>{cur}/{target}</Text>}
+                    {done ? <Icon name="check-circle" size={24} color={colors.toxic} /> : <Text style={styles.prog}>{cur}/{target}</Text>}
                     <Text style={styles.reward}>
                       {a.coins ? `${a.coins}🪙` : ''} {a.medals ? `${a.medals}🏅` : ''}
                     </Text>
@@ -150,8 +155,10 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
       </View>
 
       <View style={{ gap: 10, marginTop: 20 }}>
-        <Button title="Design a skin" icon="🎨" variant="dark" onPress={() => navigation.navigate('SkinDesigner')} />
-        <Button title="Sign out" icon="🚪" variant="danger" onPress={() => signOut()} />
+        <Button title="Design a skin" lead={<Icon name="palette-outline" size={20} color={colors.text} />} variant="dark" onPress={() => navigation.navigate('SkinDesigner')} />
+        <Button title="Sign out" lead={<Icon name="logout" size={20} color={colors.ink} directional />} variant="danger" onPress={() => signOut()} />
+      </View>
+      </View>
       </View>
     </Screen>
   );
@@ -161,8 +168,8 @@ function LoadoutEditor() {
   const profile = useProfile();
   const { updateProfile, toast } = useGame();
   const roles: { role: Role; title: string }[] = [
-    { role: 'survivor', title: '🧍 Survivor' },
-    { role: 'zombie', title: '🧟 Zombie' },
+    { role: 'survivor', title: 'Survivor' },
+    { role: 'zombie', title: 'Zombie' },
   ];
   return (
     <View style={{ gap: 14 }}>
@@ -191,7 +198,7 @@ function LoadoutEditor() {
                       } else toast(r.error, { tone: 'bad' });
                     }}
                   >
-                    <Text style={{ fontSize: 30, opacity: on ? 1 : 0.4 }}>{a.icon}</Text>
+                    <View style={{ opacity: on ? 1 : 0.4 }}><Glyph emoji={a.icon} size={30} /></View>
                     <Text style={styles.abilityName}>{a.name}</Text>
                     <Text style={{ color: on ? colors.toxic : colors.textMuted, fontSize: 11, fontWeight: '800' }}>{on ? 'Equipped' : 'Not equipped'}</Text>
                   </Card>

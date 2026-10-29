@@ -1,4 +1,5 @@
 // Sign up / log in with email and password.
+import { useDevice } from '../utils/device';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { TextInput, View } from '../i18n/Layout';
@@ -16,6 +17,7 @@ import { haptic } from '../utils/haptics';
 type Mode = 'login' | 'register';
 
 export function AuthScreen() {
+  const { isDesktop } = useDevice();
   useLanguage(); // re-render (placeholders use tr()) when the language changes
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -58,9 +60,9 @@ export function AuthScreen() {
   };
 
   return (
-    <Screen scroll>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.hero}>
+    <Screen scroll style={isDesktop ? { maxWidth: 980, paddingTop: 60 } : undefined}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={isDesktop ? { flexDirection: 'row', alignItems: 'center', gap: 56 } : undefined}>
+        <View style={[styles.hero, isDesktop && { flex: 1 }]}>
           <View style={styles.heroChars}>
             <Character skin={BUILT_IN_SKINS[0]} size={64} />
             <Character skin={BUILT_IN_SKINS[9]} size={78} role="zombie" />
@@ -70,6 +72,7 @@ export function AuthScreen() {
           <Text style={styles.tagline}>Survive 10 minutes... or become one of them</Text>
         </View>
 
+        <View style={isDesktop ? { flex: 1 } : undefined}>
         <View style={[styles.card, { marginBottom: 14 }]}>
           <Text style={styles.label}>{mode === 'register' ? 'Which language do you want to play in?' : 'Language'}</Text>
           <LanguagePicker />
@@ -93,13 +96,14 @@ export function AuthScreen() {
           <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
           <Field label="Password" value={password} onChangeText={setPassword} placeholder={tr('At least 6 characters')} secureTextEntry onSubmitEditing={submit} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button title={mode === 'login' ? 'Enter game' : 'Create account'} icon={mode === 'login' ? '🔓' : '✨'} onPress={submit} loading={busy} style={{ marginTop: 12 }} />
-          <Button title="Continue as guest (no account)" icon="👤" variant="ghost" onPress={guest} disabled={busy} style={{ marginTop: 10 }} />
+          <Button title={mode === 'login' ? 'Enter game' : 'Create account'} onPress={submit} loading={busy} style={{ marginTop: 12 }} />
+          <Button title="Continue as guest (no account)" variant="ghost" onPress={guest} disabled={busy} style={{ marginTop: 10 }} />
           {!authService.isOnline ? (
             <Text style={styles.offline}>
               Offline mode: Firebase is not set up, so your account is saved on this device only and matches are played against bots. See the README to set it up.
             </Text>
           ) : null}
+        </View>
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -119,11 +123,11 @@ function Field(props: React.ComponentProps<typeof TextInput> & { label: string }
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginTop: 20, marginBottom: 20 },
   heroChars: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, marginBottom: 16 },
-  title: { color: colors.toxic, fontSize: 38, fontWeight: '900', textShadowColor: '#3f9b1f', textShadowRadius: 14 },
+  title: { color: colors.toxic, fontSize: 44, fontWeight: '900', textShadowColor: colors.toxicDark, textShadowOffset: { width: 0, height: 5 }, textShadowRadius: 0 },
   tagline: { color: colors.textDim, fontSize: 15, marginTop: 4 },
-  card: { backgroundColor: colors.panel, borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 440, alignSelf: 'center' },
+  card: { backgroundColor: colors.panel, borderRadius: radius.lg, padding: 20, borderBottomWidth: 6, borderBottomColor: 'rgba(0,0,0,0.35)', width: '100%', maxWidth: 440, alignSelf: 'center' },
   label: { color: colors.textDim, fontSize: 13, fontWeight: '700', textAlign: 'left', marginBottom: 4 },
-  input: { backgroundColor: '#0a0f09', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, textAlign: 'left' },
+  input: { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: radius.md, borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)', color: colors.text, paddingHorizontal: 16, paddingVertical: 13, fontSize: 16, textAlign: 'left' },
   error: { color: colors.blood, fontWeight: '800', marginTop: 10, textAlign: 'left' },
   offline: { color: colors.textMuted, fontSize: 12, marginTop: 14, textAlign: 'left', lineHeight: 18 },
 });

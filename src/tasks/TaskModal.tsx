@@ -1,3 +1,4 @@
+import { Glyph, Icon } from '../components/Icon';
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Pressable, View } from '../i18n/Layout';
@@ -23,11 +24,10 @@ export function TaskModal({ type, speed, onComplete, onClose, danger }: Props) {
       <View style={[styles.panel, danger && { borderColor: colors.blood }]}>
         <View style={styles.header}>
           <Pressable onPress={onClose} hitSlop={10} style={styles.close}>
-            <Text style={styles.closeText}>✕</Text>
+            <Icon name="close" size={22} />
           </Pressable>
-          <Text style={styles.title}>
-            {info.title} {info.icon}
-          </Text>
+          <Glyph emoji={info.icon} size={26} color={colors.gold} />
+          <Text style={styles.title}>{info.title}</Text>
         </View>
         <Text style={styles.hint}>{info.hint}</Text>
         {danger ? <Text style={styles.danger}>⚠️ Zombie nearby!</Text> : null}

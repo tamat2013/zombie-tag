@@ -1,4 +1,5 @@
 // Audio settings: music and effects volume, footsteps, vibration and a mute-all switch.
+import { useDevice } from '../utils/device';
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Pressable, View } from '../i18n/Layout';
@@ -7,29 +8,39 @@ import { Screen, ScreenHeader, Card, P } from '../components/ui';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { VOLUME_STEPS } from '../logic/soundSettings';
 import { playSfx, updateSoundSettings, useSoundSettings } from '../services/sound';
+import { Icon } from '../components/Icon';
+import type { IconName } from '../components/Icon';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
 export function SettingsScreen() {
+  const { isDesktop } = useDevice();
   const s = useSoundSettings();
   return (
-    <Screen scroll>
+    <Screen scroll shell="Settings">
       <ScreenHeader title="Settings" />
 
+      <View style={isDesktop ? { flexDirection: 'row', gap: 24, alignItems: 'flex-start' } : undefined}>
+      <View style={isDesktop ? { flex: 1 } : undefined}>
       <Card>
-        <Text style={styles.title}>🌍 Language</Text>
+        <View style={styles.row}>
+          <Icon name="earth" size={24} color={colors.blue} />
+          <Text style={styles.title}>Language</Text>
+        </View>
         <LanguagePicker />
       </Card>
 
       <Card style={styles.card}>
-        <Toggle icon={s.muted ? '🔇' : '🔊'} title="Mute all" subtitle="Turns off music and effects without losing your volume levels" value={s.muted} onChange={(muted) => updateSoundSettings({ muted })} />
+        <Toggle icon={s.muted ? 'volume-off' : 'volume-high'} title="Mute all" subtitle="Turns off music and effects without losing your volume levels" value={s.muted} onChange={(muted) => updateSoundSettings({ muted })} />
       </Card>
 
-      <Card style={styles.card}>
-        <Volume icon="🎵" title="Music" value={s.music} disabled={s.muted} onChange={(music) => updateSoundSettings({ music })} />
+      </View>
+      <View style={isDesktop ? { flex: 1 } : undefined}>
+      <Card style={[styles.card, isDesktop && { marginTop: 0 }]}>
+        <Volume icon="music" title="Music" value={s.music} disabled={s.muted} onChange={(music) => updateSoundSettings({ music })} />
         <View style={styles.divider} />
         <Volume
-          icon="💥"
+          icon="flash"
           title="Sound effects"
           value={s.sfx}
           disabled={s.muted}
@@ -42,7 +53,7 @@ export function SettingsScreen() {
 
       <Card style={styles.card}>
         <Toggle
-          icon="👣"
+          icon="shoe-print"
           title="Footsteps"
           subtitle="Your steps and the zombies' steps"
           value={s.footsteps}
@@ -53,7 +64,7 @@ export function SettingsScreen() {
         />
         <View style={styles.divider} />
         <Toggle
-          icon="📳"
+          icon="vibrate"
           title="Vibration"
           subtitle="Vibrate when bitten, curing or using an ability"
           value={s.vibration}
@@ -68,18 +79,21 @@ export function SettingsScreen() {
       <View style={styles.testRow}>
         {(
           [
-            ['🧟', 'groan'],
-            ['🦷', 'bite'],
-            ['🩺', 'heal'],
-            ['🪨', 'stoneHit'],
-            ['💓', 'heartbeat'],
-            ['🚨', 'released'],
+            ['skull-outline', 'groan', 'Groan'],
+            ['tooth-outline', 'bite', 'Bite'],
+            ['medical-bag', 'heal', 'Heal'],
+            ['circle-slice-8', 'stoneHit', 'Stone'],
+            ['heart-pulse', 'heartbeat', 'Heartbeat'],
+            ['alarm-light-outline', 'released', 'Alarm'],
           ] as const
-        ).map(([icon, id]) => (
+        ).map(([icon, id, label]) => (
           <Pressable key={id} onPress={() => playSfx(id)} style={({ pressed }) => [styles.testBtn, pressed && { opacity: 0.6 }]}>
-            <Text style={{ fontSize: 24 }}>{icon}</Text>
+            <Icon name={icon} size={26} color={colors.text} />
+            <Text style={styles.testLabel}>{label}</Text>
           </Pressable>
         ))}
+      </View>
+      </View>
       </View>
       <P dim style={{ textAlign: 'center', marginTop: 10 }}>
         Settings are saved on this device.
@@ -88,10 +102,12 @@ export function SettingsScreen() {
   );
 }
 
-function Toggle({ icon, title, subtitle, value, onChange }: { icon: string; title: string; subtitle?: string; value: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ icon, title, subtitle, value, onChange }: { icon: IconName; title: string; subtitle?: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <Pressable onPress={() => onChange(!value)} style={styles.row} accessibilityRole="switch" accessibilityState={{ checked: value }}>
-      <Text style={styles.icon}>{icon}</Text>
+      <View style={styles.iconWrap}>
+        <Icon name={icon} size={22} color={colors.ink} />
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -103,12 +119,14 @@ function Toggle({ icon, title, subtitle, value, onChange }: { icon: string; titl
   );
 }
 
-function Volume({ icon, title, value, disabled, onChange }: { icon: string; title: string; value: number; disabled?: boolean; onChange: (v: number) => void }) {
+function Volume({ icon, title, value, disabled, onChange }: { icon: IconName; title: string; value: number; disabled?: boolean; onChange: (v: number) => void }) {
   const level = Math.round(value * VOLUME_STEPS);
   return (
     <View style={[styles.volume, disabled && { opacity: 0.45 }]}>
       <View style={styles.row}>
-        <Text style={styles.icon}>{icon}</Text>
+        <View style={styles.iconWrap}>
+        <Icon name={icon} size={22} color={colors.ink} />
+      </View>
         <Text style={[styles.title, { flex: 1 }]}>{title}</Text>
         <Text style={styles.percent}>{level * 10}%</Text>
       </View>
@@ -140,13 +158,14 @@ const styles = StyleSheet.create({
   card: { marginTop: 12 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
-  icon: { fontSize: 24, width: 32, textAlign: 'center' },
+  iconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.toxic, alignItems: 'center', justifyContent: 'center' },
+  testLabel: { color: colors.textDim, fontSize: 11, fontWeight: '800', marginTop: 2 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'left' },
   subtitle: { color: colors.textDim, fontSize: 12, textAlign: 'left', marginTop: 2 },
   percent: { color: colors.toxic, fontWeight: '800', fontSize: 14, minWidth: 44, textAlign: 'left' },
-  switch: { width: 50, height: 28, borderRadius: 14, backgroundColor: colors.panelLight, borderWidth: 1, borderColor: colors.border },
-  switchOn: { backgroundColor: colors.toxicDark, borderColor: colors.toxic },
-  knob: { position: 'absolute', top: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.text },
+  switch: { width: 54, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.35)' },
+  switchOn: { backgroundColor: colors.toxic },
+  knob: { position: 'absolute', top: 3, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.text },
   volume: { gap: 8 },
   bars: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   barTrack: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 40 },
@@ -157,5 +176,5 @@ const styles = StyleSheet.create({
   stepText: { color: colors.text, fontSize: 22, fontWeight: '800' },
   testTitle: { color: colors.textDim, fontWeight: '700', textAlign: 'left', marginTop: 18, marginBottom: 8 },
   testRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
-  testBtn: { width: 54, height: 54, borderRadius: radius.md, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  testBtn: { width: 76, height: 66, borderRadius: radius.md, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
 });

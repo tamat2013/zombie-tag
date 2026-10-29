@@ -1,3 +1,4 @@
+import { Glyph } from './Icon';
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 import { Pressable, View } from '../i18n/Layout';
@@ -41,7 +42,7 @@ export function AbilityButton({ def, cooldown, remainingSec, active, suggested, 
       <View style={styles.wrap}>
         <Animated.View style={[styles.glow, { borderColor: colors.gold, opacity: glow, transform: [{ scale: glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) }] }]} />
         <View style={[styles.btn, { borderColor: active ? colors.gold : ring, opacity: disabled ? 0.4 : 1 }]}>
-          <Text style={styles.icon}>{def.icon}</Text>
+          <Glyph emoji={def.icon} size={28} />
           {!ready ? (
             <View style={[styles.shade, { height: `${Math.round(cooldown * 100)}%` }]}>
               <Text style={styles.cd}>{Math.ceil(remainingSec)}</Text>

@@ -1,4 +1,5 @@
 // Lobby: set up a match against bots, or create / join an online room and wait for players.
+import { useDevice } from '../utils/device';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Pressable, TextInput, View } from '../i18n/Layout';
@@ -20,6 +21,8 @@ import { MAX_ROOM_PLAYERS, knockedOut, roomCapacity, roomService } from '../serv
 import type { Room } from '../services/roomService';
 import { getTournamentById, roundName, tournamentStatus } from '../logic/tournaments';
 import { localSetup, makeBots, onlineSetup, roomMap, seededRng } from '../utils/matchSetup';
+import { Icon } from '../components/Icon';
+import type { IconName } from '../components/Icon';
 import { colors, outline, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
@@ -35,6 +38,7 @@ const DIFFICULTIES: { id: BotDifficulty; label: string }[] = [
 const MODE_TITLE = { classic: 'Lobby · Classic', tournament: 'Lobby · Tournament', obstacle: 'Obstacle Course', training: 'Training' } as const;
 
 export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
+  const { isDesktop } = useDevice();
   const { flow, map } = route.params;
   const profile = useProfile();
   const { toast } = useGame();
@@ -73,8 +77,9 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
     <Screen scroll>
       <ScreenHeader title={MODE_TITLE[flow.mode]} />
 
-      <Card style={styles.summary}>
-        <MapPreview map={map} width={130} />
+      <View style={isDesktop ? { flexDirection: 'row', gap: 24, alignItems: 'flex-start' } : undefined}>
+      <Card style={[styles.summary, isDesktop && { flexDirection: 'column', width: 320, alignItems: 'stretch' }]}>
+        <MapPreview map={map} width={isDesktop ? 290 : 130} />
         <View style={{ flex: 1 }}>
           <H size={17}>{map.name}</H>
           {tournament ? <P dim>{`${tournament.icon} ${tournament.name}`}</P> : null}
@@ -88,6 +93,7 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
         </View>
       </Card>
 
+      <View style={isDesktop ? { flex: 1 } : undefined}>
       {onlineCapable ? (
         <Tabs<Tab>
           tabs={[
@@ -103,74 +109,38 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
         <OnlineLobby flow={flow} map={map} initialCode={route.params.roomCode} navigation={navigation} />
       ) : flow.mode === 'obstacle' ? (
         <Card style={{ marginTop: 12 }}>
-          <H size={16}>🏃 Race the clock</H>
+          <H size={16}>Race the clock</H>
           <P dim style={{ marginTop: 4 }}>
-            Reach the finish line 🏁. Traps and saws send you back to the last checkpoint 🚩. Faster time = better medal.
+            Reach the finish line. Traps and saws send you back to the last checkpoint. Faster time = better medal.
           </P>
           {map.medalTimes ? (
             <P style={{ marginTop: 6 }}>
-              🥇 {map.medalTimes[0]}s · 🥈 {map.medalTimes[1]}s · 🥉 {map.medalTimes[2]}s
+              Gold {map.medalTimes[0]}s · Silver {map.medalTimes[1]}s · Bronze {map.medalTimes[2]}s
             </P>
           ) : null}
           <Button title="Start run" icon="🏁" onPress={startLocal} style={{ marginTop: 14 }} />
         </Card>
       ) : (
-        <Card style={{ marginTop: 12 }}>
-          {flow.mode === 'training' ? (
-            <>
-              <Label>Practice as</Label>
-              <View style={styles.chips}>
-                <Chip label="🧍 Survivor" active={trainingRole === 'survivor'} onPress={() => setTrainingRole('survivor')} color={colors.survivor} />
-                <Chip label="🧟 Zombie" active={trainingRole === 'zombie'} onPress={() => setTrainingRole('zombie')} />
-              </View>
-              <Label>Duration</Label>
-              <View style={styles.chips}>
-                {[2, 5, 10].map((m) => (
-                  <Chip key={m} label={`${m} min`} active={trainingMinutes === m} onPress={() => setTrainingMinutes(m)} color={colors.gold} />
-                ))}
-              </View>
-            </>
-          ) : null}
-          {flow.mode === 'tournament' ? (
-            <>
-              <H size={16}>🏆 Knockout tournament</H>
-              <P dim style={{ marginTop: 4 }}>
-                {KNOCKOUT_SIZE} players, half zombies and half survivors. You advance only if the team you started on wins (even if you got infected along the way).
-                Quarter-final → Semi-final → a 2-player Final. The champion wins the big prize!
-              </P>
-              <P dim style={{ marginTop: 4 }}>
-                ⏱️ {TOURNAMENT_ROUND_SEC / 60} min per round · 🏃 faster survivors · 🐢 slower zombies
-              </P>
-            </>
-          ) : (
-            <>
-              <Label>Bots: {botCount}</Label>
-              <Stepper value={botCount} min={1} max={MAX_ROOM_PLAYERS - 1} onChange={setBotCount} />
-            </>
-          )}
-          <Label>Difficulty</Label>
-          <View style={styles.chips}>
-            {DIFFICULTIES.filter((d) => flow.mode === 'training' || d.id !== 'dummy').map((d) => (
-              <Chip key={d.id} label={d.label} active={difficulty === d.id} onPress={() => setDifficulty(d.id)} color={d.id === 'hard' ? colors.blood : colors.toxic} />
-            ))}
-          </View>
-          {flow.mode === 'training' ? (
-            <P dim style={{ marginTop: 8 }}>
-              {difficulty === 'dummy' ? 'Dummies: bots stand still and never move. Good for target practice.' : 'In training, abilities recharge 2x faster.'}
-            </P>
-          ) : null}
-          {flow.mode === 'classic' || flow.mode === 'training' ? (
-            <RulesEditor
-              rules={rules}
-              onChange={(patch) => setRules((r) => ({ ...r, ...patch }))}
-              minutes={flow.mode === 'classic' ? classicMinutes : undefined}
-              onMinutes={setClassicMinutes}
-              training={flow.mode === 'training'}
-            />
-          ) : null}
-          <Button title="Start match" icon="▶️" onPress={startLocal} style={{ marginTop: 14 }} disabled={tournamentClosed} />
-        </Card>
+        <SetupBoard
+          mode={flow.mode}
+          botCount={botCount}
+          onBots={setBotCount}
+          difficulty={difficulty}
+          onDifficulty={setDifficulty}
+          trainingRole={trainingRole}
+          onTrainingRole={setTrainingRole}
+          trainingMinutes={trainingMinutes}
+          onTrainingMinutes={setTrainingMinutes}
+          rules={rules}
+          onRules={(patch) => setRules((r) => ({ ...r, ...patch }))}
+          classicMinutes={classicMinutes}
+          onClassicMinutes={setClassicMinutes}
+          onStart={startLocal}
+          startDisabled={tournamentClosed}
+        />
       )}
+      </View>
+      </View>
     </Screen>
   );
 }
@@ -316,7 +286,7 @@ function OnlineLobby({
         <Card>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Pressable onPress={loadOpen} hitSlop={8}>
-              <Text style={{ fontSize: 18 }}>🔄</Text>
+              <Icon name="refresh" size={20} color={colors.text} />
             </Pressable>
             <H size={16}>Open rooms</H>
           </View>
@@ -329,7 +299,7 @@ function OnlineLobby({
               </Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.openName}>{r.players?.[r.hostId]?.name ?? 'Room'} · {roomMap(r)?.name ?? r.mapId}</Text>
-                <Text style={styles.openCode}>{r.code}{r.mode === 'tournament' ? ' · 🏆' : ''}</Text>
+                <Text style={styles.openCode}>{r.code}{r.mode === 'tournament' ? ' · Tournament' : ''}</Text>
               </View>
             </Pressable>
           ))}
@@ -391,13 +361,13 @@ function OnlineLobby({
         </P>
         {knockout ? (
           <P style={{ marginTop: 4, color: colors.gold, fontWeight: '800' }}>
-            🏆 {roundName(inRun.length + bots)} · {TOURNAMENT_ROUND_SEC / 60} min · half zombies, half survivors
+            {roundName(inRun.length + bots)} · {TOURNAMENT_ROUND_SEC / 60} min · half zombies, half survivors
           </P>
         ) : null}
       </Card>
       {out ? (
         <Card highlight={colors.blood}>
-          <H size={16}>💀 You are out of the tournament</H>
+          <H size={16}>You are out of the tournament</H>
           <P dim>Your team lost the last round. You already got your prize. You can leave the room or wait for the tournament to end.</P>
         </Card>
       ) : null}
@@ -407,7 +377,7 @@ function OnlineLobby({
         {players.map(([id, p]) => (
           <View key={id} style={[styles.player, alive && !alive.includes(id) && { opacity: 0.4 }]}>
             <Text style={[styles.ready, { color: id === room.hostId ? colors.gold : p.ready ? colors.toxic : colors.textMuted }]}>
-              {alive && !alive.includes(id) ? '💀 Out' : id === room.hostId ? '👑 Host' : p.ready ? '✔ Ready' : '… Waiting'}
+              {alive && !alive.includes(id) ? 'Out' : id === room.hostId ? 'Host' : p.ready ? 'Ready' : '… Waiting'}
             </Text>
             <Text style={styles.playerName} numberOfLines={1}>
               {p.name}
@@ -418,7 +388,7 @@ function OnlineLobby({
         ))}
         {Array.from({ length: bots }, (_, i) => (
           <View key={`b${i}`} style={[styles.player, { opacity: 0.55 }]}>
-            <Text style={[styles.ready, { color: colors.textMuted }]}>🤖</Text>
+            <Icon name="robot-outline" size={18} color={colors.textMuted} />
             <Text style={styles.playerName}>Bot</Text>
             <View style={{ width: 34 }} />
           </View>
@@ -496,66 +466,130 @@ function rulesSummary(r: MatchRules, minutes: number): string {
     .join(' · ');
 }
 
-/** Chips for the lobby house rules: length, starting zombies, release, speed, doctors, cooldowns. */
-function RulesEditor({
-  rules,
-  onChange,
-  minutes,
-  onMinutes,
-  training,
-}: {
-  rules: MatchRules;
-  onChange: (patch: Partial<MatchRules>) => void;
-  minutes?: number;
-  onMinutes?: (m: number) => void;
-  training?: boolean;
-}) {
+type Opt = { key: string; label: string; active: boolean; onPress: () => void; color?: string };
+
+/** One setting as a tile: icon + title + current value on top, segmented options below. */
+function SettingTile({ icon, title, color, value, opts }: { icon: IconName; title: string; color: string; value?: string; opts: Opt[] }) {
   return (
-    <View style={styles.rules}>
-      <Text style={styles.rulesTitle}>Match rules</Text>
-      {minutes !== undefined && onMinutes ? (
-        <>
-          <Label>Match length</Label>
-          <View style={styles.chips}>
-            {CLASSIC_MINUTES.map((m) => (
-              <Chip key={m} label={`${m} min`} active={minutes === m} onPress={() => onMinutes(m)} color={colors.gold} />
-            ))}
+    <View style={styles.tile}>
+      <View style={styles.tileHead}>
+        <View style={[styles.tileIcon, { backgroundColor: color }]}>
+          <Icon name={icon} size={18} color={colors.ink} />
+        </View>
+        <Text style={styles.tileTitle}>{title}</Text>
+        {value ? <Text style={[styles.tileValue, { color }]}>{value}</Text> : null}
+      </View>
+      <View style={styles.seg}>
+        {opts.map((o) => (
+          <Pressable key={o.key} onPress={o.onPress} style={[styles.segBtn, o.active && { backgroundColor: o.color ?? color }]}>
+            <Text style={[styles.segText, o.active && { color: colors.ink }]}>{o.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Match briefing: the whole local setup as a board of setting tiles with one big start bar. */
+function SetupBoard(p: {
+  mode: 'classic' | 'tournament' | 'obstacle' | 'training';
+  botCount: number;
+  onBots: (n: number) => void;
+  difficulty: BotDifficulty;
+  onDifficulty: (d: BotDifficulty) => void;
+  trainingRole: Role;
+  onTrainingRole: (r: Role) => void;
+  trainingMinutes: number;
+  onTrainingMinutes: (m: number) => void;
+  rules: MatchRules;
+  onRules: (patch: Partial<MatchRules>) => void;
+  classicMinutes: number;
+  onClassicMinutes: (m: number) => void;
+  onStart: () => void;
+  startDisabled: boolean;
+}) {
+  const training = p.mode === 'training';
+  const tournament = p.mode === 'tournament';
+  const rulesOn = p.mode === 'classic' || training;
+  const num = (n: number, zero: string) => (n === 0 ? zero : String(n));
+  return (
+    <View style={{ marginTop: 12, gap: 12 }}>
+      {tournament ? (
+        <View style={styles.tile}>
+          <View style={styles.tileHead}>
+            <View style={[styles.tileIcon, { backgroundColor: colors.gold }]}>
+              <Icon name="trophy-outline" size={18} color={colors.ink} />
+            </View>
+            <Text style={styles.tileTitle}>Knockout tournament</Text>
           </View>
-        </>
+          <P dim>
+            {KNOCKOUT_SIZE} players, half zombies and half survivors. You advance only if the team you started on wins (even if you got infected along the way). Quarter-final → Semi-final → a 2-player Final. The champion wins the big prize!
+          </P>
+          <P dim>
+            {TOURNAMENT_ROUND_SEC / 60} min per round · faster survivors · slower zombies
+          </P>
+        </View>
       ) : null}
-      <Label>Starting zombies</Label>
-      <View style={styles.chips}>
-        {ZOMBIE_COUNTS.map((n) => (
-          <Chip key={n} label={n === 0 ? 'Auto' : String(n)} active={rules.zombies === n} onPress={() => onChange({ zombies: n })} />
-        ))}
-      </View>
-      <Label>Zombies released after</Label>
-      <View style={styles.chips}>
-        {RELEASE_DELAYS.map((n) => (
-          <Chip key={n} label={`${n}s`} active={rules.releaseDelaySec === n} onPress={() => onChange({ releaseDelaySec: n })} color={colors.blue} />
-        ))}
-      </View>
-      <Label>Zombie speed</Label>
-      <View style={styles.chips}>
-        {ZOMBIE_SPEEDS.map((s) => (
-          <Chip key={s.v} label={s.label} active={rules.zombieSpeed === s.v} onPress={() => onChange({ zombieSpeed: s.v })} color={s.v > 1 ? colors.blood : colors.toxic} />
-        ))}
-      </View>
-      <Label>Doctors</Label>
-      <View style={styles.chips}>
-        {DOCTOR_COUNTS.map((n) => (
-          <Chip key={n} label={n === 0 ? 'None' : String(n)} active={rules.doctors === n} onPress={() => onChange({ doctors: n })} color={colors.blue} />
-        ))}
-      </View>
-      {training ? null : (
-        <>
-          <Label>Abilities</Label>
-          <View style={styles.chips}>
-            <Chip label="Normal recharge" active={!rules.fastAbilities} onPress={() => onChange({ fastAbilities: false })} color={colors.purple} />
-            <Chip label="2x faster" active={rules.fastAbilities} onPress={() => onChange({ fastAbilities: true })} color={colors.purple} />
+      <View style={styles.tiles}>
+        {training ? (
+          <>
+            <SettingTile
+              icon="account-switch-outline"
+              title="Practice as"
+              color={colors.survivor}
+              opts={[
+                { key: 's', label: 'Survivor', active: p.trainingRole === 'survivor', onPress: () => p.onTrainingRole('survivor'), color: colors.survivor },
+                { key: 'z', label: 'Zombie', active: p.trainingRole === 'zombie', onPress: () => p.onTrainingRole('zombie'), color: colors.zombie },
+              ]}
+            />
+            <SettingTile icon="timer-outline" title="Duration" color={colors.gold} value={`${p.trainingMinutes} min`} opts={[2, 5, 10].map((m) => ({ key: String(m), label: `${m}`, active: p.trainingMinutes === m, onPress: () => p.onTrainingMinutes(m) }))} />
+          </>
+        ) : null}
+        {!tournament ? (
+          <View style={styles.tile}>
+            <View style={styles.tileHead}>
+              <View style={[styles.tileIcon, { backgroundColor: colors.blue }]}>
+                <Icon name="robot-outline" size={18} color={colors.ink} />
+              </View>
+              <Text style={styles.tileTitle}>Bots</Text>
+              <Text style={[styles.tileValue, { color: colors.blue }]}>{p.botCount}</Text>
+            </View>
+            <Stepper value={p.botCount} min={1} max={MAX_ROOM_PLAYERS - 1} onChange={p.onBots} />
           </View>
-        </>
-      )}
+        ) : null}
+        <SettingTile
+          icon="speedometer"
+          title="Difficulty"
+          color={colors.toxic}
+          opts={DIFFICULTIES.filter((d) => training || d.id !== 'dummy').map((d) => ({ key: d.id, label: d.label, active: p.difficulty === d.id, onPress: () => p.onDifficulty(d.id), color: d.id === 'hard' ? colors.blood : colors.toxic }))}
+        />
+        {p.mode === 'classic' ? (
+          <SettingTile icon="timer-outline" title="Match length" color={colors.gold} value={`${p.classicMinutes} min`} opts={CLASSIC_MINUTES.map((m) => ({ key: String(m), label: `${m}`, active: p.classicMinutes === m, onPress: () => p.onClassicMinutes(m) }))} />
+        ) : null}
+        {rulesOn ? (
+          <>
+            <SettingTile icon="virus-outline" title="Starting zombies" color={colors.zombie} value={num(p.rules.zombies, 'Auto')} opts={ZOMBIE_COUNTS.map((n) => ({ key: String(n), label: num(n, 'Auto'), active: p.rules.zombies === n, onPress: () => p.onRules({ zombies: n }) }))} />
+            <SettingTile icon="lock-open-outline" title="Zombies released after" color={colors.blue} value={`${p.rules.releaseDelaySec}s`} opts={RELEASE_DELAYS.map((n) => ({ key: String(n), label: `${n}s`, active: p.rules.releaseDelaySec === n, onPress: () => p.onRules({ releaseDelaySec: n }) }))} />
+            <SettingTile icon="run-fast" title="Zombie speed" color={colors.blood} opts={ZOMBIE_SPEEDS.map((z) => ({ key: String(z.v), label: z.label, active: p.rules.zombieSpeed === z.v, onPress: () => p.onRules({ zombieSpeed: z.v }), color: z.v > 1 ? colors.blood : colors.toxic }))} />
+            <SettingTile icon="medical-bag" title="Doctors" color={colors.blue} value={num(p.rules.doctors, 'None')} opts={DOCTOR_COUNTS.map((n) => ({ key: String(n), label: num(n, 'None'), active: p.rules.doctors === n, onPress: () => p.onRules({ doctors: n }) }))} />
+            {training ? null : (
+              <SettingTile
+                icon="flash-outline"
+                title="Ability recharge"
+                color={colors.purple}
+                opts={[
+                  { key: 'n', label: 'Normal', active: !p.rules.fastAbilities, onPress: () => p.onRules({ fastAbilities: false }) },
+                  { key: 'f', label: '2x faster', active: p.rules.fastAbilities, onPress: () => p.onRules({ fastAbilities: true }) },
+                ]}
+              />
+            )}
+          </>
+        ) : null}
+      </View>
+      {training ? (
+        <P dim>{p.difficulty === 'dummy' ? 'Dummies: bots stand still and never move. Good for target practice.' : 'In training, abilities recharge 2x faster.'}</P>
+      ) : null}
+      <Button title="Start match" icon="▶️" onPress={p.onStart} disabled={p.startDisabled} />
     </View>
   );
 }
@@ -585,6 +619,15 @@ function Stepper({ value, min, max, onChange }: { value: number; min: number; ma
 }
 
 const styles = StyleSheet.create({
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tile: { flexGrow: 1, flexBasis: '47%', minWidth: 240, backgroundColor: colors.panel, borderRadius: radius.lg, padding: 12, gap: 10, borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.08)' },
+  tileHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tileIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  tileTitle: { flex: 1, color: colors.text, fontWeight: '900', fontSize: 14, textAlign: 'left' },
+  tileValue: { fontWeight: '900', fontSize: 18 },
+  seg: { flexDirection: 'row', backgroundColor: colors.bgAlt, borderRadius: 12, padding: 3, gap: 3 },
+  segBtn: { flex: 1, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingHorizontal: 6 },
+  segText: { color: colors.textDim, fontWeight: '800', fontSize: 13 },
   summary: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 10 },
   label: { color: colors.textDim, fontWeight: '800', fontSize: 13, textAlign: 'left', marginTop: 12, marginBottom: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -603,5 +646,28 @@ const styles = StyleSheet.create({
   stepBtn: { width: 38, height: 38, borderRadius: radius.sm, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center', ...outline, borderBottomWidth: 4 },
   stepText: { color: colors.text, fontSize: 22, fontWeight: '900' },
   stepTrack: { flex: 1, flexDirection: 'row', gap: 4 },
-  stepDot: { flex: 1, height: 14, borderRadius: 3, backgroundColor: colors.bgAlt, borderWidth: 2, borderColor: colors.ink },
+  stepDot: { flex: 1, height: 14, borderRadius: 3, backgroundColor: colors.bgAlt, borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
 });
+
+/** Room host's house rules, as the same tiles the local setup board uses. */
+function RulesEditor({ rules, onChange, minutes, onMinutes }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void; minutes: number; onMinutes: (m: number) => void }) {
+  const num = (n: number, zero: string) => (n === 0 ? zero : String(n));
+  return (
+    <View style={[styles.tiles, { marginTop: 12 }]}>
+      <SettingTile icon="timer-outline" title="Match length" color={colors.gold} value={`${minutes} min`} opts={CLASSIC_MINUTES.map((m) => ({ key: String(m), label: `${m}`, active: minutes === m, onPress: () => onMinutes(m) }))} />
+      <SettingTile icon="virus-outline" title="Starting zombies" color={colors.zombie} value={num(rules.zombies, 'Auto')} opts={ZOMBIE_COUNTS.map((n) => ({ key: String(n), label: num(n, 'Auto'), active: rules.zombies === n, onPress: () => onChange({ zombies: n }) }))} />
+      <SettingTile icon="lock-open-outline" title="Zombies released after" color={colors.blue} value={`${rules.releaseDelaySec}s`} opts={RELEASE_DELAYS.map((n) => ({ key: String(n), label: `${n}s`, active: rules.releaseDelaySec === n, onPress: () => onChange({ releaseDelaySec: n }) }))} />
+      <SettingTile icon="run-fast" title="Zombie speed" color={colors.blood} opts={ZOMBIE_SPEEDS.map((z) => ({ key: String(z.v), label: z.label, active: rules.zombieSpeed === z.v, onPress: () => onChange({ zombieSpeed: z.v }), color: z.v > 1 ? colors.blood : colors.toxic }))} />
+      <SettingTile icon="medical-bag" title="Doctors" color={colors.blue} value={num(rules.doctors, 'None')} opts={DOCTOR_COUNTS.map((n) => ({ key: String(n), label: num(n, 'None'), active: rules.doctors === n, onPress: () => onChange({ doctors: n }) }))} />
+      <SettingTile
+        icon="flash-outline"
+        title="Ability recharge"
+        color={colors.purple}
+        opts={[
+          { key: 'n', label: 'Normal', active: !rules.fastAbilities, onPress: () => onChange({ fastAbilities: false }) },
+          { key: 'f', label: '2x faster', active: rules.fastAbilities, onPress: () => onChange({ fastAbilities: true }) },
+        ]}
+      />
+    </View>
+  );
+}

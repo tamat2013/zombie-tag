@@ -6,6 +6,15 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 import { playSfx } from '../services/sound';
+import { Icon } from './Icon';
+import type { IconName } from './Icon';
+
+// Emoji passed as `icon` are drawn as line icons so the UI chrome stays consistent.
+const GLYPHS: Record<string, IconName> = {
+  '▶️': 'play', '🏁': 'flag-checkered', '➕': 'plus', '🚪': 'logout', '🔁': 'repeat', '🏠': 'home-variant', '⏭️': 'skip-next',
+  '✋': 'hand-back-left', '✅': 'check-bold', '🔓': 'lock-open-variant', '✨': 'star-four-points', '👤': 'account', '🎨': 'palette',
+  '📝': 'pencil', '📊': 'podium', '🛒': 'cart', '🔄': 'refresh', '🗺️': 'map-outline', '💾': 'content-save', '↩️': 'undo', '🧹': 'broom', '🧱': 'wall', '📤': 'share-variant', '🗑️': 'trash-can-outline',
+};
 
 type Variant = 'primary' | 'danger' | 'gold' | 'ghost' | 'dark' | 'blue';
 
@@ -19,7 +28,7 @@ const FILL: Record<Variant, string> = {
   ghost: 'transparent',
 };
 
-const DEPTH = 4;
+const DEPTH = 6;
 
 interface Props {
   title: string;
@@ -41,9 +50,9 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
   const ghost = variant === 'ghost';
   const lightText = variant === 'dark' || ghost;
   const fg = lightText ? colors.text : colors.ink;
-  const depth = ghost ? 0 : small ? 3 : DEPTH;
+  const depth = ghost ? 0 : small ? 4 : DEPTH;
   const translateY = press.interpolate({ inputRange: [0, 1], outputRange: [0, depth] });
-  const r = small ? radius.sm : radius.md - 2;
+  const r = small ? radius.sm : radius.md + 4;
   return (
     <View style={[{ opacity: disabled ? 0.45 : 1 }, style]}>
       <Pressable
@@ -55,7 +64,7 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
           playSfx('click', 0.7);
           onPress?.();
         }}
-        style={{ borderRadius: r, backgroundColor: ghost ? 'transparent' : colors.ink, paddingBottom: depth }}
+        style={{ borderRadius: r, backgroundColor: ghost ? 'transparent' : 'rgba(0,0,0,0.38)', paddingBottom: depth }}
       >
         <Animated.View
           style={[
@@ -71,7 +80,9 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
             <View style={styles.row}>
               {lead}
               <Text style={[styles.text, small && styles.textSmall, { color: fg }]}>{title}</Text>
-              {icon ? <Text style={[styles.icon, small && styles.textSmall]}>{icon}</Text> : null}
+              {icon ? (
+                GLYPHS[icon] ? <Icon name={GLYPHS[icon]} size={small ? 16 : 20} color={fg} directional={icon === '▶️' || icon === '⏭️'} /> : <Text style={[styles.icon, small && styles.textSmall]}>{icon}</Text>
+              ) : null}
             </View>
           )}
           {subtitle && !loading ? <Text style={[styles.sub, { color: lightText ? colors.textDim : 'rgba(11,10,7,0.72)' }]}>{subtitle}</Text> : null}
@@ -83,18 +94,17 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
 
 const styles = StyleSheet.create({
   btn: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    minHeight: 56,
+    borderWidth: 0,
   },
-  small: { paddingVertical: 6, paddingHorizontal: 12, minHeight: 34 },
-  ghost: { borderColor: colors.border, borderStyle: 'dashed' },
+  small: { paddingVertical: 8, paddingHorizontal: 16, minHeight: 40 },
+  ghost: { borderWidth: 2, borderColor: colors.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  text: { fontSize: 17, fontWeight: '800' },
+  text: { fontSize: 18, fontWeight: '900' },
   textSmall: { fontSize: 13 },
   icon: { fontSize: 18 },
   sub: { fontSize: 11, marginTop: 2, fontWeight: '500' },

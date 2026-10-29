@@ -32,7 +32,7 @@ import { initSound, setMusic } from './src/services/sound';
 import { initLanguage } from './src/i18n/language';
 import { useFonts } from 'expo-font';
 import { Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black } from '@expo-google-fonts/rubik';
-import { RubikWetPaint_400Regular } from '@expo-google-fonts/rubik-wet-paint';
+import { LilitaOne_400Regular } from '@expo-google-fonts/lilita-one';
 
 // Layouts are written with explicit row-reverse / right alignment for Hebrew,
 // so keep the native layout direction LTR to avoid double-flipping.
@@ -108,7 +108,7 @@ function Root() {
 export default function App() {
   // Text falls back to the system font until these finish (or if they fail), so never block on them for long.
   const [fontsLoaded, fontError] = useFonts({
-    Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black, RubikWetPaint_400Regular,
+    Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black, LilitaOne_400Regular,
   });
   const [waited, setWaited] = useState(false);
   useEffect(() => {
