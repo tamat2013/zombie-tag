@@ -1,6 +1,7 @@
 // Shop: skins, outfits, abilities, upgrades, zombie filters and medal exchange.
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { ScreenProps, ShopTab } from '../navigation/types';
 import type { AbilityId, Role } from '../types';

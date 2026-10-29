@@ -1,6 +1,7 @@
 // Personal skin designer: body/accent colors, eyes, pattern, accessory and name, with a live preview.
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { Role, Skin, SkinEyes, SkinPattern } from '../types';

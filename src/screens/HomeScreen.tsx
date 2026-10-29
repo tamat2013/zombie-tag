@@ -1,6 +1,7 @@
 // Main menu: player card, featured classic mode, other game modes and a bottom navigation bar.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleSheet } from 'react-native';
+import { Pressable, View } from '../i18n/Layout';
 import { tr, useLanguage } from '../i18n/language';
 import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';

@@ -41,3 +41,11 @@ test('translateChildren joins mixed string and number children', () => {
   assert.deepEqual(translateChildren(['Hello ', 4], 'es'), ['Hello ', 4]);
   assert.equal(translateChildren('Shop', 'it'), 'Negozio');
 });
+
+test('right-to-left languages mirror rows, alignment and side spacing', async () => {
+  const { isRtl, mirrorStyle } = await import('../src/i18n/direction.ts');
+  assert.ok(isRtl('he') && isRtl('ar') && !isRtl('en') && !isRtl('ja'));
+  assert.deepEqual(mirrorStyle({ flexDirection: 'row', marginLeft: 4, textAlign: 'left' }), { flexDirection: 'row-reverse', marginRight: 4, textAlign: 'right' });
+  assert.deepEqual(mirrorStyle({ flexDirection: 'row-reverse', paddingRight: 2 }), { flexDirection: 'row', paddingLeft: 2 });
+  assert.deepEqual(mirrorStyle(undefined, true), { textAlign: 'right' });
+});

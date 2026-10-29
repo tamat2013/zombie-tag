@@ -1,6 +1,7 @@
 // Small shared building blocks: screen wrapper, header, currency bar, progress bar, cards, toasts.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

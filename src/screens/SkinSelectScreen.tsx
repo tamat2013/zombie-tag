@@ -1,6 +1,7 @@
 // Choose the skin (and outfit) to play with. Part of the play flow when `flow` is set.
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { Skin } from '../types';

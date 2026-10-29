@@ -1,6 +1,7 @@
 // Pick a map for the match: built-in, your own, community maps, or import one by share code.
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
+import { Pressable, TextInput, View } from '../i18n/Layout';
 import { tr } from '../i18n/language';
 import { Text } from '../i18n/Text';
 import { useFocusEffect } from '@react-navigation/native';

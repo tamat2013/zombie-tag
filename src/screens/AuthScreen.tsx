@@ -1,6 +1,7 @@
 // Sign up / log in with email and password.
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { TextInput, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import { Screen, Tabs } from '../components/ui';
 import { Button } from '../components/Button';

@@ -1,6 +1,7 @@
 // Grid of language chips: flag + native name. Used on the sign-up screen and in Settings.
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { View } from '../i18n/Layout';
 import { Chip } from './ui';
 import { LANGUAGES } from '../i18n/languages';
 import { setLanguage, useLanguage } from '../i18n/language';

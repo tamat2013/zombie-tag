@@ -1,7 +1,8 @@
 // The five survivor mini-games. Each calls onComplete() when solved.
 // `speed` is the task-speed multiplier from upgrades (1 = base).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleSheet } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Text } from '../i18n/Text';
 import type { TaskType } from '../types';
 import { colors } from '../theme';

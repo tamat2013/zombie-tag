@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
+import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { AbilityDef } from '../engine/abilities';
 import { colors } from '../theme';

@@ -1,6 +1,7 @@
 // Floating virtual joystick. Writes a normalized vector into `output` (no re-renders per move).
 import React, { useRef, useState } from 'react';
-import { PanResponder, StyleSheet, View } from 'react-native';
+import { PanResponder, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import type { MoveInput } from '../engine/GameEngine';
 
 const BASE = 120;

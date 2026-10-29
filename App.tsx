@@ -1,6 +1,7 @@
 // App root: providers, intro animation, auth gate and the navigation stack.
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, I18nManager, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, I18nManager, Platform, StyleSheet } from 'react-native';
+import { View } from './src/i18n/Layout';
 import { Text } from './src/i18n/Text';
 import { StatusBar } from 'expo-status-bar';
 import { DarkTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';

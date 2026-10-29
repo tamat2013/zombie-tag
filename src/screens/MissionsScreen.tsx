@@ -1,6 +1,7 @@
 // Daily and weekly missions with progress, rewards and reset countdowns.
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import { Screen, ScreenHeader, Card, H, P, ProgressBar } from '../components/ui';
 import { Button } from '../components/Button';

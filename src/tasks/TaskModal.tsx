@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { TaskType } from '../types';
 import { TASK_COMPONENTS, TASK_INFO } from './TaskGames';

@@ -1,6 +1,7 @@
 // Audio settings: music and effects volume, footsteps, vibration and a mute-all switch.
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import { Screen, ScreenHeader, Card, P } from '../components/ui';
 import { LanguagePicker } from '../components/LanguagePicker';
