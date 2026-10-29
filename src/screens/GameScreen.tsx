@@ -456,11 +456,16 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       if (key === 'q') throwStoneRef.current();
     };
     const up = (e: { key: string; preventDefault(): void }) => keys.current.delete(e.key.toLowerCase());
+    // Switching windows while a key is down never sends its keyup; a stuck key would also lock out the joystick.
+    const release = () => keys.current.clear();
+    const win = globalThis as unknown as { addEventListener?: (t: string, f: () => void) => void; removeEventListener?: (t: string, f: () => void) => void };
     doc.addEventListener('keydown', down);
     doc.addEventListener('keyup', up);
+    win.addEventListener?.('blur', release);
     return () => {
       doc.removeEventListener('keydown', down);
       doc.removeEventListener('keyup', up);
+      win.removeEventListener?.('blur', release);
     };
   }, [engine]);
 

@@ -149,7 +149,11 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
               <Chip key={d.id} label={d.label} active={difficulty === d.id} onPress={() => setDifficulty(d.id)} color={d.id === 'hard' ? colors.blood : colors.toxic} />
             ))}
           </View>
-          {flow.mode === 'training' ? <P dim style={{ marginTop: 8 }}>באימון היכולות נטענות פי 2 מהר יותר.</P> : null}
+          {flow.mode === 'training' ? (
+            <P dim style={{ marginTop: 8 }}>
+              {difficulty === 'dummy' ? 'בובות: הבוטים עומדים במקום ולא זזים, מתאים לתרגול מטרות.' : 'באימון היכולות נטענות פי 2 מהר יותר.'}
+            </P>
+          ) : null}
           {flow.mode === 'classic' ? (
             <P dim style={{ marginTop: 8 }}>
               שורדים: בצעו משימות ושרדו 10 דקות. זומבים: הדביקו את כולם. הזומבים משתחררים אחרי 5 שניות.
