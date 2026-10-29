@@ -218,7 +218,7 @@ const ink = { borderWidth: 2, borderColor: colors.ink };
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  logo: { color: colors.toxic, fontSize: 30, fontFamily: fonts.logo, textShadowColor: colors.ink, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0 },
+  logo: { color: colors.toxic, fontSize: 32, fontFamily: fonts.logo, textShadowColor: colors.ink, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0 },
   iconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.panel, ...ink, borderBottomWidth: 4, alignItems: 'center', justifyContent: 'center' },
   pressed: { transform: [{ translateY: 2 }], opacity: 0.85 },
   offline: { color: colors.textMuted, textAlign: 'left', fontSize: 12, marginTop: 4 },
@@ -235,8 +235,8 @@ const styles = StyleSheet.create({
   heroBody: { minHeight: 210, padding: 18, paddingBottom: 20, alignItems: 'flex-start', gap: 8 },
   heroTitle: { color: colors.text, fontSize: 46, fontWeight: '900', lineHeight: 50, letterSpacing: -1, marginTop: 4 },
   heroSub: { color: colors.textDim, fontSize: 14, textAlign: 'left', maxWidth: 196, lineHeight: 20 },
-  heroBtnShadow: { marginTop: 8, borderRadius: 12, backgroundColor: colors.ink, paddingBottom: 4, zIndex: 2 },
-  heroBtn: { height: 50, paddingHorizontal: 24, borderRadius: 12, backgroundColor: colors.gold, ...ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  heroBtnShadow: { marginTop: 8, borderRadius: 18, backgroundColor: colors.ink, paddingBottom: 4, zIndex: 2 },
+  heroBtn: { height: 56, paddingHorizontal: 30, borderRadius: 18, backgroundColor: colors.toxic, ...ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   heroBtnText: { color: colors.ink, fontSize: 17, fontWeight: '800' },
   heroArt: { position: 'absolute', right: 12, bottom: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 70, paddingHorizontal: 14, borderRadius: radius.md, ...ink, borderBottomWidth: 5, backgroundColor: colors.panel },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.ink },
   liveText: { color: colors.ink, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
   quick: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  quickBtn: { flex: 1, height: 48, borderRadius: 12, borderWidth: 2, borderStyle: 'dashed', borderColor: '#4a463b', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  quickBtn: { flex: 1, height: 48, borderRadius: 12, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   quickText: { color: colors.textDim, fontSize: 14, fontWeight: '500' },
   nav: { flexDirection: 'row', marginTop: 20, backgroundColor: colors.bgAlt, borderRadius: radius.lg, ...ink, padding: 4 },
   navItem: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: 12 },
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
 });
 
 const za = StyleSheet.create({
-  arm: { position: 'absolute', width: 54, height: 20, borderRadius: 10, backgroundColor: '#7fc23a', borderWidth: 2.5, borderColor: colors.ink },
+  arm: { position: 'absolute', width: 54, height: 20, borderRadius: 10, backgroundColor: colors.toxicDark, borderWidth: 2.5, borderColor: colors.ink },
   head: { position: 'absolute', right: 0, top: 10, width: 100, height: 116, borderTopLeftRadius: 50, borderTopRightRadius: 50, borderBottomLeftRadius: 42, borderBottomRightRadius: 42, backgroundColor: colors.toxic, borderWidth: 3, borderColor: colors.ink },
   brow: { position: 'absolute', right: 34, top: 28, width: 30, height: 3, backgroundColor: colors.ink, transform: [{ rotate: '-14deg' }] },
   eye: { position: 'absolute', borderRadius: 20, backgroundColor: colors.text, borderWidth: 2.5, borderColor: colors.ink, alignItems: 'center', justifyContent: 'center' },

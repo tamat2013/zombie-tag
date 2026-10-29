@@ -1,29 +1,28 @@
-// Shared colors and spacing for the UI ("Quarantine Zone" look: flat fills,
-// thick ink outlines and hard shadows instead of gradients and glow).
+// Shared colors and spacing for the UI ("Arcade Pop" look: night-purple ground, neon lime and pink, chunky rounded buttons).
 export const colors = {
-  bg: '#191813',
-  bgAlt: '#12110d',
-  panel: '#24221c',
-  panelLight: '#302d25',
-  border: '#3e3a30',
-  ink: '#0b0a07',
-  text: '#f4eedf',
-  textDim: '#bdb4a0',
-  textMuted: '#968d79',
-  toxic: '#94d84a',
-  toxicDark: '#5f9a24',
-  blood: '#ee4a3b',
-  bloodDark: '#9e2a20',
-  gold: '#ffc629',
+  bg: '#1a0f3d',
+  bgAlt: '#120a2b',
+  panel: '#2a1a5e',
+  panelLight: '#3a2480',
+  border: '#4b3399',
+  ink: '#0d0a1f',
+  text: '#ffffff',
+  textDim: '#cbb8ff',
+  textMuted: '#9d8bd6',
+  toxic: '#c6ff3d',
+  toxicDark: '#7bd11a',
+  blood: '#ff4fa3',
+  bloodDark: '#b02a73',
+  gold: '#ffd23f',
   silver: '#cfc9bb',
   bronze: '#d08c60',
-  blue: '#49a8ff',
+  blue: '#3fa9ff',
   purple: '#b07cff',
-  survivor: '#49a8ff',
-  zombie: '#94d84a',
-  coin: '#ffc629',
-  medal: '#ff8f2b',
-  overlay: 'rgba(11,10,7,0.78)',
+  survivor: '#3fa9ff',
+  zombie: '#7bd11a',
+  coin: '#ffd23f',
+  medal: '#ff8a2b',
+  overlay: 'rgba(13,10,31,0.8)',
 };
 
 export const tileColors: Record<number, string> = {
@@ -40,7 +39,7 @@ export const tileColors: Record<number, string> = {
   10: '#24261d', // saw rail (floor underneath)
 };
 
-export const radius = { sm: 10, md: 14, lg: 18 };
+export const radius = { sm: 14, md: 20, lg: 26 };
 
 // Hard offset "sticker" shadow. Works on iOS and web; Android uses elevation.
 export const shadow = {
