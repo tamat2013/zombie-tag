@@ -104,7 +104,7 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
         ) : null}
         {tab === 'filters' ? (
           <View style={{ gap: 10 }}>
-            <P dim>המסנן צובע את המסך כשאתה זומבי.</P>
+            <P dim>המסנן צובע את המסך כשאתה זומבי, וכל מסנן נותן לזומבי בונוס במשחק.</P>
             {ZOMBIE_FILTERS.map((f) => {
               const owned = profile.ownedFilters.includes(f.id);
               const equipped = profile.equippedFilter === f.id;
@@ -117,6 +117,7 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
                   <View style={{ flex: 1 }}>
                     <H size={15}>{f.name}</H>
                     <P dim>{f.description}</P>
+                    {f.price > 0 ? <Text style={styles.perk}>🎯 {f.perk}</Text> : null}
                   </View>
                   {owned ? (
                     <Button small title={equipped ? 'פעיל' : 'הפעל'} variant={equipped ? 'dark' : 'primary'} disabled={equipped} onPress={() => updateProfile((p) => ({ ...p, equippedFilter: f.id }))} />
@@ -249,5 +250,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   filterSwatch: { width: 48, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   bonus: { color: colors.toxic, fontWeight: '800', fontSize: 12 },
+  perk: { color: colors.toxic, fontWeight: '800', fontSize: 12, marginTop: 2 },
   best: { position: 'absolute', top: -1, left: -1, right: -1, backgroundColor: colors.gold, color: '#1a1200', fontWeight: '900', fontSize: 11, textAlign: 'center', borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md, paddingVertical: 2 },
 });

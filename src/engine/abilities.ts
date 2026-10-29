@@ -1,5 +1,5 @@
 import type { AbilityId, Role, Skin, UpgradeId } from '../types.ts';
-import { UPGRADES } from '../data/catalog.ts';
+import { UPGRADES, filterBonus } from '../data/catalog.ts';
 import type { BuffKind, EffectKey, EnginePlayer, Modifiers } from './entities.ts';
 import { isActive } from './entities.ts';
 
@@ -19,7 +19,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   scan: { id: 'scan', role: 'survivor', name: 'חיפוש', icon: '📡', description: 'חושף את כל הזומבים במפה ל-5 שניות', cooldownSec: 20, durationSec: 5 },
   medic: { id: 'medic', role: 'survivor', name: 'רופא', icon: '💊', description: 'מגן עליך ועל שורדים קרובים ל-4 שניות', cooldownSec: 25, durationSec: 4, radius: 170 },
   invisibility: { id: 'invisibility', role: 'survivor', name: 'היעלמות', icon: '🫥', description: 'זומבים לא רואים אותך ל-4 שניות (חוץ ממגע קרוב)', cooldownSec: 30, durationSec: 4 },
-  dash: { id: 'dash', role: 'zombie', name: 'זינוק', icon: '⚡', description: 'האצה פי 2.1 ל-1.2 שניות', cooldownSec: 10, durationSec: 1.2 },
+  dash: { id: 'dash', role: 'zombie', name: 'זינוק', icon: '⚡', description: 'האצה פי 1.7 לשנייה אחת', cooldownSec: 12, durationSec: 1 },
   zombieVision: { id: 'zombieVision', role: 'zombie', name: 'ראיית זומבי', icon: '👁️', description: 'רואה את כל השורדים דרך קירות ל-5 שניות', cooldownSec: 22, durationSec: 5 },
   roar: { id: 'roar', role: 'zombie', name: 'שאגה', icon: '📢', description: 'מאט שורדים קרובים ב-50% ל-2.5 שניות', cooldownSec: 28, durationSec: 2.5, radius: 180 },
   smoke: { id: 'smoke', role: 'survivor', name: 'רימון עשן', icon: '🌫️', description: 'מסנוור זומבים קרובים: כמעט לא רואים ל-4 שניות', cooldownSec: 28, durationSec: 4, radius: 200 },
@@ -44,7 +44,7 @@ const EFFECT_FOR: Partial<Record<AbilityId, EffectKey>> = {
   frenzy: 'frenzy',
 };
 
-export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, number>> = {}): Modifiers {
+export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, number>> = {}, filter?: string | null): Modifiers {
   const lvl = (id: UpgradeId) => Math.max(0, upgrades[id] ?? 0);
   const per = (id: UpgradeId) => UPGRADES.find((u) => u.id === id)!.perLevel;
   const m: Modifiers = {
@@ -55,15 +55,26 @@ export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, n
     reach: 1 + lvl('reach') * per('reach'),
     medicCooldown: 1,
     dashCooldown: 1,
-    detectability: 1,
+    detectability: 1 - lvl('stealth') * per('stealth'),
     tankShield: false,
     zombieSpeed: 1,
+    zombieVision: 1,
+    hearing: 1,
+    wallSight: 0,
   };
+  // Filter perks only touch zombie-side stats, so they never help a survivor.
+  const f = filterBonus(filter);
+  m.zombieVision *= f.zombieVision ?? 1;
+  m.zombieSpeed *= f.zombieSpeed ?? 1;
+  m.hearing *= f.hearing ?? 1;
+  m.reach *= f.reach ?? 1;
+  m.dashCooldown *= f.dashCooldown ?? 1;
+  m.wallSight = f.wallSight ?? 0;
   switch (skin.power) {
     case 'swift': m.speed *= 1.08; break;
     case 'healer': m.medicCooldown = 0.7; break;
     case 'tank': m.tankShield = true; break;
-    case 'ghost': m.detectability = 0.7; break;
+    case 'ghost': m.detectability *= 0.7; break;
     case 'alpha': m.dashCooldown = 0.7; break;
     case 'hunter': m.reach *= 1.15; break;
     case 'scout': m.vision *= 1.15; break;

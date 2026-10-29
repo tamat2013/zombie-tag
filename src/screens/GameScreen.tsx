@@ -651,7 +651,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       {heard.length || noises.length ? (
         <View style={[styles.world, { width: worldW, height: worldH, transform: worldTransform }]} pointerEvents="none">
           {heard.map((p) => {
-            const strength = 1 - Math.hypot(p.x - local.x, p.y - local.y) / (SOUND_WAVE_RADIUS * p.mods.detectability);
+            const strength = 1 - Math.hypot(p.x - local.x, p.y - local.y) / (SOUND_WAVE_RADIUS * p.mods.detectability * local.mods.hearing);
             return <Waves key={p.id} x={p.x} y={p.y} now={now} color="#3fa9ff" radius={70} strength={0.4 + strength * 0.6} />;
           })}
           {noises.map((n) => (

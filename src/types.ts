@@ -20,7 +20,7 @@ export type AbilityId =
   | 'frenzy'
   | 'leap';
 
-export type UpgradeId = 'speed' | 'cooldown' | 'vision' | 'taskSpeed' | 'reach';
+export type UpgradeId = 'speed' | 'cooldown' | 'vision' | 'taskSpeed' | 'reach' | 'stealth';
 
 export type SkinPowerId = 'swift' | 'healer' | 'tank' | 'ghost' | 'alpha' | 'hunter' | 'scout' | 'engineer' | 'master' | 'brute';
 

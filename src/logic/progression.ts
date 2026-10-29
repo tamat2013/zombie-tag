@@ -48,7 +48,7 @@ export function createDefaultProfile(uid: string, displayName: string, email: st
     equippedOutfit: null,
     ownedAbilities: [...FREE_ABILITIES],
     loadout: { survivor: [...DEFAULT_LOADOUT.survivor], zombie: [...DEFAULT_LOADOUT.zombie] },
-    upgrades: { speed: 0, cooldown: 0, vision: 0, taskSpeed: 0, reach: 0 },
+    upgrades: { speed: 0, cooldown: 0, vision: 0, taskSpeed: 0, reach: 0, stealth: 0 },
     ownedFilters: ['classic'],
     equippedFilter: 'classic',
     stats: emptyStats(),

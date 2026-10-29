@@ -434,6 +434,36 @@ test('new skin powers', () => {
   assert.ok(byPower('brute').zombieSpeed > 1);
 });
 
+test('zombie filters give zombie-only perks', () => {
+  assert.equal(buildModifiers(skin, {}, 'classic').zombieVision, 1);
+  assert.ok(buildModifiers(skin, {}, 'nightvision').zombieVision > 1);
+  assert.ok(buildModifiers(skin, {}, 'bloodmoon').zombieSpeed > 1);
+  assert.ok(buildModifiers(skin, {}, 'toxic').reach > 1);
+  assert.ok(buildModifiers(skin, {}, 'frost').dashCooldown < 1);
+  assert.ok(buildModifiers(skin, {}, 'xray').wallSight > 0);
+  // Stealth upgrade and the ghost skin both make survivors harder to notice, and stack.
+  assert.ok(buildModifiers(skin, { stealth: 2 }).detectability < 1);
+  assert.ok(buildModifiers({ ...skin, power: 'ghost' }, { stealth: 2 }).detectability < 0.7);
+
+  const m = BUILT_IN_MAPS[0];
+  const make = (filter: string) => {
+    const r = roster(2, [0]);
+    r[0].filter = filter;
+    return new GameEngine({ map: m, mode: 'classic', roster: r, localId: 'p0', isAuthority: true, startTime: 0, difficulty: 'dummy' });
+  };
+  const plain = make('classic');
+  const thermal = make('thermal');
+  assert.ok(make('nightvision').visionRadius(make('nightvision').local!) > plain.visionRadius(plain.local!));
+  for (const e of [plain, thermal]) {
+    const z = e.local!;
+    const s = e.getPlayer('bot1')!;
+    s.x = z.x + 360;
+    s.y = z.y;
+  }
+  assert.equal(plain.heardSurvivors(plain.local!).length, 0, 'normal hearing is shorter than 360px');
+  assert.equal(thermal.heardSurvivors(thermal.local!).length, 1, 'thermal hears farther');
+});
+
 test('finished tasks cut time off the clock, up to a cap', () => {
   const m = BUILT_IN_MAPS[0];
   const e = new GameEngine({ map: m, mode: 'classic', roster: roster(3, [2]), localId: 'p0', isAuthority: true, startTime: 0, durationSec: 100, difficulty: 'dummy' });

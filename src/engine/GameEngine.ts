@@ -163,7 +163,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
       // Spread players sharing a spawn tile so they don't stack.
       const jitter = (n: number) => ((n % 3) - 1) * 10;
       const idx = cfg.roster.indexOf(r);
-      const mods = buildModifiers(r.skin, r.upgrades);
+      const mods = buildModifiers(r.skin, r.upgrades, r.filter);
       const control = r.id === cfg.localId ? 'local' : r.isBot && cfg.isAuthority ? 'ai' : 'remote';
       this.players.push({
         id: r.id,
@@ -263,7 +263,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
   }
 
   visionRadius(p: EnginePlayer): number {
-    const r = (p.role === 'survivor' ? SURVIVOR_VISION : ZOMBIE_VISION) * p.mods.vision;
+    const r = (p.role === 'survivor' ? SURVIVOR_VISION : ZOMBIE_VISION * p.mods.zombieVision) * p.mods.vision;
     return isActive(p, 'blinded', this.now) ? r * 0.3 : r;
   }
 
@@ -279,6 +279,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
     // Zombie looking at a survivor.
     if (isActive(target, 'invisible', now)) return d < PLAYER_RADIUS * 3;
     if (isActive(viewer, 'vision', now) && !isActive(viewer, 'blinded', now)) return true;
+    if (d <= viewer.mods.wallSight && !isActive(viewer, 'blinded', now)) return true;
     const radius = this.visionRadius(viewer) * target.mods.detectability;
     return d <= radius && hasLineOfSight(this.map, viewer, target);
   }
@@ -288,7 +289,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
     if (this.mode === 'tournament') s *= p.role === 'survivor' ? TOURNAMENT_SURVIVOR_SPEED_MUL : TOURNAMENT_ZOMBIE_SPEED_MUL;
     if (isActive(p, 'sprint', this.now)) s *= 1.6;
     if (isActive(p, 'frenzy', this.now)) s *= 1.35;
-    if (isActive(p, 'dash', this.now)) s *= 2.1;
+    if (isActive(p, 'dash', this.now)) s *= 1.7;
     if (isActive(p, 'slowed', this.now)) s *= 0.5;
     if (tileAt(this.map, toTile(p.x), toTile(p.y)) === T.MUD) s *= MUD_SLOW;
     return s;
@@ -436,7 +437,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
       (o) =>
         o.role === 'survivor' &&
         !isActive(o, 'invisible', this.now) &&
-        Math.hypot(o.x - z.x, o.y - z.y) <= SOUND_WAVE_RADIUS * o.mods.detectability,
+        Math.hypot(o.x - z.x, o.y - z.y) <= SOUND_WAVE_RADIUS * o.mods.detectability * z.mods.hearing,
     );
   }
 

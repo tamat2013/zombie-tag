@@ -2,6 +2,9 @@ import type { AbilityId, BotDifficulty, GameMap } from '../types.ts';
 import { AbilityManager } from './abilities.ts';
 import type { AbilityWorld } from './abilities.ts';
 import { NOISE_HEAR_RADIUS, TASK_USE_RANGE, TILE } from './constants.ts';
+
+/** Survivor bots notice a zombie this close even without line of sight. */
+const SURVIVOR_HEAR_RADIUS = 140;
 import type { BotBrain, EnginePlayer, Noise } from './entities.ts';
 import { hasLineOfSight, isSolid, tileAt, tileCenter, toTile, walkableTiles } from './map.ts';
 import type { TaskStation, Vec } from './map.ts';
@@ -20,7 +23,7 @@ export interface BotLevel {
 
 export const BOT_LEVELS: Record<BotDifficulty, BotLevel> = {
   dummy: { speed: 0, vision: 0, think: 1, abilityChance: 0, panicDistance: 0 },
-  easy: { speed: 0.78, vision: 0.7, think: 0.8, abilityChance: 0.25, panicDistance: 110 },
+  easy: { speed: 0.78, vision: 0.7, think: 0.8, abilityChance: 0.25, panicDistance: 160 },
   normal: { speed: 0.9, vision: 0.9, think: 0.45, abilityChance: 0.6, panicDistance: 220 },
   hard: { speed: 0.98, vision: 1, think: 0.25, abilityChance: 0.95, panicDistance: 300 },
 };
@@ -94,33 +97,57 @@ function randomFloor(world: BotWorld): Vec {
   return tileCenter(t.x, t.y);
 }
 
-function pickFleeGoal(world: BotWorld, p: EnginePlayer, threats: EnginePlayer[]): Vec {
-  let best: Vec | null = null;
-  let bestScore = -Infinity;
+function nearestDist(threats: EnginePlayer[], v: Vec): number {
+  return Math.min(...threats.map((t) => Math.hypot(t.x - v.x, t.y - v.y)));
+}
+
+/** Scores an escape route: far from zombies at the end, and never closing in on one along the way. */
+function scoreFlee(threats: EnginePlayer[], p: EnginePlayer, goal: Vec, path: Vec[]): number {
+  const here = nearestDist(threats, p);
+  let danger = 0;
+  for (let i = 0; i < Math.min(6, path.length); i++) {
+    // Waypoint i is reached after about i tiles; the zombie closes in by a little less in that time.
+    const margin = nearestDist(threats, path[i]) - (here - i * TILE * 0.2);
+    if (margin < 0) danger -= margin;
+  }
+  return nearestDist(threats, goal) - danger * 4 - path.length * TILE * 0.05;
+}
+
+function pickFlee(world: BotWorld, p: EnginePlayer, brain: BotBrain, threats: EnginePlayer[]) {
   const tx0 = toTile(p.x);
   const ty0 = toTile(p.y);
-  for (let i = 0; i < 18; i++) {
-    const r = 3 + world.rng() * 6;
+  let best: { goal: Vec; path: Vec[] } | null = null;
+  let bestScore = -Infinity;
+  const consider = (goal: Vec, bonus: number) => {
+    const path = findPath(world.map, { tx: tx0, ty: ty0 }, { tx: toTile(goal.x), ty: toTile(goal.y) });
+    if (!path || !path.length) return;
+    const score = scoreFlee(threats, p, goal, path) + bonus;
+    if (score > bestScore) {
+      bestScore = score;
+      best = { goal, path };
+    }
+  };
+  // Sticking with a still-good goal stops the bot zigzagging between random picks.
+  if (brain.mode === 'flee' && brain.goal && Math.hypot(brain.goal.x - p.x, brain.goal.y - p.y) > TILE * 1.5) consider(brain.goal, 80);
+  for (let i = 0; i < 16; i++) {
+    const r = 4 + world.rng() * 8;
     const a = world.rng() * Math.PI * 2;
     const tx = Math.round(tx0 + Math.cos(a) * r);
     const ty = Math.round(ty0 + Math.sin(a) * r);
     if (isSolid(tileAt(world.map, tx, ty))) continue;
-    const c = tileCenter(tx, ty);
-    const minThreat = Math.min(...threats.map((t) => Math.hypot(t.x - c.x, t.y - c.y)));
-    // Prefer spots far from zombies and not "through" them.
-    const towardThreat = threats.some((t) => Math.hypot(t.x - c.x, t.y - c.y) < Math.hypot(t.x - p.x, t.y - p.y));
-    const score = minThreat - (towardThreat ? 400 : 0) - Math.hypot(c.x - p.x, c.y - p.y) * 0.2;
-    if (score > bestScore) {
-      bestScore = score;
-      best = c;
-    }
+    consider(tileCenter(tx, ty), 0);
   }
-  if (best) return best;
+  if (best) {
+    const b = best as { goal: Vec; path: Vec[] };
+    brain.goal = b.goal;
+    brain.path = b.path;
+    brain.path[brain.path.length - 1] = { ...b.goal };
+    return;
+  }
   const t = threats[0];
-  const dx = p.x - t.x;
-  const dy = p.y - t.y;
-  const d = Math.hypot(dx, dy) || 1;
-  return { x: p.x + (dx / d) * TILE * 4, y: p.y + (dy / d) * TILE * 4 };
+  const d = Math.hypot(p.x - t.x, p.y - t.y) || 1;
+  brain.path = [];
+  brain.goal = { x: p.x + ((p.x - t.x) / d) * TILE * 4, y: p.y + ((p.y - t.y) / d) * TILE * 4 };
 }
 
 function maybeUseAbility(world: BotWorld, p: EnginePlayer, level: BotLevel, now: number) {
@@ -145,7 +172,12 @@ function nearestPatient(world: BotWorld, p: EnginePlayer, level: BotLevel, now: 
 
 function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level: BotLevel, now: number): BotIntent {
   const threats = world.players.filter(
-    (o) => o.role === 'zombie' && !world.isFrozen(o, now) && world.canSee(p, o, now) && Math.hypot(o.x - p.x, o.y - p.y) < 300 * level.vision,
+    (o) => {
+      if (o.role !== 'zombie' || world.isFrozen(o, now)) return false;
+      const d = Math.hypot(o.x - p.x, o.y - p.y);
+      // Footsteps right behind a wall give a zombie away too.
+      return d < 300 * level.vision && (world.canSee(p, o, now) || d < SURVIVOR_HEAR_RADIUS * level.vision);
+    },
   );
   const nearestThreat = Math.min(Infinity, ...threats.map((t) => Math.hypot(t.x - p.x, t.y - p.y)));
 
@@ -172,8 +204,8 @@ function thinkSurvivor(world: BotWorld, p: EnginePlayer, brain: BotBrain, level:
 
   if (threats.length) {
     if (brain.mode !== 'flee' || now >= brain.repathAt || !brain.path.length) {
+      pickFlee(world, p, brain, threats);
       brain.mode = 'flee';
-      pathTo(world, p, brain, pickFleeGoal(world, p, threats));
       brain.repathAt = now + 700 * level.think + 250;
     }
     maybeUseAbility(world, p, level, now);

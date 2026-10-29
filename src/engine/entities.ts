@@ -23,6 +23,12 @@ export interface Modifiers {
   tankShield: boolean;
   /** Extra speed only while playing as a zombie. */
   zombieSpeed: number;
+  /** Extra sight range only while playing as a zombie. */
+  zombieVision: number;
+  /** Multiplier on how far a zombie hears survivors' footsteps. */
+  hearing: number;
+  /** A zombie sees survivors this close even through walls (px). */
+  wallSight: number;
 }
 
 export interface Noise {
@@ -104,6 +110,8 @@ export interface RosterEntry {
   outfit?: string | null;
   loadout?: { survivor: AbilityId[]; zombie: AbilityId[] };
   upgrades?: Partial<Record<UpgradeId, number>>;
+  /** Equipped zombie screen filter; each one carries a small zombie perk. */
+  filter?: string | null;
 }
 
 export function emptyEffects(): Record<EffectKey, number> {

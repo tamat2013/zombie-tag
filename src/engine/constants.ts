@@ -1,7 +1,7 @@
 export const TILE = 48;
 export const PLAYER_RADIUS = 16;
 export const SURVIVOR_SPEED = 170; // px / s
-export const ZOMBIE_SPEED = 132;
+export const ZOMBIE_SPEED = 126;
 export const SURVIVOR_VISION = 230;
 export const ZOMBIE_VISION = 200;
 export const INFECT_REACH = 4;

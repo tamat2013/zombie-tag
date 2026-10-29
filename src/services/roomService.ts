@@ -11,6 +11,8 @@ export interface RoomPlayer {
   outfit: string | null;
   loadout: { survivor: AbilityId[]; zombie: AbilityId[] };
   upgrades: Record<UpgradeId, number>;
+  /** Equipped zombie filter, so every client applies the same perk. */
+  filter?: string | null;
   ready: boolean;
   joinedAt: number;
 }
@@ -68,6 +70,7 @@ function roomPlayerFrom(p: Profile): RoomPlayer {
     outfit: p.equippedOutfit,
     loadout: p.loadout,
     upgrades: p.upgrades,
+    filter: p.equippedFilter ?? null,
     ready: false,
     joinedAt: Date.now(),
   };

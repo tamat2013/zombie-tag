@@ -45,6 +45,7 @@ function profileEntry(p: Profile, role: Role): RosterEntry {
     outfit: outfitEmoji(p.equippedOutfit),
     loadout: p.loadout,
     upgrades: p.upgrades,
+    filter: p.equippedFilter,
   };
 }
 
@@ -145,6 +146,7 @@ export function onlineSetup(room: Room, uid: string): MatchSetup | null {
         // Realtime Database drops empty arrays, so fall back to the default loadout.
         loadout: p.loadout?.survivor && p.loadout?.zombie ? p.loadout : undefined,
         upgrades: p.upgrades,
+        filter: p.filter ?? null,
       })),
     ...Object.entries(bots).map(([id, b]) => ({ id, name: b.name, isBot: true, role: match.roles[id] ?? 'survivor', skin: b.skin })),
   ];
