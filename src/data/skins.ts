@@ -34,6 +34,10 @@ export const BUILT_IN_SKINS: Skin[] = [
   { id: 'lava', name: 'Lava', body: '#ef233c', accent: '#f97316', eyes: 'angry', pattern: 'spots', accessory: '🌋', power: 'brute', price: 1300, rarity: 'epic' },
   { id: 'dragon', name: 'Dragon', body: '#14b8a6', accent: '#064e3b', eyes: 'angry', pattern: 'stripes', accessory: '🐉', power: 'master', price: 2200, rarity: 'legendary' },
   { id: 'champion', name: 'Tournament Champion', body: '#ffd166', accent: '#b8860b', eyes: 'angry', pattern: 'ring', accessory: '👑', power: 'swift', price: 0, rarity: 'exclusive' },
+  // Medal skins: bought with medals only.
+  { id: 'medalist', name: 'Medalist', body: '#fbbf24', accent: '#92400e', eyes: 'round', pattern: 'ring', accessory: '🏅', power: 'scout', price: 0, medalPrice: 12, rarity: 'epic' },
+  { id: 'phantom', name: 'Phantom', body: '#312e81', accent: '#a5b4fc', eyes: 'sleepy', pattern: 'split', accessory: '🎭', power: 'ghost', price: 0, medalPrice: 25, rarity: 'legendary' },
+  { id: 'overlord', name: 'Overlord', body: '#7f1d1d', accent: '#fca5a5', eyes: 'angry', pattern: 'stripes', accessory: '😈', power: 'master', price: 0, medalPrice: 40, rarity: 'legendary' },
 ];
 
 export const DEFAULT_SKIN_ID = 'rookie';

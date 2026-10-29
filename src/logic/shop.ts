@@ -18,9 +18,18 @@ export function buySkin(p: Profile, skinId: string): ShopResult {
   if (!skin) return fail('Skin not found');
   if (skin.rarity === 'exclusive') return fail('Exclusive skin – it can only be won in a tournament');
   if (p.ownedSkins.includes(skinId)) return fail('You already own this skin');
+  if (skin.medalPrice) return fail('This skin can only be bought with medals');
   const next = spend(p, skin.price);
   if (!next) return fail('Not enough coins');
   return { ok: true, profile: { ...next, ownedSkins: [...p.ownedSkins, skinId] } };
+}
+
+export function buySkinWithMedals(p: Profile, skinId: string): ShopResult {
+  const skin = BUILT_IN_SKINS.find((s) => s.id === skinId);
+  if (!skin?.medalPrice) return fail('Skin not found');
+  if (p.ownedSkins.includes(skinId)) return fail('You already own this skin');
+  if (p.medals < skin.medalPrice) return fail('Not enough medals');
+  return { ok: true, profile: { ...p, medals: p.medals - skin.medalPrice, ownedSkins: [...p.ownedSkins, skinId] } };
 }
 
 export function buyOutfit(p: Profile, outfitId: string): ShopResult {

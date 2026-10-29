@@ -38,6 +38,8 @@ export interface Skin {
   accessory: string; // emoji, '' for none
   power?: SkinPowerId;
   price: number;
+  /** When set, the skin is bought with medals instead of coins. */
+  medalPrice?: number;
   rarity: Rarity;
   custom?: boolean;
 }

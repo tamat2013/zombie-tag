@@ -12,7 +12,7 @@ import { useGame, useProfile } from '../state/GameContext';
 import { BUILT_IN_SKINS, RARITY_COLORS, SKIN_POWERS, findSkin } from '../data/skins';
 import { ABILITY_PRICES, MEDAL_TO_COINS, OUTFITS, UPGRADES, ZOMBIE_FILTERS, upgradeMinLevel, upgradePrice } from '../data/catalog';
 import { ABILITIES, MAX_LOADOUT } from '../engine/abilities';
-import { buyAbility, buyFilter, buyOutfit, buySkin, buyUpgrade, convertMedals, toggleLoadout } from '../logic/shop';
+import { buyAbility, buyFilter, buyOutfit, buySkin, buySkinWithMedals, buyUpgrade, convertMedals, toggleLoadout } from '../logic/shop';
 import type { ShopResult } from '../logic/shop';
 import { levelInfo } from '../logic/progression';
 import { colors, radius } from '../theme';
@@ -159,6 +159,8 @@ function SkinsTab({ apply }: { apply: Apply }) {
               <Button small title={selected ? 'Selected' : 'Select'} variant={selected ? 'dark' : 'primary'} disabled={selected} onPress={() => updateProfile((p) => ({ ...p, selectedSkinId: s.id }))} />
             ) : s.rarity === 'exclusive' ? (
               <Button small title="🏆 Tournament prize" variant="dark" disabled />
+            ) : s.medalPrice ? (
+              <Button small variant="gold" title={`${s.medalPrice} 🏅`} disabled={profile.medals < s.medalPrice} onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`, '🏅')} />
             ) : (
               <Button small variant="gold" title={`${s.price} 🪙`} onPress={() => apply(buySkin(profile, s.id), `The ${s.name} skin is yours!`, '🎨')} />
             )}

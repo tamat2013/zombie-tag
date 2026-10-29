@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyMatchResult, computeRewards, CURE_COINS, TASK_COINS, createDefaultProfile, levelInfo, normalizeProfile, bumpStat } from '../src/logic/progression.ts';
 import { claimMission, currentMissions, ensureMissions, missionProgress } from '../src/logic/missions.ts';
-import { buyUpgrade, buySkin, convertMedals, toggleLoadout } from '../src/logic/shop.ts';
+import { buyUpgrade, buySkin, buySkinWithMedals, convertMedals, toggleLoadout } from '../src/logic/shop.ts';
 import { getTournaments, knockoutOutcome, registerForTournament, tournamentStatus, rankOf, simulatedRivals } from '../src/logic/tournaments.ts';
 import type { MatchResult } from '../src/types.ts';
 
@@ -108,6 +108,16 @@ test('shop: upgrades need level and coins', () => {
   assert.ok(conv.ok && conv.profile.medals === 1 && conv.profile.coins === p.coins + 100);
   const lo = toggleLoadout(p, 'survivor', 'scan');
   assert.ok(lo.ok && !lo.profile.loadout.survivor.includes('scan'));
+});
+
+test('shop: medal skins are bought with medals only', () => {
+  const p = { ...createDefaultProfile('u', 'T', '', NOW), coins: 100_000, medals: 12 };
+  assert.equal(buySkin(p, 'medalist').ok, false, 'coins cannot buy a medal skin');
+  assert.equal(buySkinWithMedals({ ...p, medals: 11 }, 'medalist').ok, false);
+  assert.equal(buySkinWithMedals(p, 'mint').ok, false, 'a coin skin is not sold for medals');
+  const r = buySkinWithMedals(p, 'medalist');
+  assert.ok(r.ok && r.profile.medals === 0 && r.profile.ownedSkins.includes('medalist') && r.profile.coins === p.coins);
+  if (r.ok) assert.equal(buySkinWithMedals(r.profile, 'medalist').ok, false, 'cannot buy twice');
 });
 
 test('tournament schedule always has something live, and matches add leaderboard points', () => {
