@@ -1,5 +1,5 @@
 // Builds the MatchSetup handed to the Game screen, for local (bots) and online (room) matches.
-import type { BotDifficulty, GameMap, Profile, Role } from '../types';
+import type { BotDifficulty, GameMap, GameMode, MatchRules, Profile, Role } from '../types';
 import type { RosterEntry } from '../engine/entities';
 import { assignRoles, knockoutRoles } from '../engine/GameEngine';
 import { KNOCKOUT_SIZE, TOURNAMENT_ROUND_SEC } from '../engine/constants';
@@ -10,8 +10,15 @@ import { outfitEmoji } from '../data/catalog';
 import type { MatchSetup, PlayFlow } from '../navigation/types';
 import type { Room, RoomBot } from '../services/roomService';
 
-/** Seconds between pressing "start" and the match actually starting (role reveal). */
+/** Milliseconds of the role reveal right before the match starts. */
 export const COUNTDOWN_MS = 3500;
+/** Milliseconds of the "how it started" story shown before the role reveal. */
+export const ORIGIN_MS = 5500;
+
+/** Time between pressing "start" and the match starting: origin story, then role reveal. */
+export function countdownMs(mode: GameMode): number {
+  return mode === 'obstacle' ? COUNTDOWN_MS : ORIGIN_MS + COUNTDOWN_MS;
+}
 
 export function seededRng(seed: number) {
   let a = seed >>> 0;
@@ -55,6 +62,8 @@ export interface LocalOptions {
   /** Training only: the role the player wants to practise. */
   trainingRole?: Role;
   durationSec?: number;
+  /** House rules (classic and training only). */
+  rules?: MatchRules;
 }
 
 /** A match against bots on this device (also used for training and obstacle runs). */
@@ -68,23 +77,24 @@ export function localSetup(profile: Profile, flow: PlayFlow, map: GameMap, opts:
       roster: [profileEntry(profile, 'survivor')],
       localId: profile.uid,
       isAuthority: true,
-      startTime: Date.now() + COUNTDOWN_MS,
+      startTime: Date.now() + countdownMs(flow.mode),
       difficulty: opts.difficulty,
       seed,
     };
   }
   const knockout = flow.mode === 'tournament';
+  const rules = knockout ? undefined : opts.rules;
   const bots = makeBots(knockout ? KNOCKOUT_SIZE - 1 : opts.botCount, rng);
   const botIds = Object.keys(bots);
   let roles: Record<string, Role>;
   if (knockout) {
     roles = knockoutRoles([profile.uid, ...botIds], rng);
   } else if (flow.mode === 'training' && opts.trainingRole === 'survivor') {
-    roles = { ...assignRoles(botIds, rng), [profile.uid]: 'survivor' };
+    roles = { ...assignRoles(botIds, rng, undefined, rules?.zombies), [profile.uid]: 'survivor' };
   } else if (flow.mode === 'training' && opts.trainingRole === 'zombie') {
     roles = { ...Object.fromEntries(botIds.map((id) => [id, 'survivor' as Role])), [profile.uid]: 'zombie' };
   } else {
-    roles = assignRoles([profile.uid, ...botIds], rng);
+    roles = assignRoles([profile.uid, ...botIds], rng, undefined, rules?.zombies);
   }
   const roster: RosterEntry[] = [
     profileEntry(profile, roles[profile.uid]),
@@ -96,10 +106,11 @@ export function localSetup(profile: Profile, flow: PlayFlow, map: GameMap, opts:
     roster,
     localId: profile.uid,
     isAuthority: true,
-    startTime: Date.now() + COUNTDOWN_MS,
+    startTime: Date.now() + countdownMs(flow.mode),
     durationSec: knockout ? TOURNAMENT_ROUND_SEC : opts.durationSec,
     difficulty: opts.difficulty,
     seed,
+    rules,
   };
 }
 
@@ -115,7 +126,7 @@ export function nextKnockoutSetup(prev: MatchSetup, winner: Role): MatchSetup | 
   return {
     ...prev,
     roster: alive.map((r) => ({ ...r, role: roles[r.id] })),
-    startTime: Date.now() + COUNTDOWN_MS,
+    startTime: Date.now() + countdownMs(prev.flow.mode),
     durationSec: TOURNAMENT_ROUND_SEC,
     seed,
   };
@@ -157,10 +168,11 @@ export function onlineSetup(room: Room, uid: string): MatchSetup | null {
     roster,
     localId: uid,
     isAuthority: room.hostId === uid,
-    startTime: match.startedAt + COUNTDOWN_MS,
+    startTime: match.startedAt + countdownMs(room.mode),
     durationSec: match.durationSec,
     difficulty: room.difficulty,
     seed: match.seed,
     roomCode: room.code,
+    rules: match.rules ?? undefined,
   };
 }

@@ -26,6 +26,8 @@ import { Character } from '../components/Character';
 import { Joystick } from '../components/Joystick';
 import { AbilityButton } from '../components/AbilityButton';
 import { RoleReveal } from '../components/RoleReveal';
+import { OriginStory } from '../components/OriginStory';
+import { COUNTDOWN_MS, ORIGIN_MS } from '../utils/matchSetup';
 import { MapPreview } from '../components/MapPreview';
 import { Button } from '../components/Button';
 import { TaskModal } from '../tasks/TaskModal';
@@ -169,9 +171,11 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       durationSec: setup.durationSec,
       difficulty: setup.difficulty,
       seed: setup.seed,
+      rules: setup.rules,
     });
   }
   const engine = engineRef.current;
+  const patientZeros = useMemo(() => setup.roster.filter((r) => r.role === 'zombie').map((r) => ({ id: r.id, name: r.name, skin: r.skin, outfit: r.outfit })), [setup.roster]);
   const transportRef = useRef<MatchTransport | null>(null);
   if (!transportRef.current) transportRef.current = setup.roomCode ? new FirebaseTransport(setup.roomCode, setup.localId) : new LocalTransport();
   const transport = transportRef.current;
@@ -849,7 +853,18 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
 
       {task ? <TaskModal type={task.type} speed={local.mods.task} onComplete={completeTask} onClose={closeTask} danger={zombieNear} /> : null}
 
-      {beforeStart ? <RoleReveal role={local.role} doctor={local.doctor} skin={local.skin} outfit={local.outfit} mode={mode} secondsLeft={(engine.startTime - realNow) / 1000} /> : null}
+      {beforeStart && mode !== 'obstacle' && engine.startTime - realNow > COUNTDOWN_MS ? (
+        <OriginStory
+          zombies={patientZeros}
+          seed={setup.seed}
+          msLeft={engine.startTime - realNow - COUNTDOWN_MS}
+          totalMs={ORIGIN_MS}
+          localIsZombie={local.role === 'zombie'}
+          localId={setup.localId}
+        />
+      ) : beforeStart ? (
+        <RoleReveal role={local.role} doctor={local.doctor} skin={local.skin} outfit={local.outfit} mode={mode} secondsLeft={(engine.startTime - realNow) / 1000} />
+      ) : null}
 
       {engine.ended ? (
         <View style={styles.endOverlay} pointerEvents="none">

@@ -36,3 +36,5 @@ export const TOURNAMENT_ZOMBIE_SPEED_MUL = 0.9;
 export const TOURNAMENT_ROUND_SEC = 180;
 /** Players at the start of a knockout run (8 → 4 → 2). */
 export const KNOCKOUT_SIZE = 8;
+/** Lobby house rules when nobody changes them. */
+export const DEFAULT_RULES = { zombies: 0, releaseDelaySec: 5, zombieSpeed: 1, fastAbilities: false, doctors: DOCTOR_COUNT };

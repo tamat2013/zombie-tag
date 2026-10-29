@@ -5,6 +5,20 @@ export type Role = 'survivor' | 'zombie';
 export type GameMode = 'classic' | 'tournament' | 'obstacle' | 'training';
 export type BotDifficulty = 'dummy' | 'easy' | 'normal' | 'hard';
 
+/** House rules the host picks in the lobby. */
+export interface MatchRules {
+  /** Starting zombies; 0 means automatic (about one per five players). */
+  zombies: number;
+  /** Seconds the zombies are held at their spawn. */
+  releaseDelaySec: number;
+  /** Multiplier on zombie speed. */
+  zombieSpeed: number;
+  /** Abilities recharge twice as fast. */
+  fastAbilities: boolean;
+  /** How many survivors start as doctors. */
+  doctors: number;
+}
+
 export type TaskType = 'wires' | 'machine' | 'download' | 'trash' | 'temperature';
 
 export type AbilityId =

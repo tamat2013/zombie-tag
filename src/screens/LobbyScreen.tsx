@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Pressable, TextInput, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
-import type { BotDifficulty, GameMap, Role } from '../types';
+import type { BotDifficulty, GameMap, MatchRules, Role } from '../types';
 import { Screen, ScreenHeader, Card, Chip, H, P, Tabs } from '../components/ui';
 import { Button } from '../components/Button';
 import { Character } from '../components/Character';
@@ -14,13 +14,13 @@ import { findSkin } from '../data/skins';
 import { outfitEmoji } from '../data/catalog';
 import { ABILITIES } from '../engine/abilities';
 import { assignRoles, knockoutRoles } from '../engine/GameEngine';
-import { CLASSIC_DURATION_SEC, KNOCKOUT_SIZE, TOURNAMENT_ROUND_SEC } from '../engine/constants';
+import { CLASSIC_DURATION_SEC, DEFAULT_RULES, KNOCKOUT_SIZE, TOURNAMENT_ROUND_SEC } from '../engine/constants';
 import { isFirebaseConfigured } from '../services/firebase';
 import { MAX_ROOM_PLAYERS, knockedOut, roomCapacity, roomService } from '../services/roomService';
 import type { Room } from '../services/roomService';
 import { getTournamentById, roundName, tournamentStatus } from '../logic/tournaments';
 import { localSetup, makeBots, onlineSetup, roomMap, seededRng } from '../utils/matchSetup';
-import { colors, radius } from '../theme';
+import { colors, outline, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
 type Tab = 'bots' | 'online';
@@ -45,6 +45,8 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
   const [difficulty, setDifficulty] = useState<BotDifficulty>(flow.mode === 'training' ? 'easy' : 'normal');
   const [trainingRole, setTrainingRole] = useState<Role>('survivor');
   const [trainingMinutes, setTrainingMinutes] = useState(5);
+  const [rules, setRules] = useState<MatchRules>(DEFAULT_RULES);
+  const [classicMinutes, setClassicMinutes] = useState(CLASSIC_DURATION_SEC / 60);
 
   const tournament = flow.tournamentId ? getTournamentById(flow.tournamentId, Date.now()) : undefined;
   const tournamentClosed = flow.mode === 'tournament' && (!tournament || tournamentStatus(tournament, Date.now()) !== 'live');
@@ -59,7 +61,8 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
       botCount,
       difficulty,
       trainingRole: flow.mode === 'training' ? trainingRole : undefined,
-      durationSec: flow.mode === 'training' ? trainingMinutes * 60 : undefined,
+      durationSec: flow.mode === 'training' ? trainingMinutes * 60 : flow.mode === 'classic' ? classicMinutes * 60 : undefined,
+      rules: flow.mode === 'tournament' ? undefined : rules,
     });
     navigation.replace('Game', { setup });
   };
@@ -88,8 +91,8 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
       {onlineCapable ? (
         <Tabs<Tab>
           tabs={[
-            { id: 'bots', label: '🤖 Vs bots' },
-            { id: 'online', label: '🌐 Online' },
+            { id: 'bots', label: 'Vs bots' },
+            { id: 'online', label: 'Online' },
           ]}
           value={tab}
           onChange={setTab}
@@ -156,10 +159,14 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
               {difficulty === 'dummy' ? 'Dummies: bots stand still and never move. Good for target practice.' : 'In training, abilities recharge 2x faster.'}
             </P>
           ) : null}
-          {flow.mode === 'classic' ? (
-            <P dim style={{ marginTop: 8 }}>
-              Survivors: do tasks and survive 10 minutes. Zombies: infect everyone. Zombies are released after 5 seconds.
-            </P>
+          {flow.mode === 'classic' || flow.mode === 'training' ? (
+            <RulesEditor
+              rules={rules}
+              onChange={(patch) => setRules((r) => ({ ...r, ...patch }))}
+              minutes={flow.mode === 'classic' ? classicMinutes : undefined}
+              onMinutes={setClassicMinutes}
+              training={flow.mode === 'training'}
+            />
           ) : null}
           <Button title="Start match" icon="▶️" onPress={startLocal} style={{ marginTop: 14 }} disabled={tournamentClosed} />
         </Card>
@@ -344,6 +351,8 @@ function OnlineLobby({
   const others = inRun.filter(([id]) => id !== room.hostId);
   const allReady = others.every(([, p]) => p.ready);
   const aliveBots = alive ? Object.fromEntries(Object.entries(room.knockout?.bots ?? {}).filter(([id]) => alive.includes(id))) : null;
+  const roomRules: MatchRules = { ...DEFAULT_RULES, ...(room.rules ?? {}) };
+  const roomMinutes = (room.durationSec ?? CLASSIC_DURATION_SEC) / 60;
   const bots = aliveBots ? Object.keys(aliveBots).length : knockout ? KNOCKOUT_SIZE - inRun.length : Math.min(room.botCount, MAX_ROOM_PLAYERS - players.length);
 
   const start = async () => {
@@ -356,9 +365,16 @@ function OnlineLobby({
     const rng = seededRng(seed);
     const botMap = aliveBots ?? makeBots(bots, rng, players.map(([, p]) => p.name));
     const ids = [...inRun.map(([id]) => id), ...Object.keys(botMap)];
-    const roles = knockout ? knockoutRoles(ids, rng) : assignRoles(ids, rng);
+    const roles = knockout ? knockoutRoles(ids, rng) : assignRoles(ids, rng, undefined, roomRules.zombies);
     try {
-      await roomService.start(room.code, { startedAt: 0, seed, roles, bots: botMap, durationSec: knockout ? TOURNAMENT_ROUND_SEC : CLASSIC_DURATION_SEC });
+      await roomService.start(room.code, {
+        startedAt: 0,
+        seed,
+        roles,
+        bots: botMap,
+        durationSec: knockout ? TOURNAMENT_ROUND_SEC : roomMinutes * 60,
+        rules: knockout ? null : roomRules,
+      });
     } catch (e) {
       toast('Could not start', { tone: 'bad' });
       console.warn(e);
@@ -423,17 +439,123 @@ function OnlineLobby({
               <Chip key={d.id} label={d.label} active={room.difficulty === d.id} onPress={() => roomService.updateSettings(room.code, { difficulty: d.id })} />
             ))}
           </View>
+          {knockout ? null : (
+            <RulesEditor
+              rules={roomRules}
+              onChange={(patch) => roomService.updateSettings(room.code, { rules: { ...roomRules, ...patch } }).catch(() => {})}
+              minutes={roomMinutes}
+              onMinutes={(m) => roomService.updateSettings(room.code, { durationSec: m * 60 }).catch(() => {})}
+            />
+          )}
           <Button title={allReady ? 'Start match' : 'Waiting for everyone to be ready'} icon="▶️" onPress={start} disabled={!allReady} style={{ marginTop: 14 }} />
         </Card>
       ) : (
-        <Button
+        <>
+          {knockout ? null : (
+            <Card>
+              <H size={16}>Match rules</H>
+              <P dim style={{ marginTop: 4 }}>{rulesSummary(roomRules, roomMinutes)}</P>
+            </Card>
+          )}
+          <Button
           title={me?.ready ? 'Not ready' : 'I am ready!'}
           icon={me?.ready ? '✋' : '✅'}
           variant={me?.ready ? 'dark' : 'primary'}
           onPress={() => roomService.setReady(room.code, profile.uid, !me?.ready)}
-        />
+          />
+        </>
       )}
       <Button title="Leave room" icon="🚪" variant="danger" small onPress={leave} />
+    </View>
+  );
+}
+
+// ---- House rules -----------------------------------------------------------------------------
+
+const ZOMBIE_COUNTS = [0, 1, 2, 3];
+const RELEASE_DELAYS = [3, 5, 10, 20];
+const ZOMBIE_SPEEDS: { v: number; label: string }[] = [
+  { v: 0.85, label: 'Slow' },
+  { v: 1, label: 'Normal' },
+  { v: 1.15, label: 'Fast' },
+];
+const DOCTOR_COUNTS = [0, 1, 2, 3];
+const CLASSIC_MINUTES = [3, 5, 10, 15];
+
+function rulesSummary(r: MatchRules, minutes: number): string {
+  const speed = r.zombieSpeed > 1 ? 'fast zombies' : r.zombieSpeed < 1 ? 'slow zombies' : 'normal zombies';
+  return [
+    `${minutes} min`,
+    r.zombies ? `${r.zombies} starting zombies` : 'auto zombies',
+    `release after ${r.releaseDelaySec}s`,
+    speed,
+    `${r.doctors} doctors`,
+    r.fastAbilities ? 'fast abilities' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** Chips for the lobby house rules: length, starting zombies, release, speed, doctors, cooldowns. */
+function RulesEditor({
+  rules,
+  onChange,
+  minutes,
+  onMinutes,
+  training,
+}: {
+  rules: MatchRules;
+  onChange: (patch: Partial<MatchRules>) => void;
+  minutes?: number;
+  onMinutes?: (m: number) => void;
+  training?: boolean;
+}) {
+  return (
+    <View style={styles.rules}>
+      <Text style={styles.rulesTitle}>Match rules</Text>
+      {minutes !== undefined && onMinutes ? (
+        <>
+          <Label>Match length</Label>
+          <View style={styles.chips}>
+            {CLASSIC_MINUTES.map((m) => (
+              <Chip key={m} label={`${m} min`} active={minutes === m} onPress={() => onMinutes(m)} color={colors.gold} />
+            ))}
+          </View>
+        </>
+      ) : null}
+      <Label>Starting zombies</Label>
+      <View style={styles.chips}>
+        {ZOMBIE_COUNTS.map((n) => (
+          <Chip key={n} label={n === 0 ? 'Auto' : String(n)} active={rules.zombies === n} onPress={() => onChange({ zombies: n })} />
+        ))}
+      </View>
+      <Label>Zombies released after</Label>
+      <View style={styles.chips}>
+        {RELEASE_DELAYS.map((n) => (
+          <Chip key={n} label={`${n}s`} active={rules.releaseDelaySec === n} onPress={() => onChange({ releaseDelaySec: n })} color={colors.blue} />
+        ))}
+      </View>
+      <Label>Zombie speed</Label>
+      <View style={styles.chips}>
+        {ZOMBIE_SPEEDS.map((s) => (
+          <Chip key={s.v} label={s.label} active={rules.zombieSpeed === s.v} onPress={() => onChange({ zombieSpeed: s.v })} color={s.v > 1 ? colors.blood : colors.toxic} />
+        ))}
+      </View>
+      <Label>Doctors</Label>
+      <View style={styles.chips}>
+        {DOCTOR_COUNTS.map((n) => (
+          <Chip key={n} label={n === 0 ? 'None' : String(n)} active={rules.doctors === n} onPress={() => onChange({ doctors: n })} color={colors.blue} />
+        ))}
+      </View>
+      {training ? null : (
+        <>
+          <Label>Abilities</Label>
+          <View style={styles.chips}>
+            <Chip label="Normal recharge" active={!rules.fastAbilities} onPress={() => onChange({ fastAbilities: false })} color={colors.purple} />
+            <Chip label="2x faster" active={rules.fastAbilities} onPress={() => onChange({ fastAbilities: true })} color={colors.purple} />
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -466,7 +588,9 @@ const styles = StyleSheet.create({
   summary: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 10 },
   label: { color: colors.textDim, fontWeight: '800', fontSize: 13, textAlign: 'left', marginTop: 12, marginBottom: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  input: { flex: 1, backgroundColor: '#0a0f09', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 9, fontSize: 18, textAlign: 'center', letterSpacing: 4 },
+  rules: { marginTop: 14, paddingTop: 12, borderTopWidth: 2, borderTopColor: colors.ink },
+  rulesTitle: { color: colors.gold, fontWeight: '900', fontSize: 15, textAlign: 'left', textTransform: 'uppercase', letterSpacing: 1 },
+  input: { flex: 1, backgroundColor: colors.bgAlt, borderRadius: radius.sm, ...outline, color: colors.text, paddingHorizontal: 12, paddingVertical: 9, fontSize: 18, textAlign: 'center', letterSpacing: 4 },
   roomCode: { color: colors.toxic, fontSize: 40, fontWeight: '900', letterSpacing: 8 },
   player: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   ready: { width: 80, fontWeight: '800', fontSize: 12 },
@@ -476,8 +600,8 @@ const styles = StyleSheet.create({
   openName: { color: colors.text, fontWeight: '800', textAlign: 'left' },
   openCode: { color: colors.textDim, fontSize: 12, textAlign: 'left', letterSpacing: 2 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  stepBtn: { width: 38, height: 38, borderRadius: radius.sm, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center', ...outline, borderBottomWidth: 4 },
   stepText: { color: colors.text, fontSize: 22, fontWeight: '900' },
   stepTrack: { flex: 1, flexDirection: 'row', gap: 4 },
-  stepDot: { flex: 1, height: 12, borderRadius: 6, backgroundColor: '#0a0f09', borderWidth: 1, borderColor: colors.border },
+  stepDot: { flex: 1, height: 14, borderRadius: 3, backgroundColor: colors.bgAlt, borderWidth: 2, borderColor: colors.ink },
 });

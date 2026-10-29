@@ -1,6 +1,6 @@
 // Multiplayer lobbies in Realtime Database: rooms/{code}.
 import { get, onValue, ref, remove, runTransaction, serverTimestamp, set, update } from 'firebase/database';
-import type { AbilityId, BotDifficulty, GameMap, Profile, Role, Skin, UpgradeId } from '../types';
+import type { AbilityId, BotDifficulty, GameMap, MatchRules, Profile, Role, Skin, UpgradeId } from '../types';
 import { findSkin } from '../data/skins';
 import { KNOCKOUT_SIZE } from '../engine/constants';
 import { realtimeDb } from './firebase';
@@ -40,7 +40,12 @@ export interface Room {
     roles: Record<string, Role>;
     bots: Record<string, RoomBot>;
     durationSec: number;
+    rules?: MatchRules | null;
   } | null;
+  /** House rules the host picked (classic rooms). */
+  rules?: MatchRules | null;
+  /** Match length the host picked, in seconds. */
+  durationSec?: number | null;
   /** Knockout tournament in progress: who is still in, and the bots that are still in. */
   knockout?: RoomKnockout | null;
 }
@@ -127,7 +132,7 @@ export const roomService = {
     await update(ref(realtimeDb(), `rooms/${roomCode}/players/${uid}`), { ready });
   },
 
-  async updateSettings(roomCode: string, patch: Partial<Pick<Room, 'botCount' | 'difficulty' | 'mapId' | 'map'>>) {
+  async updateSettings(roomCode: string, patch: Partial<Pick<Room, 'botCount' | 'difficulty' | 'mapId' | 'map' | 'rules' | 'durationSec'>>) {
     await update(ref(realtimeDb(), `rooms/${roomCode}`), patch);
   },
 

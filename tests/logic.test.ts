@@ -190,3 +190,12 @@ test('old profiles get new fields', () => {
   const b = bumpStat(p, 'skinsCreated');
   assert.ok(b.unlocked.some((a) => a.id === 'designer'));
 });
+
+test('there are lots of built-in maps with unique ids', async () => {
+  const { BUILT_IN_MAPS } = await import('../src/data/maps.ts');
+  const ids = BUILT_IN_MAPS.map((m) => m.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(BUILT_IN_MAPS.filter((m) => m.kind === 'arena').length >= 20);
+  assert.ok(BUILT_IN_MAPS.filter((m) => m.kind === 'obstacle').length >= 5);
+  assert.equal(BUILT_IN_MAPS[0].id, 'hospital');
+});

@@ -502,3 +502,22 @@ test('finished tasks cut time off the clock, up to a cap', () => {
   for (let i = 2; i < 40; i++) e.completeTask(e.local!, i);
   assert.ok(e.timeLeftMs >= 100 * 1000 * (1 - TASK_TIME_MAX_SHARE) - 100, 'never cuts more than the cap');
 });
+
+test('house rules: starting zombies, release delay, zombie speed, doctors, fast abilities', () => {
+  const ids = Array.from({ length: 10 }, (_, i) => `p${i}`);
+  const count = (r: Record<string, string>) => Object.values(r).filter((v) => v === 'zombie').length;
+  assert.equal(count(assignRoles(ids, () => 0.3, undefined, 3)), 3);
+  assert.equal(count(assignRoles(ids, () => 0.3, undefined, 0)), 2, 'auto is one per five players');
+  assert.equal(count(assignRoles(['a', 'b'], () => 0.3, undefined, 3)), 1, 'always leaves a survivor');
+
+  const m = BUILT_IN_MAPS[0];
+  const base = { map: m, mode: 'classic' as const, roster: roster(6, [5]), localId: 'p0', isAuthority: true, startTime: 0, difficulty: 'dummy' as const, seed: 9 };
+  const plain = new GameEngine(base);
+  const ruled = new GameEngine({ ...base, rules: { releaseDelaySec: 20, zombieSpeed: 1.15, fastAbilities: true, doctors: 0 } });
+  assert.equal(ruled.releaseAt, 20_000);
+  assert.equal(ruled.cooldownScale, 0.5);
+  assert.equal(ruled.players.filter((p) => p.doctor).length, 0);
+  assert.equal(plain.players.filter((p) => p.doctor).length, 2);
+  const zs = (e: GameEngine) => e.speedOf(e.getPlayer('bot5')!);
+  assert.ok(Math.abs(zs(ruled) - zs(plain) * 1.15) < 0.01);
+});

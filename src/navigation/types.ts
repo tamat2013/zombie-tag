@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { BotDifficulty, GameMap, GameMode, MatchResult, Skin } from '../types';
+import type { BotDifficulty, GameMap, GameMode, MatchResult, MatchRules, Skin } from '../types';
 import type { RosterEntry } from '../engine/entities';
 import type { Rewards } from '../logic/progression';
 
@@ -20,6 +20,7 @@ export interface MatchSetup {
   difficulty: BotDifficulty;
   seed: number;
   roomCode?: string;
+  rules?: MatchRules;
 }
 
 export interface ResultsParams {

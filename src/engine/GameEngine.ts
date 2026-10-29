@@ -1,4 +1,4 @@
-import type { AbilityId, BotDifficulty, GameMap, GameMode, MatchResult, Role, TaskType } from '../types.ts';
+import type { AbilityId, BotDifficulty, GameMap, GameMode, MatchResult, MatchRules, Role, TaskType } from '../types.ts';
 import { T } from '../types.ts';
 import { ABILITIES, AbilityManager, DEFAULT_LOADOUT, buildModifiers } from './abilities.ts';
 import type { AbilityWorld } from './abilities.ts';
@@ -98,6 +98,8 @@ export interface EngineConfig {
   /** Zombies are held at spawn this long so survivors can scatter. */
   releaseDelaySec?: number;
   seed?: number;
+  /** Lobby house rules (zombie speed, fast abilities, doctors, release delay). */
+  rules?: Partial<MatchRules>;
 }
 
 export interface MoveInput {
@@ -130,6 +132,8 @@ export class GameEngine implements AbilityWorld, BotWorld {
   releaseAt: number;
   now: number;
   cooldownScale: number;
+  zombieSpeedMul: number;
+  doctorCount: number;
   ended: { winner: Role | 'finish'; at: number } | null = null;
   events: EngineEvent[] = [];
   outbox: OutgoingBuff[] = [];
@@ -148,9 +152,12 @@ export class GameEngine implements AbilityWorld, BotWorld {
     this.rng = mulberry32(cfg.seed ?? Math.floor(Math.random() * 1e9));
     const duration = cfg.durationSec ?? (cfg.mode === 'training' ? TRAINING_DURATION_SEC : CLASSIC_DURATION_SEC);
     this.endsAt = cfg.mode === 'obstacle' ? Infinity : cfg.startTime + duration * 1000;
-    const releaseDelay = cfg.releaseDelaySec ?? (cfg.mode === 'obstacle' ? 0 : 5);
+    const rules = cfg.rules ?? {};
+    const releaseDelay = cfg.releaseDelaySec ?? (cfg.mode === 'obstacle' ? 0 : rules.releaseDelaySec ?? 5);
     this.releaseAt = cfg.startTime + releaseDelay * 1000;
-    this.cooldownScale = cfg.mode === 'training' ? 0.5 : 1;
+    this.cooldownScale = cfg.mode === 'training' || rules.fastAbilities ? 0.5 : 1;
+    this.zombieSpeedMul = rules.zombieSpeed && rules.zombieSpeed > 0 ? rules.zombieSpeed : 1;
+    this.doctorCount = rules.doctors ?? DOCTOR_COUNT;
     this.stations = cfg.mode === 'obstacle' ? [] : getTaskStations(cfg.map);
     this.saws = getSaws(cfg.map);
 
@@ -215,7 +222,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
       const j = Math.floor(rng() * (i + 1));
       [survivors[i], survivors[j]] = [survivors[j], survivors[i]];
     }
-    for (const p of survivors.slice(0, DOCTOR_COUNT)) p.doctor = true;
+    for (const p of survivors.slice(0, this.doctorCount)) p.doctor = true;
   }
 
   /** A freshly infected player stays frozen for a few seconds, waiting for a doctor. */
@@ -285,7 +292,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
   }
 
   speedOf(p: EnginePlayer): number {
-    let s = (p.role === 'survivor' ? SURVIVOR_SPEED : ZOMBIE_SPEED * p.mods.zombieSpeed) * p.mods.speed;
+    let s = (p.role === 'survivor' ? SURVIVOR_SPEED : ZOMBIE_SPEED * p.mods.zombieSpeed * this.zombieSpeedMul) * p.mods.speed;
     if (this.mode === 'tournament') s *= p.role === 'survivor' ? TOURNAMENT_SURVIVOR_SPEED_MUL : TOURNAMENT_ZOMBIE_SPEED_MUL;
     if (isActive(p, 'sprint', this.now)) s *= 1.6;
     if (isActive(p, 'frenzy', this.now)) s *= 1.35;
@@ -748,8 +755,9 @@ export function knockoutRoles(ids: string[], rng: () => number = Math.random): R
 }
 
 /** Picks starting zombies: roughly one per five players, at least one. */
-export function assignRoles(ids: string[], rng: () => number = Math.random, forceZombie?: string): Record<string, Role> {
-  const zombieCount = Math.max(1, Math.round(ids.length / 5));
+export function assignRoles(ids: string[], rng: () => number = Math.random, forceZombie?: string, count = 0): Record<string, Role> {
+  const auto = Math.max(1, Math.round(ids.length / 5));
+  const zombieCount = count > 0 ? Math.max(1, Math.min(count, ids.length - 1)) : auto;
   const shuffled = [...ids].sort(() => rng() - 0.5);
   const zombies = new Set(shuffled.slice(0, zombieCount));
   if (forceZombie && ids.includes(forceZombie) && !zombies.has(forceZombie)) {
