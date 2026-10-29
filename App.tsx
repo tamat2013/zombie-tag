@@ -12,7 +12,7 @@ import type { RootStackParamList } from './src/navigation/types';
 import { GameProvider, useGame } from './src/state/GameContext';
 import { ToastHost } from './src/components/ui';
 import { RotateHint } from './src/components/RotateHint';
-import { colors } from './src/theme';
+import { colors, fonts } from './src/theme';
 import { IntroScreen } from './src/screens/IntroScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -30,6 +30,9 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { initSound, setMusic } from './src/services/sound';
 import { initLanguage } from './src/i18n/language';
+import { useFonts } from 'expo-font';
+import { Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black } from '@expo-google-fonts/rubik';
+import { RubikWetPaint_400Regular } from '@expo-google-fonts/rubik-wet-paint';
 
 // Layouts are written with explicit row-reverse / right alignment for Hebrew,
 // so keep the native layout direction LTR to avoid double-flipping.
@@ -48,8 +51,8 @@ const navTheme: Theme = {
 function Loading({ text }: { text: string }) {
   return (
     <View style={styles.loading}>
-      <Text style={{ fontSize: 54 }}>🧟</Text>
-      <ActivityIndicator color={colors.toxic} size="large" />
+      <Text style={styles.logo}>ZOMBIE TAG</Text>
+      <ActivityIndicator color={colors.gold} size="large" />
       <Text style={styles.loadingText}>{text}</Text>
     </View>
   );
@@ -103,6 +106,16 @@ function Root() {
 }
 
 export default function App() {
+  // Text falls back to the system font until these finish (or if they fail), so never block on them for long.
+  const [fontsLoaded, fontError] = useFonts({
+    Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black, RubikWetPaint_400Regular,
+  });
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setWaited(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
+  if (!fontsLoaded && !fontError && !waited) return <View style={styles.app} />;
   return (
     <SafeAreaProvider>
       <GameProvider>
@@ -121,4 +134,5 @@ const styles = StyleSheet.create({
   app: { flex: 1, backgroundColor: colors.bg },
   loading: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', gap: 14 },
   loadingText: { color: colors.textDim, fontWeight: '700' },
+  logo: { fontFamily: fonts.logo, fontSize: 44, color: colors.toxic, textShadowColor: colors.ink, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0 },
 });

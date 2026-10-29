@@ -427,6 +427,32 @@ test('new abilities: smoke blinds zombies, frenzy speeds up, leap jumps, telepor
   assert.ok(best > 48, 'leap moves at least one tile somewhere');
 });
 
+test('shop abilities: bubble, flashbang, cloak, howl, rage, sniff, lunge', () => {
+  const m = BUILT_IN_MAPS[0];
+  const r = roster(2, [1]).map((x) => ({ ...x, loadout: { survivor: ['bubble', 'flashbang', 'cloak'] as any, zombie: ['howl', 'rage', 'lunge'] as any } }));
+  const e = new GameEngine({ map: m, mode: 'classic', roster: r, localId: 'p0', isAuthority: true, startTime: 0, releaseDelaySec: 0, difficulty: 'dummy' });
+  e.update(10, { x: 0, y: 0 });
+  const me = e.local!;
+  const z = e.getPlayer('bot1')!;
+  z.x = me.x + 100; z.y = me.y;
+  const sight = e.visionRadius(z);
+  assert.ok(e.useAbility('bubble'));
+  assert.ok(me.effects.shield > e.now, 'bubble shields you');
+  assert.ok(e.useAbility('flashbang'));
+  assert.ok(e.visionRadius(z) < sight * 0.5, 'flashbang blinds a close zombie');
+  assert.ok(e.useAbility('cloak'));
+  assert.ok(me.effects.invisible > e.now);
+  me.effects.shield = 0; // a shield blocks slowing
+  const fast = e.speedOf(me);
+  e.activateAbility(z, 'howl');
+  assert.ok(e.speedOf(me) < fast, 'howl slows survivors');
+  const zs = e.speedOf(z);
+  e.activateAbility(z, 'rage');
+  assert.ok(e.speedOf(z) > zs * 1.5, 'rage is a dash burst');
+  assert.ok(buildModifiers(skin, { rotLegs: 2, keenEars: 1, bloodPump: 1 }).zombieSpeed > 1.05);
+  assert.ok(buildModifiers(skin, { bloodPump: 2 }).dashCooldown < 0.9);
+});
+
 test('new skin powers', () => {
   const byPower = (power: string) => buildModifiers({ ...skin, power: power as never });
   assert.ok(byPower('engineer').task > 1.2);

@@ -18,9 +18,28 @@ export type AbilityId =
   | 'smoke'
   | 'teleport'
   | 'frenzy'
-  | 'leap';
+  | 'leap'
+  | 'bubble'
+  | 'adrenaline'
+  | 'flashbang'
+  | 'cloak'
+  | 'howl'
+  | 'lunge'
+  | 'rage'
+  | 'sniff';
 
-export type UpgradeId = 'speed' | 'cooldown' | 'vision' | 'taskSpeed' | 'reach' | 'stealth';
+export type UpgradeId =
+  | 'speed'
+  | 'cooldown'
+  | 'vision'
+  | 'taskSpeed'
+  | 'reach'
+  | 'stealth'
+  | 'rotLegs'
+  | 'deadEyes'
+  | 'keenEars'
+  | 'firstAid'
+  | 'bloodPump';
 
 export type SkinPowerId = 'swift' | 'healer' | 'tank' | 'ghost' | 'alpha' | 'hunter' | 'scout' | 'engineer' | 'master' | 'brute';
 

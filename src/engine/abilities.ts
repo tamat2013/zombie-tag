@@ -26,10 +26,24 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   teleport: { id: 'teleport', role: 'survivor', name: 'Teleport', icon: '🌀', description: 'Takes you to the spawn point farthest from the zombies', cooldownSec: 40, durationSec: 0 },
   frenzy: { id: 'frenzy', role: 'zombie', name: 'Frenzy', icon: '🩸', description: '1.35x speed for 5 seconds', cooldownSec: 24, durationSec: 5 },
   leap: { id: 'leap', role: 'zombie', name: 'Leap', icon: '🦘', description: 'Jumps 3 tiles forward instantly', cooldownSec: 14, durationSec: 0 },
+  bubble: { id: 'bubble', role: 'survivor', name: 'Bubble', icon: '🫧', description: 'Shields only you for 2.5 seconds, recharges fast', cooldownSec: 16, durationSec: 2.5 },
+  adrenaline: { id: 'adrenaline', role: 'survivor', name: 'Adrenaline', icon: '💉', description: 'Long sprint: 1.6x speed for 5 seconds', cooldownSec: 38, durationSec: 5 },
+  flashbang: { id: 'flashbang', role: 'survivor', name: 'Flashbang', icon: '💥', description: 'Blinds zombies right next to you for 6 seconds', cooldownSec: 34, durationSec: 6, radius: 130 },
+  cloak: { id: 'cloak', role: 'survivor', name: 'Shadow Cloak', icon: '🧥', description: 'Zombies cannot see you for 7 seconds (except up close)', cooldownSec: 50, durationSec: 7 },
+  howl: { id: 'howl', role: 'zombie', name: 'Howl', icon: '🐺', description: 'Slows every survivor in a huge radius for 1.5 seconds', cooldownSec: 32, durationSec: 1.5, radius: 320 },
+  lunge: { id: 'lunge', role: 'zombie', name: 'Lunge', icon: '🐾', description: 'Short jump 2 tiles forward, recharges fast', cooldownSec: 8, durationSec: 0 },
+  rage: { id: 'rage', role: 'zombie', name: 'Rage', icon: '😡', description: '1.7x speed burst for 2 seconds', cooldownSec: 30, durationSec: 2 },
+  sniff: { id: 'sniff', role: 'zombie', name: 'Sniff', icon: '👃', description: 'See all survivors through walls for 2 seconds, recharges fast', cooldownSec: 11, durationSec: 2 },
 };
 
 /** How far a zombie's leap goes, in pixels. */
 export const LEAP_DISTANCE = 48 * 3;
+export const LUNGE_DISTANCE = 48 * 2;
+
+/** Abilities whose cooldown the medic perks (Healer skin, First Aid upgrade) shorten. */
+const MEDIC_LIKE: AbilityId[] = ['medic', 'bubble'];
+/** Abilities whose cooldown the dash perks (Alpha skin, Blood Pump upgrade, Frost filter) shorten. */
+const DASH_LIKE: AbilityId[] = ['dash', 'rage', 'lunge'];
 
 export const FREE_ABILITIES: AbilityId[] = ['sprint', 'scan', 'medic', 'dash', 'zombieVision'];
 export const DEFAULT_LOADOUT = { survivor: ['sprint', 'scan', 'medic'] as AbilityId[], zombie: ['dash', 'zombieVision'] as AbilityId[] };
@@ -42,6 +56,11 @@ const EFFECT_FOR: Partial<Record<AbilityId, EffectKey>> = {
   dash: 'dash',
   zombieVision: 'vision',
   frenzy: 'frenzy',
+  bubble: 'shield',
+  adrenaline: 'sprint',
+  cloak: 'invisible',
+  rage: 'dash',
+  sniff: 'vision',
 };
 
 export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, number>> = {}, filter?: string | null): Modifiers {
@@ -53,13 +72,13 @@ export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, n
     vision: 1 + lvl('vision') * per('vision'),
     task: 1 + lvl('taskSpeed') * per('taskSpeed'),
     reach: 1 + lvl('reach') * per('reach'),
-    medicCooldown: 1,
-    dashCooldown: 1,
+    medicCooldown: 1 - lvl('firstAid') * per('firstAid'),
+    dashCooldown: 1 - lvl('bloodPump') * per('bloodPump'),
     detectability: 1 - lvl('stealth') * per('stealth'),
     tankShield: false,
-    zombieSpeed: 1,
-    zombieVision: 1,
-    hearing: 1,
+    zombieSpeed: 1 + lvl('rotLegs') * per('rotLegs'),
+    zombieVision: 1 + lvl('deadEyes') * per('deadEyes'),
+    hearing: 1 + lvl('keenEars') * per('keenEars'),
     wallSight: 0,
   };
   // Filter perks only touch zombie-side stats, so they never help a survivor.
@@ -72,15 +91,15 @@ export function buildModifiers(skin: Skin, upgrades: Partial<Record<UpgradeId, n
   m.wallSight = f.wallSight ?? 0;
   switch (skin.power) {
     case 'swift': m.speed *= 1.08; break;
-    case 'healer': m.medicCooldown = 0.7; break;
+    case 'healer': m.medicCooldown *= 0.7; break;
     case 'tank': m.tankShield = true; break;
     case 'ghost': m.detectability *= 0.7; break;
-    case 'alpha': m.dashCooldown = 0.7; break;
+    case 'alpha': m.dashCooldown *= 0.7; break;
     case 'hunter': m.reach *= 1.15; break;
     case 'scout': m.vision *= 1.15; break;
     case 'engineer': m.task *= 1.25; break;
     case 'master': m.cooldown *= 0.85; break;
-    case 'brute': m.zombieSpeed = 1.08; break;
+    case 'brute': m.zombieSpeed *= 1.08; break;
   }
   return m;
 }
@@ -109,8 +128,8 @@ export const AbilityManager = {
 
   cooldownMs(p: EnginePlayer, id: AbilityId, world: AbilityWorld): number {
     let mul = p.mods.cooldown * world.cooldownScale;
-    if (id === 'medic') mul *= p.mods.medicCooldown;
-    if (id === 'dash') mul *= p.mods.dashCooldown;
+    if (MEDIC_LIKE.includes(id)) mul *= p.mods.medicCooldown;
+    if (DASH_LIKE.includes(id)) mul *= p.mods.dashCooldown;
     return ABILITIES[id].cooldownSec * 1000 * mul;
   },
 
@@ -141,13 +160,13 @@ export const AbilityManager = {
         if (other.role === 'survivor') world.applyEffect(other, 'shield', dur, p);
       }
     }
-    if (id === 'roar') {
+    if (id === 'roar' || id === 'howl') {
       for (const other of world.players) {
         if (other.role !== 'survivor' || Math.hypot(other.x - p.x, other.y - p.y) > def.radius!) continue;
         world.applyEffect(other, 'slow', dur, p);
       }
     }
-    if (id === 'smoke') {
+    if (id === 'smoke' || id === 'flashbang') {
       for (const other of world.players) {
         if (other.role !== 'zombie' || Math.hypot(other.x - p.x, other.y - p.y) > def.radius!) continue;
         world.applyEffect(other, 'blind', dur, p);
@@ -155,6 +174,7 @@ export const AbilityManager = {
     }
     if (id === 'teleport') world.teleportToSafety(p);
     if (id === 'leap') world.leap(p, LEAP_DISTANCE);
+    if (id === 'lunge') world.leap(p, LUNGE_DISTANCE);
     return true;
   },
 
@@ -175,27 +195,40 @@ export const AbilityManager = {
       const allies = world.players.filter((o) => o !== p && o.role === 'survivor' && Math.hypot(o.x - p.x, o.y - p.y) < 170);
       if (nearest.d < 110) {
         if (ready.includes('medic') && allies.length > 0) return 'medic';
+        if (ready.includes('flashbang')) return 'flashbang';
         if (ready.includes('smoke')) return 'smoke';
+        if (ready.includes('bubble')) return 'bubble';
         if (ready.includes('invisibility')) return 'invisibility';
+        if (ready.includes('cloak')) return 'cloak';
         if (ready.includes('sprint')) return 'sprint';
+        if (ready.includes('adrenaline')) return 'adrenaline';
         if (ready.includes('teleport')) return 'teleport';
         if (ready.includes('medic')) return 'medic';
       }
       if (nearest.d < 170 && ready.includes('sprint')) return 'sprint';
+      if (nearest.d < 200 && ready.includes('adrenaline')) return 'adrenaline';
       if (!enemies.length && ready.includes('scan')) return 'scan';
       return null;
     }
     // Zombie
     if (isActive(p, 'dash', now) || isActive(p, 'frenzy', now)) return null;
     const close = world.players.filter((o) => o.role === 'survivor' && Math.hypot(o.x - p.x, o.y - p.y) < 170);
+    const far = world.players.filter((o) => o.role === 'survivor' && !world.isFrozen(o, now) && Math.hypot(o.x - p.x, o.y - p.y) < 300);
     if (close.length && ready.includes('roar')) return 'roar';
+    if (far.length >= 2 && ready.includes('howl')) return 'howl';
     if (nearest.o && nearest.d < 190 && ready.includes('dash')) return 'dash';
+    if (nearest.o && nearest.d < 220 && ready.includes('rage')) return 'rage';
+    if (nearest.o && nearest.d > 60 && nearest.d < 120 && ready.includes('lunge')) {
+      const ahead = Math.cos(Math.atan2(nearest.o.y - p.y, nearest.o.x - p.x) - p.facing);
+      if (ahead > 0.9) return 'lunge';
+    }
     if (nearest.o && nearest.d > 90 && nearest.d < 170 && ready.includes('leap')) {
       const ahead = Math.cos(Math.atan2(nearest.o.y - p.y, nearest.o.x - p.x) - p.facing);
       if (ahead > 0.9) return 'leap';
     }
     if (nearest.o && nearest.d < 320 && ready.includes('frenzy')) return 'frenzy';
     if (!enemies.length && ready.includes('zombieVision')) return 'zombieVision';
+    if (!enemies.length && ready.includes('sniff')) return 'sniff';
     return null;
   },
 };

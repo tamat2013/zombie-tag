@@ -1,49 +1,74 @@
-// Shared colors and spacing for the UI.
+// Shared colors and spacing for the UI ("Quarantine Zone" look: flat fills,
+// thick ink outlines and hard shadows instead of gradients and glow).
 export const colors = {
-  bg: '#0a0e09',
-  bgAlt: '#0d140c',
-  panel: '#121a10',
-  panelLight: '#1c2a1b',
-  border: '#2a3b2c',
-  text: '#eef5e9',
-  textDim: '#a3b79e',
-  textMuted: '#6f8470',
-  toxic: '#7cff4f',
-  toxicDark: '#3f9b1f',
-  blood: '#e5383b',
-  bloodDark: '#8b1e20',
-  gold: '#ffd166',
-  silver: '#cbd5e1',
+  bg: '#191813',
+  bgAlt: '#12110d',
+  panel: '#24221c',
+  panelLight: '#302d25',
+  border: '#3e3a30',
+  ink: '#0b0a07',
+  text: '#f4eedf',
+  textDim: '#bdb4a0',
+  textMuted: '#968d79',
+  toxic: '#94d84a',
+  toxicDark: '#5f9a24',
+  blood: '#ee4a3b',
+  bloodDark: '#9e2a20',
+  gold: '#ffc629',
+  silver: '#cfc9bb',
   bronze: '#d08c60',
-  blue: '#4f8ef7',
-  purple: '#a855f7',
-  survivor: '#4fc3f7',
-  zombie: '#7cff4f',
-  coin: '#ffcf3f',
-  medal: '#ff9f1c',
-  overlay: 'rgba(0,0,0,0.72)',
+  blue: '#49a8ff',
+  purple: '#b07cff',
+  survivor: '#49a8ff',
+  zombie: '#94d84a',
+  coin: '#ffc629',
+  medal: '#ff8f2b',
+  overlay: 'rgba(11,10,7,0.78)',
 };
 
 export const tileColors: Record<number, string> = {
-  0: '#1d261c', // floor
-  1: '#3b4a3a', // wall
-  2: '#7a5a32', // crate
+  0: '#24261d', // floor
+  1: '#4a4536', // wall
+  2: '#85602f', // crate
   3: '#2a6f97', // task
   4: '#1f4e79', // survivor spawn
-  5: '#4d1f1f', // zombie spawn
-  6: '#b3261e', // hazard
-  7: '#e9c46a', // finish
-  8: '#4a3b22', // mud
-  9: '#2d6a4f', // checkpoint
-  10: '#1d261c', // saw rail (floor underneath)
+  5: '#5a2420', // zombie spawn
+  6: '#c0392b', // hazard
+  7: '#ffc629', // finish
+  8: '#4f3d22', // mud
+  9: '#2f6b45', // checkpoint
+  10: '#24261d', // saw rail (floor underneath)
 };
 
-export const radius = { sm: 10, md: 16, lg: 20 };
+export const radius = { sm: 10, md: 14, lg: 18 };
 
+// Hard offset "sticker" shadow. Works on iOS and web; Android uses elevation.
 export const shadow = {
-  shadowColor: '#000',
-  shadowOpacity: 0.4,
-  shadowRadius: 8,
+  shadowColor: colors.ink,
+  shadowOpacity: 1,
+  shadowRadius: 0,
   shadowOffset: { width: 0, height: 4 },
-  elevation: 6,
+  elevation: 4,
 };
+
+// Ink outline used by cards, buttons and chips.
+export const outline = { borderWidth: 2, borderColor: colors.ink };
+
+export const fonts = {
+  regular: 'Rubik_400Regular',
+  medium: 'Rubik_500Medium',
+  bold: 'Rubik_700Bold',
+  extraBold: 'Rubik_800ExtraBold',
+  black: 'Rubik_900Black',
+  logo: 'RubikWetPaint_400Regular',
+};
+
+/** Picks the Rubik file that matches a fontWeight. */
+export function fontForWeight(weight: string | number | undefined): string {
+  const w = typeof weight === 'number' ? weight : weight === 'bold' ? 700 : Number(weight) || 400;
+  if (w >= 900) return fonts.black;
+  if (w >= 800) return fonts.extraBold;
+  if (w >= 600) return fonts.bold;
+  if (w >= 500) return fonts.medium;
+  return fonts.regular;
+}

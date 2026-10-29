@@ -53,6 +53,12 @@ const ABILITY_EFFECT: Partial<Record<AbilityId, EffectKey>> = {
   zombieVision: 'vision',
   roar: 'slowed',
   frenzy: 'frenzy',
+  bubble: 'shield',
+  adrenaline: 'sprint',
+  cloak: 'invisible',
+  howl: 'slowed',
+  rage: 'dash',
+  sniff: 'vision',
 };
 
 interface FeedItem {
@@ -507,11 +513,15 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
   const useAbility = (id: AbilityId) => {
     if (engine.useAbility(id)) {
       haptic('medium');
-      playSfx(id === 'roar' ? 'groan' : 'ability');
+      playSfx(id === 'roar' || id === 'howl' ? 'groan' : 'ability');
       if (id === 'scan') pushFeed('Scan: all zombies revealed! 📡', colors.survivor);
       if (id === 'zombieVision') pushFeed('Zombie vision: seeing through walls 👁️', colors.zombie);
+      if (id === 'sniff') pushFeed('Sniff: you smell every survivor 👃', colors.zombie);
       if (id === 'medic') pushFeed('Medic shield on 💊', colors.survivor);
+      if (id === 'bubble') pushFeed('Bubble shield on 🫧', colors.survivor);
+      if (id === 'flashbang') pushFeed('Flashbang! Nearby zombies blinded 💥', colors.survivor);
       if (id === 'roar') pushFeed('Roar! Nearby survivors slowed 📢', colors.zombie);
+      if (id === 'howl') pushFeed('Howl! Survivors far and wide slowed 🐺', colors.zombie);
     }
   };
   useAbilityRef.current = useAbility;

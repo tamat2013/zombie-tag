@@ -13,6 +13,16 @@ function spend(p: Profile, price: number): Profile | null {
   return p.coins >= price ? { ...p, coins: p.coins - price } : null;
 }
 
+/** Pays with medals when the item has a medal price, otherwise with coins. */
+function pay(p: Profile, item: { price: number; medalPrice?: number }): ShopResult {
+  if (item.medalPrice) {
+    if (p.medals < item.medalPrice) return fail('Not enough medals');
+    return { ok: true, profile: { ...p, medals: p.medals - item.medalPrice } };
+  }
+  const next = spend(p, item.price);
+  return next ? { ok: true, profile: next } : fail('Not enough coins');
+}
+
 export function buySkin(p: Profile, skinId: string): ShopResult {
   const skin = BUILT_IN_SKINS.find((s) => s.id === skinId);
   if (!skin) return fail('Skin not found');
@@ -37,18 +47,18 @@ export function buyOutfit(p: Profile, outfitId: string): ShopResult {
   if (!o) return fail('Item not found');
   if (p.ownedOutfits.includes(outfitId)) return fail('You already bought this item');
   if (levelInfo(p.xp).level < o.minLevel) return fail(`Requires level ${o.minLevel}`);
-  const next = spend(p, o.price);
-  if (!next) return fail('Not enough coins');
-  return { ok: true, profile: { ...next, ownedOutfits: [...p.ownedOutfits, outfitId] } };
+  const paid = pay(p, o);
+  if (!paid.ok) return paid;
+  return { ok: true, profile: { ...paid.profile, ownedOutfits: [...p.ownedOutfits, outfitId] } };
 }
 
 export function buyFilter(p: Profile, filterId: string): ShopResult {
   const f = ZOMBIE_FILTERS.find((x) => x.id === filterId);
   if (!f) return fail('Filter not found');
   if (p.ownedFilters.includes(filterId)) return fail('You already own this filter');
-  const next = spend(p, f.price);
-  if (!next) return fail('Not enough coins');
-  return { ok: true, profile: { ...next, ownedFilters: [...p.ownedFilters, filterId] } };
+  const paid = pay(p, f);
+  if (!paid.ok) return paid;
+  return { ok: true, profile: { ...paid.profile, ownedFilters: [...p.ownedFilters, filterId] } };
 }
 
 export function buyUpgrade(p: Profile, id: UpgradeId): ShopResult {

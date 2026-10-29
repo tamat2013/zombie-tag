@@ -4,6 +4,7 @@ import { Pressable as RNPressable, ScrollView as RNScrollView, StyleSheet, TextI
 import type { PressableProps, ScrollViewProps, StyleProp, TextInputProps, ViewProps } from 'react-native';
 import { isRtl, mirrorStyle } from './direction';
 import { useLanguage } from './language';
+import { fonts } from '../theme';
 
 function useRtl() {
   return isRtl(useLanguage());
@@ -32,5 +33,5 @@ export const ScrollView = React.forwardRef<RNScrollView, ScrollViewProps>(functi
 
 export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, ...rest }, ref) {
   const rtl = useRtl();
-  return <RNTextInput ref={ref} style={mirror(style, rtl, true)} {...rest} />;
+  return <RNTextInput ref={ref} style={[{ fontFamily: fonts.medium }, mirror(style, rtl, true)]} {...rest} />;
 });

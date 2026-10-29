@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyMatchResult, computeRewards, CURE_COINS, TASK_COINS, createDefaultProfile, levelInfo, normalizeProfile, bumpStat } from '../src/logic/progression.ts';
 import { claimMission, currentMissions, ensureMissions, missionProgress } from '../src/logic/missions.ts';
-import { buyUpgrade, buySkin, buySkinWithMedals, convertMedals, toggleLoadout } from '../src/logic/shop.ts';
+import { buyAbility, buyFilter, buyOutfit, buyUpgrade, buySkin, buySkinWithMedals, convertMedals, toggleLoadout } from '../src/logic/shop.ts';
+import { ABILITY_PRICES, UPGRADES } from '../src/data/catalog.ts';
+import type { AbilityId } from '../src/types.ts';
 import { getTournaments, knockoutOutcome, registerForTournament, tournamentStatus, rankOf, simulatedRivals } from '../src/logic/tournaments.ts';
 import type { MatchResult } from '../src/types.ts';
 
@@ -118,6 +120,25 @@ test('shop: medal skins are bought with medals only', () => {
   const r = buySkinWithMedals(p, 'medalist');
   assert.ok(r.ok && r.profile.medals === 0 && r.profile.ownedSkins.includes('medalist') && r.profile.coins === p.coins);
   if (r.ok) assert.equal(buySkinWithMedals(r.profile, 'medalist').ok, false, 'cannot buy twice');
+});
+
+test('shop: medal outfits and filters cost medals, not coins', () => {
+  const p = { ...createDefaultProfile('u', 'T', '', NOW), coins: 100_000, medals: 8 };
+  const o = buyOutfit(p, 'trophy');
+  assert.ok(o.ok && o.profile.medals === 0 && o.profile.coins === p.coins && o.profile.ownedOutfits.includes('trophy'));
+  assert.equal(buyOutfit(p, 'comet').ok, false, 'not enough medals');
+  const f = buyFilter({ ...p, medals: 18 }, 'eclipse');
+  assert.ok(f.ok && f.profile.medals === 0 && f.profile.coins === p.coins);
+  const coinFilter = buyFilter(p, 'swamp');
+  assert.ok(coinFilter.ok && coinFilter.profile.medals === p.medals && coinFilter.profile.coins === p.coins - 500);
+});
+
+test('shop: every sold ability is buyable and every upgrade has a default level', () => {
+  const p = { ...createDefaultProfile('u', 'T', '', NOW), coins: 1_000_000, xp: 10_000_000 };
+  for (const id of Object.keys(ABILITY_PRICES) as AbilityId[]) assert.ok(buyAbility(p, id).ok, id);
+  for (const u of UPGRADES) assert.equal(p.upgrades[u.id], 0, u.id);
+  const old = normalizeProfile({ uid: 'u', upgrades: { speed: 2 } } as any, NOW);
+  assert.equal(old.upgrades.bloodPump, 0, 'old saves get the new upgrades');
 });
 
 test('tournament schedule always has something live, and matches add leaderboard points', () => {
