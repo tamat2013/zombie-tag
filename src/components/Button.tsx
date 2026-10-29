@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius } from '../theme';

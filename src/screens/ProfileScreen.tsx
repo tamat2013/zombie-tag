@@ -1,6 +1,7 @@
 // Player profile: level, stats, achievements & badges, ability loadout and account.
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { PlayerStats, Role } from '../types';
 import { Screen, ScreenHeader, Card, H, P, ProgressBar, Tabs, Pill } from '../components/ui';

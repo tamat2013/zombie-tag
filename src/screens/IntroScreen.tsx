@@ -1,7 +1,8 @@
 // Opening animation: the title smashes in letter by letter, a zombie rises from the ground
 // and the screen flickers. Tap anywhere to skip.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme';
 

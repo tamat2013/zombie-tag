@@ -1,6 +1,8 @@
 // Map editor: paint tiles with a finger (or mouse), validate, save, share by code and test-play.
 import React, { useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { PanResponder, Pressable, ScrollView, Share, StyleSheet, Switch, TextInput, View, useWindowDimensions } from 'react-native';
+import { tr } from '../i18n/language';
+import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { GameMap } from '../types';
 import { T } from '../types';
@@ -215,7 +217,7 @@ export function MapCreatorScreen({ navigation, route }: ScreenProps<'MapCreator'
     const m = saved ?? (await save());
     if (!m) return;
     try {
-      await Share.share({ message: `Play my map "${m.name}" in Zombie Outbreak! Map code: ${m.shareCode}` });
+      await Share.share({ message: tr(`Play my map "${m.name}" in Zombie Outbreak! Map code: ${m.shareCode}`) });
     } catch {
       toast(`Map code: ${m.shareCode}`);
     }
@@ -235,7 +237,7 @@ export function MapCreatorScreen({ navigation, route }: ScreenProps<'MapCreator'
 
       <Card>
         <View style={styles.row}>
-          <TextInput value={name} onChangeText={setName} maxLength={22} style={styles.input} placeholder="Map name" placeholderTextColor={colors.textMuted} />
+          <TextInput value={name} onChangeText={setName} maxLength={22} style={styles.input} placeholder={tr('Map name')} placeholderTextColor={colors.textMuted} />
         </View>
         <View style={[styles.row, { marginTop: 10, flexWrap: 'wrap' }]}>
           <Chip label="🧟 Arena" active={kind === 'arena'} onPress={() => setKind('arena')} />

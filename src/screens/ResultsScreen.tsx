@@ -1,6 +1,7 @@
 // End-of-match screen: winner, rewards, level-ups, achievements and the scoreboard.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import { Screen, Card, H, P } from '../components/ui';
 import { Button } from '../components/Button';

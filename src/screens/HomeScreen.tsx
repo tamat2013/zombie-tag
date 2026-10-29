@@ -1,6 +1,8 @@
 // Main menu: player card, featured classic mode, other game modes and a bottom navigation bar.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { tr, useLanguage } from '../i18n/language';
+import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { GameMode } from '../types';
 import { Screen, ProgressBar } from '../components/ui';
@@ -31,6 +33,7 @@ const MODES: ModeRow[] = [
 ];
 
 export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
+  useLanguage();
   const profile = useProfile();
   const { signOut } = useGame();
   const skin = findSkin(profile.selectedSkinId, profile.customSkins);
@@ -62,10 +65,10 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
       <View style={styles.headerRow}>
         <Text style={styles.logo}>Zombie Outbreak</Text>
         <View style={{ flex: 1 }} />
-        <Pressable onPress={() => navigation.navigate('Settings')} accessibilityLabel="Sound settings" style={[styles.iconBtn, { marginRight: 8 }]} hitSlop={6}>
+        <Pressable onPress={() => navigation.navigate('Settings')} accessibilityLabel={tr('Sound settings')} style={[styles.iconBtn, { marginRight: 8 }]} hitSlop={6}>
           <Text style={styles.iconBtnText}>⚙️</Text>
         </Pressable>
-        <Pressable onPress={signOut} accessibilityLabel="Sign out" style={styles.iconBtn} hitSlop={6}>
+        <Pressable onPress={signOut} accessibilityLabel={tr('Sign out')} style={styles.iconBtn} hitSlop={6}>
           <Text style={styles.iconBtnText}>⎋</Text>
         </Pressable>
       </View>

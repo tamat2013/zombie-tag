@@ -1,7 +1,8 @@
 // Draws a player from a Skin: round body, pattern, eyes, accessory and outfit.
 // Zombies get a sickly green tint, stitches and glowing eyes.
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import type { Role, Skin } from '../types';
 
 interface Props {

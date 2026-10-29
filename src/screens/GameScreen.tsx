@@ -1,7 +1,9 @@
 // The match itself: runs the engine in a requestAnimationFrame loop, renders the world with a
 // fog-of-war circle, and wires input, abilities, tasks and networking together.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { tr, useLanguage } from '../i18n/language';
+import { Text } from '../i18n/Text';
 import type { AbilityId, GameMap } from '../types';
 import { T } from '../types';
 import type { MatchSetup, ScreenProps } from '../navigation/types';
@@ -143,6 +145,7 @@ function StationView({ s, done, mine }: { s: TaskStation; done: boolean; mine: b
 // ---- Screen ----------------------------------------------------------------------------------
 
 export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
+  useLanguage();
   const { setup } = route.params;
   const { profile, updateProfile, toast } = useGame();
   const dims = useWindowDimensions();
@@ -757,7 +760,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           </Text>
         </View>
         <View style={styles.topRight}>
-          <Pressable style={styles.smallBtn} onPress={() => updateSoundSettings({ muted: !sound.muted })} accessibilityLabel={sound.muted ? 'Unmute' : 'Mute'}>
+          <Pressable style={styles.smallBtn} onPress={() => updateSoundSettings({ muted: !sound.muted })} accessibilityLabel={tr(sound.muted ? 'Unmute' : 'Mute')}>
             <Text style={styles.smallBtnText}>{sound.muted ? '🔇' : '🔊'}</Text>
           </Pressable>
           <Pressable style={styles.smallBtn} onPress={() => setConfirmExit(true)}>

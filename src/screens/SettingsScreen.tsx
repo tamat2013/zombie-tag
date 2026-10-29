@@ -1,7 +1,9 @@
 // Audio settings: music and effects volume, footsteps, vibration and a mute-all switch.
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import { Screen, ScreenHeader, Card, P } from '../components/ui';
+import { LanguagePicker } from '../components/LanguagePicker';
 import { VOLUME_STEPS } from '../logic/soundSettings';
 import { playSfx, updateSoundSettings, useSoundSettings } from '../services/sound';
 import { colors, radius } from '../theme';
@@ -11,9 +13,14 @@ export function SettingsScreen() {
   const s = useSoundSettings();
   return (
     <Screen scroll>
-      <ScreenHeader title="Sound settings" />
+      <ScreenHeader title="Settings" />
 
       <Card>
+        <Text style={styles.title}>🌍 Language</Text>
+        <LanguagePicker />
+      </Card>
+
+      <Card style={styles.card}>
         <Toggle icon={s.muted ? '🔇' : '🔊'} title="Mute all" subtitle="Turns off music and effects without losing your volume levels" value={s.muted} onChange={(muted) => updateSoundSettings({ muted })} />
       </Card>
 

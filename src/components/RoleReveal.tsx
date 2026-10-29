@@ -1,6 +1,8 @@
 // Full-screen "you are a survivor / zombie" animation shown at match start.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { tr } from '../i18n/language';
+import { Text } from '../i18n/Text';
 import type { GameMode, Role, Skin } from '../types';
 import { Character } from './Character';
 import { colors } from '../theme';
@@ -49,7 +51,7 @@ export function RoleReveal({ role, doctor, skin, outfit, mode, secondsLeft }: Pr
         <Character skin={skin} size={110} role={role} outfit={outfit} />
       </Animated.View>
       <Animated.Text style={[styles.title, { color: tint, opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }] }]}>
-        {title}
+        {tr(title)}
       </Animated.Text>
       <Text style={styles.sub}>{subtitle}</Text>
       <Text style={[styles.count, { color: tint }]}>{Math.max(1, Math.ceil(secondsLeft))}</Text>

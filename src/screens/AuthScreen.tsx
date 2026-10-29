@@ -1,9 +1,12 @@
 // Sign up / log in with email and password.
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import { Screen, Tabs } from '../components/ui';
 import { Button } from '../components/Button';
 import { Character } from '../components/Character';
+import { LanguagePicker } from '../components/LanguagePicker';
+import { tr, useLanguage } from '../i18n/language';
 import { authErrorMessage, authService } from '../services/authService';
 import { BUILT_IN_SKINS } from '../data/skins';
 import { colors, radius } from '../theme';
@@ -12,6 +15,7 @@ import { haptic } from '../utils/haptics';
 type Mode = 'login' | 'register';
 
 export function AuthScreen() {
+  useLanguage(); // re-render (placeholders use tr()) when the language changes
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +69,11 @@ export function AuthScreen() {
           <Text style={styles.tagline}>Survive 10 minutes... or become one of them</Text>
         </View>
 
+        <View style={[styles.card, { marginBottom: 14 }]}>
+          <Text style={styles.label}>{mode === 'register' ? 'Which language do you want to play in?' : 'Language'}</Text>
+          <LanguagePicker />
+        </View>
+
         <View style={styles.card}>
           <Tabs<Mode>
             tabs={[
@@ -78,10 +87,10 @@ export function AuthScreen() {
             }}
           />
           {mode === 'register' ? (
-            <Field label="Player name" value={name} onChangeText={setName} placeholder="e.g. ZombieHunter" maxLength={16} />
+            <Field label="Player name" value={name} onChangeText={setName} placeholder={tr('e.g. ZombieHunter')} maxLength={16} />
           ) : null}
           <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
-          <Field label="Password" value={password} onChangeText={setPassword} placeholder="At least 6 characters" secureTextEntry onSubmitEditing={submit} />
+          <Field label="Password" value={password} onChangeText={setPassword} placeholder={tr('At least 6 characters')} secureTextEntry onSubmitEditing={submit} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <Button title={mode === 'login' ? 'Enter game' : 'Create account'} icon={mode === 'login' ? '🔓' : '✨'} onPress={submit} loading={busy} style={{ marginTop: 12 }} />
           <Button title="Continue as guest (no account)" icon="👤" variant="ghost" onPress={guest} disabled={busy} style={{ marginTop: 10 }} />

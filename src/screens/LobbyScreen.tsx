@@ -1,6 +1,7 @@
 // Lobby: set up a match against bots, or create / join an online room and wait for players.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { BotDifficulty, GameMap, Role } from '../types';
 import { Screen, ScreenHeader, Card, Chip, H, P, Tabs } from '../components/ui';

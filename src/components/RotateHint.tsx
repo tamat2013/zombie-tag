@@ -1,7 +1,8 @@
 // The game is designed for landscape. The app follows the device rotation (both landscape sides
 // and portrait), so when the device is held upright we ask to turn it instead of showing a sideways UI.
 import React from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Text } from '../i18n/Text';
 import { colors } from '../theme';
 
 export function RotateHint() {

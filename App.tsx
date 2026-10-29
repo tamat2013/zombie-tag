@@ -1,6 +1,7 @@
 // App root: providers, intro animation, auth gate and the navigation stack.
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, I18nManager, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, I18nManager, Platform, StyleSheet, View } from 'react-native';
+import { Text } from './src/i18n/Text';
 import { StatusBar } from 'expo-status-bar';
 import { DarkTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import type { Theme } from '@react-navigation/native';
@@ -27,6 +28,7 @@ import { TournamentsScreen } from './src/screens/TournamentsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { initSound, setMusic } from './src/services/sound';
+import { initLanguage } from './src/i18n/language';
 
 // Layouts are written with explicit row-reverse / right alignment for Hebrew,
 // so keep the native layout direction LTR to avoid double-flipping.
@@ -63,6 +65,7 @@ function Root() {
   const navRef = useNavigationContainerRef<RootStackParamList>();
   useEffect(() => {
     initSound();
+    initLanguage();
     setMusic('menu');
   }, []);
   const syncMusic = () => musicForRoute(navRef.getCurrentRoute()?.name);

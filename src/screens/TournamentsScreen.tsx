@@ -1,7 +1,8 @@
 // Tournament schedule: register, play knockout runs while live, and view the leaderboard.
 // Knockout prizes are paid right after a run ends, so there is nothing to claim here.
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import { Screen, ScreenHeader, Card, H, P, Pill } from '../components/ui';
 import { Button } from '../components/Button';

@@ -1,6 +1,8 @@
 // Pick a map for the match: built-in, your own, community maps, or import one by share code.
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { tr } from '../i18n/language';
+import { Text } from '../i18n/Text';
 import { useFocusEffect } from '@react-navigation/native';
 import type { ScreenProps } from '../navigation/types';
 import type { GameMap } from '../types';
@@ -124,7 +126,7 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
           <TextInput
             value={code}
             onChangeText={(t) => setCode(t.toUpperCase())}
-            placeholder="Map share code"
+            placeholder={tr('Map share code')}
             placeholderTextColor={colors.textMuted}
             autoCapitalize="characters"
             maxLength={6}
