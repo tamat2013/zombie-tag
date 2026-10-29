@@ -30,7 +30,7 @@ export function makeBots(count: number, rng: () => number, takenNames: string[] 
   const skins = BUILT_IN_SKINS.filter((s) => s.rarity !== 'exclusive');
   const out: Record<string, RoomBot> = {};
   for (let i = 0; i < count; i++) {
-    out[`bot-${i}`] = { name: names[i % names.length] ?? `בוט ${i + 1}`, skin: skins[Math.floor(rng() * skins.length)] };
+    out[`bot-${i}`] = { name: names[i % names.length] ?? `Bot ${i + 1}`, skin: skins[Math.floor(rng() * skins.length)] };
   }
   return out;
 }

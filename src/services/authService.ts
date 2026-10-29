@@ -52,20 +52,20 @@ function emitLocal(u: AppUser | null) {
 }
 
 const ERRORS: Record<string, string> = {
-  'auth/invalid-email': 'כתובת אימייל לא תקינה',
-  'auth/email-already-in-use': 'האימייל כבר רשום – נסה להתחבר',
-  'auth/weak-password': 'הסיסמה חלשה מדי (לפחות 6 תווים)',
-  'auth/invalid-credential': 'אימייל או סיסמה שגויים',
-  'auth/wrong-password': 'אימייל או סיסמה שגויים',
-  'auth/user-not-found': 'אימייל או סיסמה שגויים',
-  'auth/too-many-requests': 'יותר מדי ניסיונות. נסה שוב בעוד כמה דקות',
-  'auth/network-request-failed': 'אין חיבור לרשת',
-  'auth/operation-not-allowed': 'כניסה כאורח לא מופעלת ב-Firebase (Authentication > Sign-in method > Anonymous)',
+  'auth/invalid-email': 'Invalid email address',
+  'auth/email-already-in-use': 'That email is already registered – try logging in',
+  'auth/weak-password': 'Password is too weak (at least 6 characters)',
+  'auth/invalid-credential': 'Wrong email or password',
+  'auth/wrong-password': 'Wrong email or password',
+  'auth/user-not-found': 'Wrong email or password',
+  'auth/too-many-requests': 'Too many attempts. Try again in a few minutes',
+  'auth/network-request-failed': 'No network connection',
+  'auth/operation-not-allowed': 'Guest login is not enabled in Firebase (Authentication > Sign-in method > Anonymous)',
 };
 
 export function authErrorMessage(e: unknown): string {
   const code = (e as { code?: string })?.code ?? '';
-  return ERRORS[code] ?? (e instanceof Error ? e.message : 'שגיאה לא צפויה');
+  return ERRORS[code] ?? (e instanceof Error ? e.message : 'Unexpected error');
 }
 
 function validate(email: string, password: string) {
@@ -85,7 +85,7 @@ export const authService = {
         if (fbUser !== undefined) listener(fbUser ?? guest);
       };
       const unsubscribe = onAuthStateChanged(firebaseAuth(), (u) => {
-        fbUser = u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? pendingName ?? (u.email ?? 'שחקן').split('@')[0] } : null;
+        fbUser = u ? { uid: u.uid, email: u.email ?? '', displayName: u.displayName ?? pendingName ?? (u.email ?? 'Player').split('@')[0] } : null;
         emit();
       });
       const onGuest: Listener = (g) => {
@@ -144,7 +144,7 @@ export const authService = {
 
   /** Enter without an email or password: an anonymous Firebase user, or a local guest account offline. */
   async signInGuest(): Promise<AppUser> {
-    const name = 'אורח';
+    const name = 'Guest';
     if (isFirebaseConfigured) {
       pendingName = name;
       try {

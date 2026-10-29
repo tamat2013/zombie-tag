@@ -17,12 +17,12 @@ import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
 const TABS: { id: ShopTab; label: string }[] = [
-  { id: 'skins', label: '🎨 סקינים' },
-  { id: 'outfits', label: '🎩 תלבושות' },
-  { id: 'abilities', label: '⚡ יכולות' },
-  { id: 'upgrades', label: '⬆️ שדרוגים' },
-  { id: 'filters', label: '🧟 מסנני זומבי' },
-  { id: 'coins', label: '🏅 מדליות' },
+  { id: 'skins', label: '🎨 Skins' },
+  { id: 'outfits', label: '🎩 Outfits' },
+  { id: 'abilities', label: '⚡ Abilities' },
+  { id: 'upgrades', label: '⬆️ Upgrades' },
+  { id: 'filters', label: '🧟 Zombie filters' },
+  { id: 'coins', label: '🏅 Medals' },
 ];
 
 export function ShopScreen({ route }: ScreenProps<'Shop'>) {
@@ -44,7 +44,7 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
 
   return (
     <Screen scroll>
-      <ScreenHeader title="חנות" />
+      <ScreenHeader title="Shop" />
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
       <View style={{ marginTop: 12 }}>
         {tab === 'skins' ? <SkinsTab apply={apply} /> : null}
@@ -61,12 +61,12 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
                   {owned ? (
                     <Button
                       small
-                      title={equipped ? 'הסר' : 'לבש'}
+                      title={equipped ? 'Remove' : 'Wear'}
                       variant={equipped ? 'dark' : 'primary'}
                       onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: equipped ? null : o.id }))}
                     />
                   ) : (
-                    <Button small variant="gold" title={locked ? `רמה ${o.minLevel}` : `${o.price} 🪙`} disabled={locked} onPress={() => apply(buyOutfit(profile, o.id), `קנית ${o.name}`, o.emoji)} />
+                    <Button small variant="gold" title={locked ? `Level ${o.minLevel}` : `${o.price} 🪙`} disabled={locked} onPress={() => apply(buyOutfit(profile, o.id), `Bought ${o.name}`, o.emoji)} />
                   )}
                 </Card>
               );
@@ -93,9 +93,9 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
                   <Button
                     small
                     variant="gold"
-                    title={max ? 'מקסימום' : level < need ? `רמה ${need}` : `${upgradePrice(u, cur)} 🪙`}
+                    title={max ? 'Max' : level < need ? `Level ${need}` : `${upgradePrice(u, cur)} 🪙`}
                     disabled={max || level < need}
-                    onPress={() => apply(buyUpgrade(profile, u.id), `${u.name} שודרג לרמה ${cur + 1}`, u.icon)}
+                    onPress={() => apply(buyUpgrade(profile, u.id), `${u.name} upgraded to level ${cur + 1}`, u.icon)}
                   />
                 </Card>
               );
@@ -104,7 +104,7 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
         ) : null}
         {tab === 'filters' ? (
           <View style={{ gap: 10 }}>
-            <P dim>המסנן צובע את המסך כשאתה זומבי, וכל מסנן נותן לזומבי בונוס במשחק.</P>
+            <P dim>A filter tints your screen while you are a zombie, and each filter gives your zombie a bonus in the match.</P>
             {ZOMBIE_FILTERS.map((f) => {
               const owned = profile.ownedFilters.includes(f.id);
               const equipped = profile.equippedFilter === f.id;
@@ -120,9 +120,9 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
                     {f.price > 0 ? <Text style={styles.perk}>🎯 {f.perk}</Text> : null}
                   </View>
                   {owned ? (
-                    <Button small title={equipped ? 'פעיל' : 'הפעל'} variant={equipped ? 'dark' : 'primary'} disabled={equipped} onPress={() => updateProfile((p) => ({ ...p, equippedFilter: f.id }))} />
+                    <Button small title={equipped ? 'Active' : 'Use'} variant={equipped ? 'dark' : 'primary'} disabled={equipped} onPress={() => updateProfile((p) => ({ ...p, equippedFilter: f.id }))} />
                   ) : (
-                    <Button small variant="gold" title={`${f.price} 🪙`} onPress={() => apply(buyFilter(profile, f.id), `המסנן ${f.name} נקנה`, '🧟')} />
+                    <Button small variant="gold" title={`${f.price} 🪙`} onPress={() => apply(buyFilter(profile, f.id), `Bought the ${f.name} filter`, '🧟')} />
                   )}
                 </Card>
               );
@@ -154,11 +154,11 @@ function SkinsTab({ apply }: { apply: Apply }) {
               {s.power ? `⚡ ${SKIN_POWERS[s.power].description}` : ' '}
             </Text>
             {owned ? (
-              <Button small title={selected ? 'נבחר' : 'בחר'} variant={selected ? 'dark' : 'primary'} disabled={selected} onPress={() => updateProfile((p) => ({ ...p, selectedSkinId: s.id }))} />
+              <Button small title={selected ? 'Selected' : 'Select'} variant={selected ? 'dark' : 'primary'} disabled={selected} onPress={() => updateProfile((p) => ({ ...p, selectedSkinId: s.id }))} />
             ) : s.rarity === 'exclusive' ? (
-              <Button small title="🏆 פרס טורניר" variant="dark" disabled />
+              <Button small title="🏆 Tournament prize" variant="dark" disabled />
             ) : (
-              <Button small variant="gold" title={`${s.price} 🪙`} onPress={() => apply(buySkin(profile, s.id), `הסקין ${s.name} שלך!`, '🎨')} />
+              <Button small variant="gold" title={`${s.price} 🪙`} onPress={() => apply(buySkin(profile, s.id), `The ${s.name} skin is yours!`, '🎨')} />
             )}
           </Card>
         );
@@ -171,12 +171,12 @@ function AbilitiesTab({ apply }: { apply: Apply }) {
   const profile = useProfile();
   const level = levelInfo(profile.xp).level;
   const roles: { role: Role; title: string }[] = [
-    { role: 'survivor', title: '🧍 יכולות שורד' },
-    { role: 'zombie', title: '🧟 יכולות זומבי' },
+    { role: 'survivor', title: '🧍 Survivor abilities' },
+    { role: 'zombie', title: '🧟 Zombie abilities' },
   ];
   return (
     <View style={{ gap: 14 }}>
-      <P dim>בחר עד {MAX_LOADOUT} יכולות לכל תפקיד. הן יופיעו ככפתורים במשחק, ומנהל היכולות החכם יסמן מתי כדאי להשתמש בכל אחת.</P>
+      <P dim>Pick up to {MAX_LOADOUT} abilities per role. They show up as buttons in the match, and the smart ability helper highlights when each one is worth using.</P>
       {roles.map(({ role, title }) => (
         <View key={role} style={{ gap: 8 }}>
           <H size={16}>
@@ -194,22 +194,22 @@ function AbilitiesTab({ apply }: { apply: Apply }) {
                   <View style={{ flex: 1 }}>
                     <H size={15}>{a.name}</H>
                     <P dim>{a.description}</P>
-                    <P dim style={{ fontSize: 12 }}>טעינה: {a.cooldownSec} שנ׳</P>
+                    <P dim style={{ fontSize: 12 }}>Cooldown: {a.cooldownSec}s</P>
                   </View>
                   {owned ? (
                     <Button
                       small
-                      title={equipped ? 'מצויד ✔' : 'צייד'}
+                      title={equipped ? 'Equipped ✔' : 'Equip'}
                       variant={equipped ? 'dark' : 'primary'}
-                      onPress={() => apply(toggleLoadout(profile, role, a.id), equipped ? `${a.name} הוסרה` : `${a.name} צוידה`, a.icon)}
+                      onPress={() => apply(toggleLoadout(profile, role, a.id), equipped ? `${a.name} removed` : `${a.name} equipped`, a.icon)}
                     />
                   ) : price ? (
                     <Button
                       small
                       variant="gold"
-                      title={level < price.minLevel ? `רמה ${price.minLevel}` : `${price.price} 🪙`}
+                      title={level < price.minLevel ? `Level ${price.minLevel}` : `${price.price} 🪙`}
                       disabled={level < price.minLevel}
-                      onPress={() => apply(buyAbility(profile, a.id), `היכולת ${a.name} נפתחה!`, a.icon)}
+                      onPress={() => apply(buyAbility(profile, a.id), `${a.name} unlocked!`, a.icon)}
                     />
                   ) : null}
                 </Card>
@@ -226,15 +226,15 @@ function CoinsTab({ apply }: { apply: Apply }) {
   return (
     <View style={{ gap: 12 }}>
       <Card highlight={colors.medal}>
-        <H size={16}>🏅 המרת מדליות</H>
+        <H size={16}>🏅 Convert medals</H>
         <P dim>
-          כל מדליה שווה {MEDAL_TO_COINS} מטבעות. יש לך {profile.medals} מדליות.
+          Each medal is worth {MEDAL_TO_COINS} coins. You have {profile.medals} medals.
         </P>
-        <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
           {[1, 5, 10].map((n) => (
-            <Button key={n} small variant="dark" title={`${n} ← ${n * MEDAL_TO_COINS} 🪙`} disabled={profile.medals < n} onPress={() => apply(convertMedals(profile, n), `קיבלת ${n * MEDAL_TO_COINS} מטבעות`, '🪙')} />
+            <Button key={n} small variant="dark" title={`${n} → ${n * MEDAL_TO_COINS} 🪙`} disabled={profile.medals < n} onPress={() => apply(convertMedals(profile, n), `You got ${n * MEDAL_TO_COINS} coins`, '🪙')} />
           ))}
-          <Button small variant="gold" title="המר הכל" disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, profile.medals), `קיבלת ${profile.medals * MEDAL_TO_COINS} מטבעות`, '🪙')} />
+          <Button small variant="gold" title="Convert all" disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, profile.medals), `You got ${profile.medals * MEDAL_TO_COINS} coins`, '🪙')} />
         </View>
       </Card>
     </View>
@@ -242,12 +242,12 @@ function CoinsTab({ apply }: { apply: Apply }) {
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   item: { width: 150, alignItems: 'center', gap: 6, paddingVertical: 14 },
   itemName: { color: colors.text, fontWeight: '900', fontSize: 14, textAlign: 'center' },
   power: { color: colors.textDim, fontSize: 11, textAlign: 'center', minHeight: 28 },
   rarity: { position: 'absolute', top: 8, right: 8, width: 10, height: 10, borderRadius: 5 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   filterSwatch: { width: 48, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   bonus: { color: colors.toxic, fontWeight: '800', fontSize: 12 },
   perk: { color: colors.toxic, fontWeight: '800', fontSize: 12, marginTop: 2 },

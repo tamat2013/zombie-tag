@@ -27,6 +27,7 @@ const SFX = {
   released: require('../../assets/sounds/released.wav'),
   ability: require('../../assets/sounds/ability.wav'),
   tick: require('../../assets/sounds/tick.wav'),
+  beacon: require('../../assets/sounds/beacon.wav'),
   win: require('../../assets/sounds/win.wav'),
   lose: require('../../assets/sounds/lose.wav'),
 } as const;

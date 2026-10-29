@@ -18,15 +18,15 @@ function timeLeft(ms: number): string {
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d} ימ׳ ${h} שע׳`;
-  if (h > 0) return `${h} שע׳ ${m} דק׳`;
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
 function clock(ms: number): string {
   const d = new Date(ms);
-  const days = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
-  return `יום ${days[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return `${days[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 const RANK_ICONS = ['🥇', '🥈', '🥉'];
@@ -57,7 +57,7 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
     updateProfile((p) => registerForTournament(p, t));
     tournamentService.register(t, profile).catch((e) => console.warn('register failed', e));
     haptic('success');
-    toast(`נרשמת ל${t.name}`, { icon: t.icon, tone: 'good' });
+    toast(`Registered for ${t.name}`, { icon: t.icon, tone: 'good' });
   };
 
   const play = (t: Tournament) => {
@@ -71,11 +71,11 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
     const board = boards[t.id];
     const statusPill =
       status === 'live' ? (
-        <Pill text={`חי · נותרו ${timeLeft(t.endsAt - now)}`} icon="🔴" color={colors.blood} />
+        <Pill text={`Live · ${timeLeft(t.endsAt - now)} left`} icon="🔴" color={colors.blood} />
       ) : status === 'upcoming' ? (
-        <Pill text={`מתחיל בעוד ${timeLeft(t.startsAt - now)}`} icon="⏳" color={colors.gold} />
+        <Pill text={`Starts in ${timeLeft(t.startsAt - now)}`} icon="⏳" color={colors.gold} />
       ) : (
-        <Pill text="הסתיים" icon="🏁" color={colors.textDim} />
+        <Pill text="Ended" icon="🏁" color={colors.textDim} />
       );
 
     return (
@@ -98,22 +98,22 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
               <Text style={styles.prizeRank}>{PRIZE_ICONS[i] ?? '🎟️'}</Text>
               <Text style={styles.prizeText}>{pr.coins} 🪙</Text>
               {pr.medals ? <Text style={styles.prizeText}>{pr.medals} 🏅</Text> : null}
-              {pr.skin ? <Text style={[styles.prizeText, { color: colors.purple }]}>סקין!</Text> : null}
-              <Text style={styles.prizeLabel}>{PRIZE_LABELS[i] ?? 'השתתפות'}</Text>
+              {pr.skin ? <Text style={[styles.prizeText, { color: colors.purple }]}>Skin!</Text> : null}
+              <Text style={styles.prizeLabel}>{PRIZE_LABELS[i] ?? 'Participation'}</Text>
             </View>
           ))}
         </View>
 
         {entry ? (
           <Text style={styles.mine}>
-            ✔ רשום · {entry.points} נקודות
+            ✔ Registered · {entry.points} points
           </Text>
         ) : null}
 
         <View style={styles.actions}>
-          {status === 'live' ? <Button small title="שחק עכשיו" icon="▶️" onPress={() => play(t)} style={{ flex: 1 }} /> : null}
-          {status === 'upcoming' && !entry ? <Button small title="הירשם" icon="📝" variant="blue" onPress={() => register(t)} style={{ flex: 1 }} /> : null}
-          <Button small title={open === t.id ? 'הסתר טבלה' : 'טבלת מובילים'} icon="📊" variant="dark" onPress={() => toggleBoard(t)} style={{ flex: 1 }} />
+          {status === 'live' ? <Button small title="Play now" icon="▶️" onPress={() => play(t)} style={{ flex: 1 }} /> : null}
+          {status === 'upcoming' && !entry ? <Button small title="Register" icon="📝" variant="blue" onPress={() => register(t)} style={{ flex: 1 }} /> : null}
+          <Button small title={open === t.id ? 'Hide board' : 'Leaderboard'} icon="📊" variant="dark" onPress={() => toggleBoard(t)} style={{ flex: 1 }} />
         </View>
 
         {open === t.id ? (
@@ -121,7 +121,7 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
             {board === 'loading' || !board ? (
               <ActivityIndicator color={colors.toxic} />
             ) : board.length === 0 ? (
-              <P dim style={{ textAlign: 'center' }}>עדיין אין משתתפים. היה הראשון!</P>
+              <P dim style={{ textAlign: 'center' }}>No players yet. Be the first!</P>
             ) : (
               board.slice(0, 10).map((e, i) => (
                 <View key={e.uid} style={[styles.boardRow, e.uid === profile.uid && styles.boardMine]}>
@@ -134,7 +134,7 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
               ))
             )}
             {Array.isArray(board) && entry && rankOf(board, profile.uid) > 10 ? (
-              <Text style={styles.mine}>המיקום שלך: {rankOf(board, profile.uid)}</Text>
+              <Text style={styles.mine}>Your rank: {rankOf(board, profile.uid)}</Text>
             ) : null}
           </View>
         ) : null}
@@ -148,26 +148,26 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
 
   return (
     <Screen scroll>
-      <ScreenHeader title="טורנירים" />
+      <ScreenHeader title="Tournaments" />
       <Card style={{ marginBottom: 6 }}>
         <P dim>
-          טורניר נוקאאוט: 8 שחקנים, חצי זומבים וחצי שורדים. עולים שלב רק אם הקבוצה שהתחלת בה ניצחה, עד גמר של 2 שחקנים. בטורניר השורדים מהירים יותר והזומבים איטיים יותר.
-          הפרס מתקבל מיד כשהריצה נגמרת. כל משחק גם צובר נקודות לטבלה (ניצחון 100, משימה 10, הדבקה 15, אלוף +{CHAMPION_POINTS}).
+          Knockout tournament: 8 players, half zombies and half survivors. You advance only if the team you started on wins, all the way to a 2-player final. In tournaments survivors are faster and zombies are slower.
+          You get your prize as soon as your run ends. Every match also earns leaderboard points (win 100, task 10, infection 15, champion +{CHAMPION_POINTS}).
         </P>
       </Card>
       {live.length ? (
         <H size={16} style={styles.section}>
-          🔴 עכשיו
+          🔴 Live now
         </H>
       ) : null}
       <View style={{ gap: 10 }}>{live.map(renderCard)}</View>
       <H size={16} style={styles.section}>
-        ⏳ בקרוב
+        ⏳ Upcoming
       </H>
       <View style={{ gap: 10 }}>{upcoming.map(renderCard)}</View>
       {ended.length ? (
         <H size={16} style={styles.section}>
-          🏁 הסתיימו
+          🏁 Ended
         </H>
       ) : null}
       <View style={{ gap: 10 }}>{ended.map(renderCard)}</View>
@@ -176,19 +176,19 @@ export function TournamentsScreen({ navigation }: ScreenProps<'Tournaments'>) {
 }
 
 const styles = StyleSheet.create({
-  head: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   section: { marginTop: 16, marginBottom: 8 },
-  prizes: { flexDirection: 'row-reverse', gap: 6 },
+  prizes: { flexDirection: 'row', gap: 6 },
   prize: { flex: 1, backgroundColor: colors.bgAlt, borderRadius: 10, padding: 6, alignItems: 'center' },
   prizeRank: { fontSize: 20 },
   prizeText: { color: colors.coin, fontWeight: '800', fontSize: 12 },
   prizeLabel: { color: colors.textMuted, fontSize: 10, marginTop: 2 },
-  mine: { color: colors.toxic, fontWeight: '800', textAlign: 'right' },
-  actions: { flexDirection: 'row-reverse', gap: 8 },
+  mine: { color: colors.toxic, fontWeight: '800', textAlign: 'left' },
+  actions: { flexDirection: 'row', gap: 8 },
   board: { backgroundColor: colors.bgAlt, borderRadius: 10, padding: 8, gap: 2, minHeight: 40, justifyContent: 'center' },
-  boardRow: { flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 6, borderRadius: 6 },
+  boardRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 6, borderRadius: 6 },
   boardMine: { backgroundColor: 'rgba(124,255,79,0.1)' },
   boardRank: { width: 30, color: colors.textDim, fontWeight: '900', textAlign: 'center' },
-  boardName: { flex: 1, color: colors.text, fontWeight: '700', textAlign: 'right' },
+  boardName: { flex: 1, color: colors.text, fontWeight: '700', textAlign: 'left' },
   boardPts: { color: colors.gold, fontWeight: '900', minWidth: 50, textAlign: 'left' },
 });

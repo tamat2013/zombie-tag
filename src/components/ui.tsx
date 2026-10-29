@@ -25,11 +25,11 @@ export function Screen({ children, scroll, style }: { children: React.ReactNode;
 }
 
 export function H({ children, style, size = 22 }: { children: React.ReactNode; style?: StyleProp<TextStyle>; size?: number }) {
-  return <Text style={[{ color: colors.text, fontSize: size, fontWeight: '900', textAlign: 'right' }, style]}>{children}</Text>;
+  return <Text style={[{ color: colors.text, fontSize: size, fontWeight: '900', textAlign: 'left' }, style]}>{children}</Text>;
 }
 
 export function P({ children, style, dim }: { children: React.ReactNode; style?: StyleProp<TextStyle>; dim?: boolean }) {
-  return <Text style={[{ color: dim ? colors.textDim : colors.text, fontSize: 14, textAlign: 'right', lineHeight: 20 }, style]}>{children}</Text>;
+  return <Text style={[{ color: dim ? colors.textDim : colors.text, fontSize: 14, textAlign: 'left', lineHeight: 20 }, style]}>{children}</Text>;
 }
 
 export function ScreenHeader({ title, right, onBack }: { title: string; right?: React.ReactNode; onBack?: () => void }) {
@@ -45,7 +45,7 @@ export function ScreenHeader({ title, right, onBack }: { title: string; right?: 
         style={({ pressed }) => [styles.back, pressed && { opacity: 0.6 }]}
         hitSlop={10}
       >
-        <Text style={styles.backText}>→</Text>
+        <Text style={styles.backText}>←</Text>
       </Pressable>
     </View>
   );
@@ -59,7 +59,7 @@ export function CurrencyBar({ compact }: { compact?: boolean }) {
     <View style={styles.currency}>
       <Pill text={`${profile.coins.toLocaleString()}`} icon="🪙" color={colors.coin} />
       <Pill text={`${profile.medals}`} icon="🏅" color={colors.medal} />
-      {!compact ? <Pill text={`רמה ${lvl.level}`} icon="⭐" color={colors.toxic} /> : null}
+      {!compact ? <Pill text={`Level ${lvl.level}`} icon="⭐" color={colors.toxic} /> : null}
     </View>
   );
 }
@@ -97,7 +97,7 @@ export function Card({ children, style, onPress, highlight }: { children: React.
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string }[]; value: T; onChange: (t: T) => void }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4, flexDirection: 'row-reverse' }} style={{ flexGrow: 0 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4, flexDirection: 'row' }} style={{ flexGrow: 0 }}>
       {tabs.map((t) => (
         <Pressable key={t.id} onPress={() => onChange(t.id)} style={[styles.tab, value === t.id && styles.tabActive]}>
           <Text style={[styles.tabText, value === t.id && { color: '#0b0f0a' }]}>{t.label}</Text>
@@ -148,7 +148,7 @@ function ToastItem({ text, icon, tone }: { text: string; icon?: string; tone?: '
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 },
   headerSide: { flex: 1, alignItems: 'flex-start' },
-  headerTitle: { color: colors.text, fontSize: 22, fontWeight: '900', flexShrink: 1, textAlign: 'right' },
+  headerTitle: { color: colors.text, fontSize: 22, fontWeight: '900', flexShrink: 1, textAlign: 'left' },
   back: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
   backText: { color: colors.text, fontSize: 22, fontWeight: '900' },
   currency: { flexDirection: 'row', gap: 6 },

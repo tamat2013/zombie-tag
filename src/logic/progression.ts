@@ -67,7 +67,7 @@ export function createDefaultProfile(uid: string, displayName: string, email: st
 
 /** Fills in fields added in later versions so old saved profiles keep working. */
 export function normalizeProfile(raw: Partial<Profile> & { uid: string }, now: number): Profile {
-  const def = createDefaultProfile(raw.uid, raw.displayName ?? 'שחקן', raw.email ?? '', now);
+  const def = createDefaultProfile(raw.uid, raw.displayName ?? 'Player', raw.email ?? '', now);
   const merged: Profile = {
     ...def,
     ...raw,
@@ -127,31 +127,31 @@ export function computeRewards(result: MatchResult, profile: Profile, medalTimes
   const lines: RewardLine[] = [];
   if (result.mode === 'obstacle') {
     if (result.obstacleTimeMs === undefined) {
-      lines.push({ label: 'השתתפות', xp: 10, coins: 0 });
+      lines.push({ label: 'Participation', xp: 10, coins: 0 });
     } else {
-      lines.push({ label: 'סיום המסלול', xp: 60, coins: 20 });
+      lines.push({ label: 'Course finished', xp: 60, coins: 20 });
       const medal = obstacleMedal(result.mapId, result.obstacleTimeMs, medalTimes);
       const prev = profile.obstacleMedals[result.mapId];
       if (medal) {
         const gained = MEDAL_VALUE[medal] - (prev ? MEDAL_VALUE[prev] : 0);
-        if (gained > 0) lines.push({ label: `מדליה חדשה (${medalName(medal)})`, xp: 40 * gained, coins: 0, medals: gained });
+        if (gained > 0) lines.push({ label: `New medal (${medalName(medal)})`, xp: 40 * gained, coins: 0, medals: gained });
       }
       const best = profile.bestObstacleTimes[result.mapId];
-      if (best !== undefined && result.obstacleTimeMs < best) lines.push({ label: 'שיא אישי!', xp: 30, coins: 30 });
+      if (best !== undefined && result.obstacleTimeMs < best) lines.push({ label: 'Personal best!', xp: 30, coins: 30 });
     }
   } else {
-    lines.push({ label: 'השתתפות', xp: 20, coins: 10 });
-    if (result.tasks) lines.push({ label: `${result.tasks} משימות`, xp: result.tasks * 25, coins: result.tasks * TASK_COINS });
-    if (result.cures) lines.push({ label: `${result.cures} ריפויים 🩺`, xp: result.cures * CURE_XP, coins: result.cures * CURE_COINS });
-    if (result.infections) lines.push({ label: `${result.infections} הדבקות`, xp: result.infections * 30, coins: result.infections * 10 });
+    lines.push({ label: 'Participation', xp: 20, coins: 10 });
+    if (result.tasks) lines.push({ label: `${result.tasks} tasks`, xp: result.tasks * 25, coins: result.tasks * TASK_COINS });
+    if (result.cures) lines.push({ label: `${result.cures} cures 🩺`, xp: result.cures * CURE_XP, coins: result.cures * CURE_COINS });
+    if (result.infections) lines.push({ label: `${result.infections} infections`, xp: result.infections * 30, coins: result.infections * 10 });
     if (result.secondsSurvived) {
       lines.push({
-        label: `שרדת ${formatSeconds(result.secondsSurvived)}`,
+        label: `Survived ${formatSeconds(result.secondsSurvived)}`,
         xp: Math.min(100, Math.floor(result.secondsSurvived / 6)),
         coins: Math.floor(result.secondsSurvived / 20),
       });
     }
-    if (result.won) lines.push({ label: 'ניצחון!', xp: 100, coins: 50 });
+    if (result.won) lines.push({ label: 'Victory!', xp: 100, coins: 50 });
   }
   let xp = lines.reduce((s, l) => s + l.xp, 0);
   let coins = lines.reduce((s, l) => s + l.coins, 0);
@@ -159,18 +159,18 @@ export function computeRewards(result: MatchResult, profile: Profile, medalTimes
   if (turnedAndWon(result)) {
     xp = Math.round(xp / 2);
     coins = Math.round(coins / 2);
-    lines.push({ label: 'נדבקת והזומבים ניצחו: חצי פרס', xp: 0, coins: 0 });
+    lines.push({ label: 'Infected and the zombies won: half reward', xp: 0, coins: 0 });
   }
   if (result.mode === 'training') {
     xp = Math.round(xp * 0.5);
     coins = Math.round(coins * 0.3);
-    lines.push({ label: 'אימון: ‎50% XP, 30% מטבעות', xp: 0, coins: 0 });
+    lines.push({ label: 'Training: 50% XP, 30% coins', xp: 0, coins: 0 });
   }
   return { xp, coins, medals, lines };
 }
 
 export function medalName(m: MedalTier): string {
-  return m === 'gold' ? 'זהב' : m === 'silver' ? 'כסף' : 'ארד';
+  return m === 'gold' ? 'Gold' : m === 'silver' ? 'Silver' : 'Bronze';
 }
 
 export function formatSeconds(sec: number): string {
@@ -234,13 +234,13 @@ export function applyMatchResult(profile: Profile, result: MatchResult, now: num
     // Knockout prize, paid as soon as the run ends (champion or knocked out).
     const outcome = knockoutOutcome(result);
     if (outcome?.kind === 'advance') {
-      rewards.lines.push({ label: `עלית ל${roundName(outcome.nextSize)}! ⏭️`, xp: 0, coins: 0 });
+      rewards.lines.push({ label: `Advanced to the ${roundName(outcome.nextSize)}! ⏭️`, xp: 0, coins: 0 });
     } else if (t && outcome) {
       const prize = knockoutPrize(t, outcome)!;
       const place = outcome.kind === 'champion' ? 0 : outcome.place - 1;
       const newSkin = prize.skin && !p.ownedSkins.includes(prize.skin) ? prize.skin : null;
       if (newSkin) p.ownedSkins = [...p.ownedSkins, newSkin];
-      const label = `פרס טורניר: ${PRIZE_LABELS[place]}${place === 0 ? ' 🏆' : ''}${newSkin ? ' + סקין בלעדי 👑' : ''}`;
+      const label = `Tournament prize: ${PRIZE_LABELS[place]}${place === 0 ? ' 🏆' : ''}${newSkin ? ' + exclusive skin 👑' : ''}`;
       rewards.lines.push({ label, xp: 0, coins: prize.coins, medals: prize.medals });
       rewards.coins += prize.coins;
       rewards.medals += prize.medals;
@@ -285,27 +285,27 @@ function statAch(id: string, title: string, badge: string, stat: StatKey, target
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  statAch('first_match', 'צעד ראשון', '🎮', 'matchesPlayed', 1, 50, 0, 'שחק משחק ראשון'),
-  statAch('first_win', 'ניצחון ראשון', '🏅', 'wins', 1, 100, 1, 'נצח במשחק'),
-  statAch('wins_25', 'מנצח סדרתי', '🏆', 'wins', 25, 500, 5, 'נצח ב-25 משחקים'),
-  statAch('tasks_10', 'עובד חרוץ', '🔧', 'tasksCompleted', 10, 100, 1, 'השלם 10 משימות'),
-  statAch('tasks_100', 'מהנדס ראשי', '⚙️', 'tasksCompleted', 100, 600, 5, 'השלם 100 משימות'),
-  statAch('infect_10', 'מגפה מתפשטת', '🧟', 'infections', 10, 150, 1, 'הדבק 10 שורדים'),
-  statAch('infect_100', 'אפוקליפסה', '☣️', 'infections', 100, 800, 6, 'הדבק 100 שורדים'),
-  statAch('survivor_10', 'שורד אמיתי', '🛡️', 'survivorWins', 10, 400, 3, 'נצח 10 פעמים כשורד'),
-  statAch('survive_hour', 'שעה בחיים', '⏱️', 'secondsSurvived', 3600, 300, 2, 'שרוד שעה מצטברת'),
-  statAch('abilities_50', 'מומחה יכולות', '✨', 'abilitiesUsed', 50, 200, 1, 'השתמש ב-50 יכולות'),
-  statAch('obstacle_gold', 'זריז כמו ברק', '🥇', 'obstacleGolds', 1, 200, 2, 'השג מדליית זהב במסלול מכשולים'),
-  statAch('tournament_5', 'לוחם טורנירים', '⚔️', 'tournamentMatches', 5, 300, 2, 'שחק 5 משחקי טורניר'),
-  statAch('designer', 'מעצב אופנה', '🎨', 'skinsCreated', 1, 100, 0, 'צור סקין משלך'),
-  statAch('architect', 'אדריכל', '🗺️', 'mapsCreated', 1, 150, 1, 'צור מפה משלך'),
+  statAch('first_match', 'First Step', '🎮', 'matchesPlayed', 1, 50, 0, 'Play your first match'),
+  statAch('first_win', 'First Win', '🏅', 'wins', 1, 100, 1, 'Win a match'),
+  statAch('wins_25', 'Serial Winner', '🏆', 'wins', 25, 500, 5, 'Win 25 matches'),
+  statAch('tasks_10', 'Hard Worker', '🔧', 'tasksCompleted', 10, 100, 1, 'Complete 10 tasks'),
+  statAch('tasks_100', 'Chief Engineer', '⚙️', 'tasksCompleted', 100, 600, 5, 'Complete 100 tasks'),
+  statAch('infect_10', 'Spreading Plague', '🧟', 'infections', 10, 150, 1, 'Infect 10 survivors'),
+  statAch('infect_100', 'Apocalypse', '☣️', 'infections', 100, 800, 6, 'Infect 100 survivors'),
+  statAch('survivor_10', 'True Survivor', '🛡️', 'survivorWins', 10, 400, 3, 'Win 10 times as a survivor'),
+  statAch('survive_hour', 'An Hour Alive', '⏱️', 'secondsSurvived', 3600, 300, 2, 'Survive one hour in total'),
+  statAch('abilities_50', 'Ability Expert', '✨', 'abilitiesUsed', 50, 200, 1, 'Use 50 abilities'),
+  statAch('obstacle_gold', 'Lightning Fast', '🥇', 'obstacleGolds', 1, 200, 2, 'Get a gold medal on an obstacle course'),
+  statAch('tournament_5', 'Tournament Warrior', '⚔️', 'tournamentMatches', 5, 300, 2, 'Play 5 tournament matches'),
+  statAch('designer', 'Fashion Designer', '🎨', 'skinsCreated', 1, 100, 0, 'Create your own skin'),
+  statAch('architect', 'Architect', '🗺️', 'mapsCreated', 1, 150, 1, 'Create your own map'),
   {
-    id: 'level_10', title: 'ותיק', badge: '🔟', coins: 500, medals: 3, description: 'הגע לרמה 10',
+    id: 'level_10', title: 'Veteran', badge: '🔟', coins: 500, medals: 3, description: 'Reach level 10',
     check: (p) => levelInfo(p.xp).level >= 10,
     progress: (p) => [Math.min(levelInfo(p.xp).level, 10), 10],
   },
   {
-    id: 'collector', title: 'אספן', badge: '👕', coins: 400, medals: 2, description: 'החזק 6 סקינים',
+    id: 'collector', title: 'Collector', badge: '👕', coins: 400, medals: 2, description: 'Own 6 skins',
     check: (p) => p.ownedSkins.length + p.customSkins.length >= 6,
     progress: (p) => [Math.min(p.ownedSkins.length + p.customSkins.length, 6), 6],
   },

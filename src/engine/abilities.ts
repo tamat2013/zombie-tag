@@ -15,17 +15,17 @@ export interface AbilityDef {
 }
 
 export const ABILITIES: Record<AbilityId, AbilityDef> = {
-  sprint: { id: 'sprint', role: 'survivor', name: 'מהירות', icon: '💨', description: 'ריצה מהירה פי 1.6 למשך 3 שניות', cooldownSec: 15, durationSec: 3 },
-  scan: { id: 'scan', role: 'survivor', name: 'חיפוש', icon: '📡', description: 'חושף את כל הזומבים במפה ל-5 שניות', cooldownSec: 20, durationSec: 5 },
-  medic: { id: 'medic', role: 'survivor', name: 'רופא', icon: '💊', description: 'מגן עליך ועל שורדים קרובים ל-4 שניות', cooldownSec: 25, durationSec: 4, radius: 170 },
-  invisibility: { id: 'invisibility', role: 'survivor', name: 'היעלמות', icon: '🫥', description: 'זומבים לא רואים אותך ל-4 שניות (חוץ ממגע קרוב)', cooldownSec: 30, durationSec: 4 },
-  dash: { id: 'dash', role: 'zombie', name: 'זינוק', icon: '⚡', description: 'האצה פי 1.7 לשנייה אחת', cooldownSec: 12, durationSec: 1 },
-  zombieVision: { id: 'zombieVision', role: 'zombie', name: 'ראיית זומבי', icon: '👁️', description: 'רואה את כל השורדים דרך קירות ל-5 שניות', cooldownSec: 22, durationSec: 5 },
-  roar: { id: 'roar', role: 'zombie', name: 'שאגה', icon: '📢', description: 'מאט שורדים קרובים ב-50% ל-2.5 שניות', cooldownSec: 28, durationSec: 2.5, radius: 180 },
-  smoke: { id: 'smoke', role: 'survivor', name: 'רימון עשן', icon: '🌫️', description: 'מסנוור זומבים קרובים: כמעט לא רואים ל-4 שניות', cooldownSec: 28, durationSec: 4, radius: 200 },
-  teleport: { id: 'teleport', role: 'survivor', name: 'שיגור', icon: '🌀', description: 'מעביר אותך לנקודת ההתחלה הרחוקה ביותר מהזומבים', cooldownSec: 40, durationSec: 0 },
-  frenzy: { id: 'frenzy', role: 'zombie', name: 'טירוף', icon: '🩸', description: 'מהירות פי 1.35 למשך 5 שניות', cooldownSec: 24, durationSec: 5 },
-  leap: { id: 'leap', role: 'zombie', name: 'קפיצה', icon: '🦘', description: 'קופץ 3 משבצות קדימה בבת אחת', cooldownSec: 14, durationSec: 0 },
+  sprint: { id: 'sprint', role: 'survivor', name: 'Sprint', icon: '💨', description: 'Run 1.6x faster for 3 seconds', cooldownSec: 15, durationSec: 3 },
+  scan: { id: 'scan', role: 'survivor', name: 'Scan', icon: '📡', description: 'Reveals every zombie on the map for 5 seconds', cooldownSec: 20, durationSec: 5 },
+  medic: { id: 'medic', role: 'survivor', name: 'Medic', icon: '💊', description: 'Shields you and nearby survivors for 4 seconds', cooldownSec: 25, durationSec: 4, radius: 170 },
+  invisibility: { id: 'invisibility', role: 'survivor', name: 'Vanish', icon: '🫥', description: 'Zombies cannot see you for 4 seconds (except up close)', cooldownSec: 30, durationSec: 4 },
+  dash: { id: 'dash', role: 'zombie', name: 'Dash', icon: '⚡', description: '1.7x speed burst for 1 second', cooldownSec: 12, durationSec: 1 },
+  zombieVision: { id: 'zombieVision', role: 'zombie', name: 'Zombie Vision', icon: '👁️', description: 'See all survivors through walls for 5 seconds', cooldownSec: 22, durationSec: 5 },
+  roar: { id: 'roar', role: 'zombie', name: 'Roar', icon: '📢', description: 'Slows nearby survivors by 50% for 2.5 seconds', cooldownSec: 28, durationSec: 2.5, radius: 180 },
+  smoke: { id: 'smoke', role: 'survivor', name: 'Smoke Bomb', icon: '🌫️', description: 'Blinds nearby zombies: they can barely see for 4 seconds', cooldownSec: 28, durationSec: 4, radius: 200 },
+  teleport: { id: 'teleport', role: 'survivor', name: 'Teleport', icon: '🌀', description: 'Takes you to the spawn point farthest from the zombies', cooldownSec: 40, durationSec: 0 },
+  frenzy: { id: 'frenzy', role: 'zombie', name: 'Frenzy', icon: '🩸', description: '1.35x speed for 5 seconds', cooldownSec: 24, durationSec: 5 },
+  leap: { id: 'leap', role: 'zombie', name: 'Leap', icon: '🦘', description: 'Jumps 3 tiles forward instantly', cooldownSec: 14, durationSec: 0 },
 };
 
 /** How far a zombie's leap goes, in pixels. */

@@ -15,27 +15,27 @@ export interface MissionDef {
 }
 
 export const DAILY_POOL: MissionDef[] = [
-  { id: 'd_play3', title: 'שחק 3 משחקים', stat: 'matchesPlayed', target: 3, coins: 60, xp: 80, icon: '🎮' },
-  { id: 'd_win1', title: 'נצח משחק אחד', stat: 'wins', target: 1, coins: 80, xp: 100, icon: '🏅' },
-  { id: 'd_tasks5', title: 'השלם 5 משימות', stat: 'tasksCompleted', target: 5, coins: 60, xp: 90, icon: '🔧' },
-  { id: 'd_infect3', title: 'הדבק 3 שורדים', stat: 'infections', target: 3, coins: 70, xp: 90, icon: '🧟' },
-  { id: 'd_wires2', title: 'חבר חוטים פעמיים', stat: 'wiresTasks', target: 2, coins: 50, xp: 60, icon: '🔌' },
-  { id: 'd_temp2', title: 'בדוק טמפרטורה פעמיים', stat: 'temperatureTasks', target: 2, coins: 50, xp: 60, icon: '🌡️' },
-  { id: 'd_trash2', title: 'זרוק אשפה פעמיים', stat: 'trashTasks', target: 2, coins: 50, xp: 60, icon: '🗑️' },
-  { id: 'd_survive5', title: 'שרוד 5 דקות מצטבר', stat: 'secondsSurvived', target: 300, coins: 70, xp: 90, icon: '⏱️' },
-  { id: 'd_abilities5', title: 'השתמש ב-5 יכולות', stat: 'abilitiesUsed', target: 5, coins: 50, xp: 70, icon: '✨' },
-  { id: 'd_obstacle1', title: 'רוץ במסלול מכשולים', stat: 'obstacleRuns', target: 1, coins: 40, xp: 60, icon: '🏃' },
+  { id: 'd_play3', title: 'Play 3 matches', stat: 'matchesPlayed', target: 3, coins: 60, xp: 80, icon: '🎮' },
+  { id: 'd_win1', title: 'Win 1 match', stat: 'wins', target: 1, coins: 80, xp: 100, icon: '🏅' },
+  { id: 'd_tasks5', title: 'Complete 5 tasks', stat: 'tasksCompleted', target: 5, coins: 60, xp: 90, icon: '🔧' },
+  { id: 'd_infect3', title: 'Infect 3 survivors', stat: 'infections', target: 3, coins: 70, xp: 90, icon: '🧟' },
+  { id: 'd_wires2', title: 'Connect wires twice', stat: 'wiresTasks', target: 2, coins: 50, xp: 60, icon: '🔌' },
+  { id: 'd_temp2', title: 'Check the temperature twice', stat: 'temperatureTasks', target: 2, coins: 50, xp: 60, icon: '🌡️' },
+  { id: 'd_trash2', title: 'Empty the trash twice', stat: 'trashTasks', target: 2, coins: 50, xp: 60, icon: '🗑️' },
+  { id: 'd_survive5', title: 'Survive 5 minutes in total', stat: 'secondsSurvived', target: 300, coins: 70, xp: 90, icon: '⏱️' },
+  { id: 'd_abilities5', title: 'Use 5 abilities', stat: 'abilitiesUsed', target: 5, coins: 50, xp: 70, icon: '✨' },
+  { id: 'd_obstacle1', title: 'Run an obstacle course', stat: 'obstacleRuns', target: 1, coins: 40, xp: 60, icon: '🏃' },
 ];
 
 export const WEEKLY_POOL: MissionDef[] = [
-  { id: 'w_play15', title: 'שחק 15 משחקים', stat: 'matchesPlayed', target: 15, coins: 300, xp: 400, icon: '🎮' },
-  { id: 'w_win5', title: 'נצח 5 משחקים', stat: 'wins', target: 5, coins: 350, xp: 450, icon: '🏆' },
-  { id: 'w_tasks30', title: 'השלם 30 משימות', stat: 'tasksCompleted', target: 30, coins: 300, xp: 400, icon: '⚙️' },
-  { id: 'w_infect20', title: 'הדבק 20 שורדים', stat: 'infections', target: 20, coins: 350, xp: 450, icon: '☣️' },
-  { id: 'w_machine5', title: 'תקן 5 מכונות', stat: 'machineTasks', target: 5, coins: 250, xp: 300, icon: '🛠️' },
-  { id: 'w_download5', title: 'הורד נתונים 5 פעמים', stat: 'downloadTasks', target: 5, coins: 250, xp: 300, icon: '💾' },
-  { id: 'w_tournament3', title: 'שחק 3 משחקי טורניר', stat: 'tournamentMatches', target: 3, coins: 400, xp: 400, icon: '⚔️' },
-  { id: 'w_gold1', title: 'השג זהב במסלול מכשולים', stat: 'obstacleGolds', target: 1, coins: 300, xp: 350, icon: '🥇' },
+  { id: 'w_play15', title: 'Play 15 matches', stat: 'matchesPlayed', target: 15, coins: 300, xp: 400, icon: '🎮' },
+  { id: 'w_win5', title: 'Win 5 matches', stat: 'wins', target: 5, coins: 350, xp: 450, icon: '🏆' },
+  { id: 'w_tasks30', title: 'Complete 30 tasks', stat: 'tasksCompleted', target: 30, coins: 300, xp: 400, icon: '⚙️' },
+  { id: 'w_infect20', title: 'Infect 20 survivors', stat: 'infections', target: 20, coins: 350, xp: 450, icon: '☣️' },
+  { id: 'w_machine5', title: 'Fix 5 machines', stat: 'machineTasks', target: 5, coins: 250, xp: 300, icon: '🛠️' },
+  { id: 'w_download5', title: 'Download data 5 times', stat: 'downloadTasks', target: 5, coins: 250, xp: 300, icon: '💾' },
+  { id: 'w_tournament3', title: 'Play 3 tournament matches', stat: 'tournamentMatches', target: 3, coins: 400, xp: 400, icon: '⚔️' },
+  { id: 'w_gold1', title: 'Get gold on an obstacle course', stat: 'obstacleGolds', target: 1, coins: 300, xp: 350, icon: '🥇' },
 ];
 
 function hashString(s: string): number {

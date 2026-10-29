@@ -37,6 +37,8 @@ import { distanceVolume, heartbeatInterval } from '../logic/soundSettings';
 /** A survivor hears their heartbeat when an active zombie is this close, and zombie groans a bit farther out. */
 const HEARTBEAT_RANGE = 320;
 const GROAN_RANGE = 520;
+/** The frozen-player beep is loudest within this range but never fades out completely. */
+const BEACON_RANGE = 1400;
 /** Distance walked between footsteps. */
 const STRIDE = { survivor: 44, zombie: 58 };
 
@@ -187,7 +189,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     setTimeout(() => setFeed((f) => f.filter((x) => x.id !== id)), 3500);
   }, []);
 
-  const nameOf = useCallback((id: string | null) => (id ? engine.getPlayer(id)?.name ?? '???' : 'מלכודת'), [engine]);
+  const nameOf = useCallback((id: string | null) => (id ? engine.getPlayer(id)?.name ?? '???' : 'Trap'), [engine]);
 
   /** Plays a sound coming from a player, quieter the farther they are from you. */
   const soundAt = useCallback(
@@ -211,14 +213,14 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             setTimeout(() => setFlash(null), 450);
             setTask(null);
             playSfx('infected');
-            pushFeed('נדבקת! קפוא ל-10 שניות – רק רופא יכול לרפא אותך 🩺', colors.zombie);
+            pushFeed('You were bitten! Frozen for 10 seconds – only a doctor can cure you 🩺', colors.zombie);
           } else if (e.byId === me) {
             haptic('success');
             playSfx('bite');
-            pushFeed(`הדבקת את ${nameOf(e.victimId)}! 🧟`, colors.zombie);
+            pushFeed(`You infected ${nameOf(e.victimId)}! 🧟`, colors.zombie);
           } else {
             soundAt('bite', e.victimId);
-            pushFeed(`${nameOf(e.victimId)} הפך לזומבי`, colors.blood);
+            pushFeed(`${nameOf(e.victimId)} turned into a zombie`, colors.blood);
           }
           break;
         case 'cured':
@@ -226,29 +228,29 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           else soundAt('heal', e.playerId);
           if (e.playerId === me) {
             haptic('success');
-            pushFeed(`הרופא ${nameOf(e.byId)} ריפא אותך! 🩺`, colors.survivor);
+            pushFeed(`Doctor ${nameOf(e.byId)} cured you! 🩺`, colors.survivor);
           } else if (e.byId === me) {
             haptic('success');
-            pushFeed(`ריפאת את ${nameOf(e.playerId)}! 🩺`, colors.survivor);
-          } else pushFeed(`${nameOf(e.byId)} ריפא את ${nameOf(e.playerId)} 🩺`, colors.survivor);
+            pushFeed(`You cured ${nameOf(e.playerId)}! 🩺`, colors.survivor);
+          } else pushFeed(`${nameOf(e.byId)} cured ${nameOf(e.playerId)} 🩺`, colors.survivor);
           break;
         case 'blocked':
           if (e.playerId === me) {
             playSfx('shield');
-            pushFeed('שריון הטנק חסם את ההדבקה! 🛡️', colors.gold);
+            pushFeed('Tank armor blocked the infection! 🛡️', colors.gold);
           }
           break;
         case 'task':
           if (e.playerId === me) {
             haptic('success');
             playSfx('task');
-            pushFeed(`${TASK_INFO[e.taskType].title} הושלמה ✔️ · הטיימר ירד ב־${TASK_TIME_BONUS_SEC} שנ׳`, colors.toxic);
+            pushFeed(`${TASK_INFO[e.taskType].title} done ✔️ · timer cut by ${TASK_TIME_BONUS_SEC}s`, colors.toxic);
           }
           break;
         case 'checkpoint':
           if (e.playerId === me) {
             playSfx('checkpoint');
-            pushFeed('נקודת שמירה! 🚩', colors.toxic);
+            pushFeed('Checkpoint! 🚩', colors.toxic);
           }
           break;
         case 'hazard':
@@ -257,7 +259,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             playSfx('hurt');
             setFlash('#ff6b00');
             setTimeout(() => setFlash(null), 300);
-            pushFeed('אאוץ׳! חזרת לנקודת השמירה', colors.blood);
+            pushFeed('Ouch! Back to the checkpoint', colors.blood);
           }
           break;
         case 'stone': {
@@ -268,17 +270,17 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             playSfx('throw');
             setTimeout(() => playSfx('stoneHit', 0.6), 380);
           } else playSfx('stoneHit', hears ? Math.max(0.45, distanceVolume(dist, NOISE_HEAR_RADIUS)) : distanceVolume(dist, 600));
-          if (e.playerId === me) pushFeed('זרקת אבן! הזומבים ישמעו רעש שם 🪨', colors.gold);
+          if (e.playerId === me) pushFeed('You threw a stone! Zombies will hear a noise there 🪨', colors.gold);
           else if (hears) {
             haptic('light');
-            pushFeed('שמעת רעש!', colors.gold);
+            pushFeed('You heard a noise!', colors.gold);
           }
           break;
         }
         case 'released':
           haptic('medium');
           playSfx('released');
-          pushFeed('הזומבים שוחררו! 🧟‍♂️', colors.blood);
+          pushFeed('The zombies are loose! 🧟‍♂️', colors.blood);
           break;
         default:
           break;
@@ -341,14 +343,14 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       const p = engine.getPlayer(id);
       if (p && p.control === 'remote') {
         engine.removePlayer(id);
-        pushFeed(`${p.name} עזב את המשחק`, colors.textDim);
+        pushFeed(`${p.name} left the match`, colors.textDim);
       }
     });
     return () => transport.close();
   }, [engine, transport, pushFeed]);
 
   // Footsteps, heartbeat, zombie groans and the release countdown, checked every frame.
-  const audio = useRef({ x: NaN, y: NaN, walked: 0, foot: false, nextBeat: 0, nextGroan: 0, lastTick: 0 });
+  const audio = useRef({ x: NaN, y: NaN, walked: 0, foot: false, nextBeat: 0, nextGroan: 0, lastTick: 0, nextBeacon: 0 });
   const ambientSounds = useCallback(
     (now: number) => {
       const local = engine.local;
@@ -370,6 +372,18 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       if (left >= 1 && left <= 5 && left !== a.lastTick) {
         a.lastTick = left;
         playSfx('tick', 0.7);
+      }
+
+      // A bitten player is frozen: a beep the whole map hears, so doctors know to come. It speeds up near the end.
+      let frozen: { d: number; left: number } | null = null;
+      for (const p of engine.players) {
+        if (p === local || !engine.isFrozen(p, now)) continue;
+        const d = Math.hypot(p.x - local.x, p.y - local.y);
+        if (!frozen || d < frozen.d) frozen = { d, left: engine.frozenLeftMs(p) };
+      }
+      if (frozen && now >= a.nextBeacon) {
+        playSfx('beacon', Math.max(local.doctor ? 0.6 : 0.3, distanceVolume(frozen.d, BEACON_RANGE)));
+        a.nextBeacon = now + (frozen.left < 3000 ? 700 : 1500);
       }
 
       if (zombie || now < engine.releaseAt) return;
@@ -491,10 +505,10 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     if (engine.useAbility(id)) {
       haptic('medium');
       playSfx(id === 'roar' ? 'groan' : 'ability');
-      if (id === 'scan') pushFeed('סורק: כל הזומבים נחשפו! 📡', colors.survivor);
-      if (id === 'zombieVision') pushFeed('ראיית זומבי: רואה דרך קירות 👁️', colors.zombie);
-      if (id === 'medic') pushFeed('מגן רפואי הופעל 💊', colors.survivor);
-      if (id === 'roar') pushFeed('שאגה! שורדים קרובים מואטים 📢', colors.zombie);
+      if (id === 'scan') pushFeed('Scan: all zombies revealed! 📡', colors.survivor);
+      if (id === 'zombieVision') pushFeed('Zombie vision: seeing through walls 👁️', colors.zombie);
+      if (id === 'medic') pushFeed('Medic shield on 💊', colors.survivor);
+      if (id === 'roar') pushFeed('Roar! Nearby survivors slowed 📢', colors.zombie);
     }
   };
   useAbilityRef.current = useAbility;
@@ -578,6 +592,14 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     }
     if (best && bd * zoom > visionPx * 0.9) arrow = { angle: Math.atan2(best.y - local.y, best.x - local.x) };
   }
+
+  // Doctors get an arrow to every frozen player, wherever they are, with the seconds left to cure them.
+  const patientArrows =
+    local.doctor && local.role === 'survivor' && !obstacle
+      ? engine.players
+          .filter((p) => p !== local && p.startRole === 'survivor' && engine.isFrozen(p) && Math.hypot(p.x - local.x, p.y - local.y) > TILE * 1.5)
+          .map((p) => ({ id: p.id, angle: Math.atan2(p.y - local.y, p.x - local.x), sec: Math.ceil(engine.frozenLeftMs(p) / 1000) }))
+      : [];
 
   const timeText = obstacle ? formatSeconds(engine.elapsedMs / 1000) : formatSeconds(engine.timeLeftMs / 1000);
   const abilities = AbilityManager.available(local);
@@ -685,6 +707,20 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         </View>
       ) : null}
 
+      {patientArrows.map((pa) => {
+        const r = Math.min(dims.width, dims.height) * 0.3;
+        return (
+          <View
+            key={pa.id}
+            pointerEvents="none"
+            style={[styles.patientArrow, { left: dims.width / 2 + Math.cos(pa.angle) * r - 30, top: dims.height / 2 + Math.sin(pa.angle) * r - 30 }]}
+          >
+            <Text style={[styles.patientArrowText, { transform: [{ rotate: `${pa.angle}rad` }] }]}>➤</Text>
+            <Text style={styles.patientArrowLabel}>🥶{pa.sec}</Text>
+          </View>
+        );
+      })}
+
       {/* Joystick: left 55% of the screen */}
       <View style={[styles.joyZone, { width: dims.width * 0.55 }]}>
         <Joystick output={input} />
@@ -708,7 +744,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
           {obstacle ? (
             <Text style={styles.counts}>
               💀 {local.deaths}
-              {engine.map.medalTimes ? `   🥇 ${engine.map.medalTimes[0]}ש׳  🥈 ${engine.map.medalTimes[1]}ש׳  🥉 ${engine.map.medalTimes[2]}ש׳` : ''}
+              {engine.map.medalTimes ? `   🥇 ${engine.map.medalTimes[0]}s  🥈 ${engine.map.medalTimes[1]}s  🥉 ${engine.map.medalTimes[2]}s` : ''}
             </Text>
           ) : (
             <Text style={styles.counts}>
@@ -716,12 +752,12 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             </Text>
           )}
           <Text style={[styles.roleTag, { color: isZombie ? colors.zombie : colors.survivor }]}>
-            {obstacle ? 'מסלול מכשולים' : isZombie ? 'זומבי' : local.doctor ? 'שורד · רופא 🩺' : 'שורד'}
-            {mode === 'training' ? ' · אימון' : mode === 'tournament' ? ' · טורניר' : ''}
+            {obstacle ? 'Obstacle Course' : isZombie ? 'Zombie' : local.doctor ? 'Survivor · Doctor 🩺' : 'Survivor'}
+            {mode === 'training' ? ' · Training' : mode === 'tournament' ? ' · Tournament' : ''}
           </Text>
         </View>
         <View style={styles.topRight}>
-          <Pressable style={styles.smallBtn} onPress={() => updateSoundSettings({ muted: !sound.muted })} accessibilityLabel={sound.muted ? 'הפעל סאונד' : 'השתק'}>
+          <Pressable style={styles.smallBtn} onPress={() => updateSoundSettings({ muted: !sound.muted })} accessibilityLabel={sound.muted ? 'Unmute' : 'Mute'}>
             <Text style={styles.smallBtnText}>{sound.muted ? '🔇' : '🔊'}</Text>
           </Pressable>
           <Pressable style={styles.smallBtn} onPress={() => setConfirmExit(true)}>
@@ -733,19 +769,19 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       {!obstacle && !beforeStart && releaseIn > 0 ? (
         <View style={styles.banner} pointerEvents="none">
           <Text style={styles.bannerText}>
-            {local.startRole === 'zombie' ? 'מתכונן לצאת לצוד...' : 'ברחו! הזומבים משתחררים בעוד'} {Math.ceil(releaseIn)}
+            {local.startRole === 'zombie' ? 'Getting ready to hunt...' : 'Run! Zombies released in'} {Math.ceil(releaseIn)}
           </Text>
         </View>
       ) : null}
 
       {!obstacle && myFrozenSec > 0 ? (
         <View style={styles.banner} pointerEvents="none">
-          <Text style={styles.bannerText}>🥶 קפוא! רופא יכול לרפא אותך עוד {myFrozenSec}</Text>
+          <Text style={styles.bannerText}>🥶 Frozen! A doctor can still cure you: {myFrozenSec}s</Text>
         </View>
       ) : patient ? (
         <View style={[styles.banner, { backgroundColor: 'rgba(42,111,151,0.9)' }]} pointerEvents="none">
           <Text style={styles.bannerText}>
-            🩺 גע ב{patient.name} כדי לרפא אותו ({Math.ceil(engine.frozenLeftMs(patient) / 1000)})
+            🩺 Touch {patient.name} to cure them ({Math.ceil(engine.frozenLeftMs(patient) / 1000)})
           </Text>
         </View>
       ) : null}
@@ -775,7 +811,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
               style={({ pressed }) => [styles.stoneBtn, local.stoneUsed && { opacity: 0.35 }, pressed && { transform: [{ scale: 0.92 }] }]}
             >
               <Text style={{ fontSize: 26 }}>🪨</Text>
-              <Text style={styles.stoneText}>{local.stoneUsed ? 'נזרקה' : Platform.OS === 'web' ? 'אבן (Q)' : 'אבן'}</Text>
+              <Text style={styles.stoneText}>{local.stoneUsed ? 'Thrown' : Platform.OS === 'web' ? 'Stone (Q)' : 'Stone'}</Text>
             </Pressable>
           ) : null}
           {abilities.map((id, i) => {
@@ -805,7 +841,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       {engine.ended ? (
         <View style={styles.endOverlay} pointerEvents="none">
           <Text style={[styles.endText, { color: engine.ended.winner === 'zombie' ? colors.zombie : engine.ended.winner === 'finish' ? colors.gold : colors.survivor }]}>
-            {engine.ended.winner === 'finish' ? 'סיימת! 🏁' : engine.ended.winner === 'zombie' ? 'הזומבים ניצחו! 🧟' : 'השורדים ניצחו! 🧍'}
+            {engine.ended.winner === 'finish' ? 'Finished! 🏁' : engine.ended.winner === 'zombie' ? 'Zombies win! 🧟' : 'Survivors win! 🧍'}
           </Text>
         </View>
       ) : null}
@@ -813,11 +849,11 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       {confirmExit ? (
         <View style={styles.confirm}>
           <View style={styles.confirmPanel}>
-            <Text style={styles.confirmTitle}>לצאת מהמשחק?</Text>
-            <Text style={styles.confirmSub}>לא תקבל תגמולים על המשחק הזה.</Text>
+            <Text style={styles.confirmTitle}>Leave the match?</Text>
+            <Text style={styles.confirmSub}>You will not get rewards for this match.</Text>
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 14 }}>
-              <Button title="המשך לשחק" variant="dark" onPress={() => setConfirmExit(false)} />
-              <Button title="צא" variant="danger" onPress={exitMatch} />
+              <Button title="Keep playing" variant="dark" onPress={() => setConfirmExit(false)} />
+              <Button title="Leave" variant="danger" onPress={exitMatch} />
             </View>
           </View>
         </View>
@@ -929,7 +965,7 @@ const styles = StyleSheet.create({
   stoneBtn: { width: 62, height: 62, borderRadius: 31, backgroundColor: 'rgba(0,0,0,0.6)', borderWidth: 2, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
   stoneText: { color: colors.text, fontSize: 9, fontWeight: '900', marginTop: -2 },
   doctorBadge: { position: 'absolute', top: -24, left: -6, fontSize: 14 },
-  frozen: { position: 'absolute', top: -28, left: -4, width: PLAYER_RADIUS * 2 + 8, textAlign: 'center', fontSize: 13, fontWeight: '900', color: '#bfe6ff', textShadowColor: '#000', textShadowRadius: 3 },
+  frozen: { position: 'absolute', top: -28, left: -4, width: PLAYER_RADIUS * 2 + 8, textAlign: 'center', fontSize: 16, fontWeight: '900', color: '#bfe6ff', textShadowColor: '#000', textShadowRadius: 3 },
   name: { position: 'absolute', top: PLAYER_RADIUS * 2 + 2, left: -30, width: PLAYER_RADIUS * 2 + 60, textAlign: 'center', fontSize: 11, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 3 },
   joyZone: { position: 'absolute', left: 0, bottom: 0, top: 90 },
   topBar: { position: 'absolute', top: 8, left: 10, right: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -953,6 +989,9 @@ const styles = StyleSheet.create({
   useText: { color: '#fff', fontWeight: '900', fontSize: 13 },
   arrow: { position: 'absolute', width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   arrowText: { color: colors.gold, fontSize: 28, textShadowColor: '#000', textShadowRadius: 4 },
+  patientArrow: { position: 'absolute', width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
+  patientArrowText: { color: '#7fd4ff', fontSize: 34, textShadowColor: '#000', textShadowRadius: 4 },
+  patientArrowLabel: { position: 'absolute', bottom: -6, color: '#e6f6ff', fontSize: 14, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 3 },
   endOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
   endText: { fontSize: 46, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 12 },
   confirm: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', zIndex: 100 },

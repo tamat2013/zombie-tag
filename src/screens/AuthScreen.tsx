@@ -22,7 +22,7 @@ export function AuthScreen() {
   const submit = async () => {
     setError(null);
     if (mode === 'register' && name.trim().length < 2) {
-      setError('בחר שם שחקן (לפחות 2 תווים)');
+      setError('Choose a player name (at least 2 characters)');
       return;
     }
     setBusy(true);
@@ -61,15 +61,15 @@ export function AuthScreen() {
             <Character skin={BUILT_IN_SKINS[9]} size={78} role="zombie" />
             <Character skin={BUILT_IN_SKINS[1]} size={64} />
           </View>
-          <Text style={styles.title}>זומבי: התפרצות</Text>
-          <Text style={styles.tagline}>שרוד 10 דקות... או הפוך לאחד מהם</Text>
+          <Text style={styles.title}>Zombie Outbreak</Text>
+          <Text style={styles.tagline}>Survive 10 minutes... or become one of them</Text>
         </View>
 
         <View style={styles.card}>
           <Tabs<Mode>
             tabs={[
-              { id: 'login', label: 'התחברות' },
-              { id: 'register', label: 'הרשמה' },
+              { id: 'login', label: 'Log in' },
+              { id: 'register', label: 'Sign up' },
             ]}
             value={mode}
             onChange={(m) => {
@@ -78,16 +78,16 @@ export function AuthScreen() {
             }}
           />
           {mode === 'register' ? (
-            <Field label="שם שחקן" value={name} onChangeText={setName} placeholder="למשל: צייד_זומבים" maxLength={16} />
+            <Field label="Player name" value={name} onChangeText={setName} placeholder="e.g. ZombieHunter" maxLength={16} />
           ) : null}
-          <Field label="אימייל" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
-          <Field label="סיסמה" value={password} onChangeText={setPassword} placeholder="לפחות 6 תווים" secureTextEntry onSubmitEditing={submit} />
+          <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
+          <Field label="Password" value={password} onChangeText={setPassword} placeholder="At least 6 characters" secureTextEntry onSubmitEditing={submit} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button title={mode === 'login' ? 'כניסה למשחק' : 'יצירת חשבון'} icon={mode === 'login' ? '🔓' : '✨'} onPress={submit} loading={busy} style={{ marginTop: 12 }} />
-          <Button title="המשך כאורח (בלי התחברות)" icon="👤" variant="ghost" onPress={guest} disabled={busy} style={{ marginTop: 10 }} />
+          <Button title={mode === 'login' ? 'Enter game' : 'Create account'} icon={mode === 'login' ? '🔓' : '✨'} onPress={submit} loading={busy} style={{ marginTop: 12 }} />
+          <Button title="Continue as guest (no account)" icon="👤" variant="ghost" onPress={guest} disabled={busy} style={{ marginTop: 10 }} />
           {!authService.isOnline ? (
             <Text style={styles.offline}>
-              מצב לא מקוון: Firebase לא הוגדר, ולכן החשבון נשמר במכשיר בלבד ומשחקים מתנהלים מול בוטים. ראה README להגדרה.
+              Offline mode: Firebase is not set up, so your account is saved on this device only and matches are played against bots. See the README to set it up.
             </Text>
           ) : null}
         </View>
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
   title: { color: colors.toxic, fontSize: 38, fontWeight: '900', textShadowColor: '#3f9b1f', textShadowRadius: 14 },
   tagline: { color: colors.textDim, fontSize: 15, marginTop: 4 },
   card: { backgroundColor: colors.panel, borderRadius: radius.lg, padding: 16, borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 440, alignSelf: 'center' },
-  label: { color: colors.textDim, fontSize: 13, fontWeight: '700', textAlign: 'right', marginBottom: 4 },
-  input: { backgroundColor: '#0a0f09', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, textAlign: 'right' },
-  error: { color: colors.blood, fontWeight: '800', marginTop: 10, textAlign: 'right' },
-  offline: { color: colors.textMuted, fontSize: 12, marginTop: 14, textAlign: 'right', lineHeight: 18 },
+  label: { color: colors.textDim, fontSize: 13, fontWeight: '700', textAlign: 'left', marginBottom: 4 },
+  input: { backgroundColor: '#0a0f09', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, textAlign: 'left' },
+  error: { color: colors.blood, fontWeight: '800', marginTop: 10, textAlign: 'left' },
+  offline: { color: colors.textMuted, fontSize: 12, marginTop: 14, textAlign: 'left', lineHeight: 18 },
 });

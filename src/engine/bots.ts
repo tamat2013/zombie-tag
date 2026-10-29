@@ -28,7 +28,7 @@ export const BOT_LEVELS: Record<BotDifficulty, BotLevel> = {
   hard: { speed: 0.98, vision: 1, think: 0.25, abilityChance: 0.95, panicDistance: 300 },
 };
 
-export const BOT_NAMES = ['רקס', 'נועה', 'בוטי', 'זיגי', 'מקס', 'ליה', 'טורבו', 'פיקסל', 'שדו', 'אורי', 'סקאר', 'מיקה', 'גרים', 'דנה', 'וולף'];
+export const BOT_NAMES = ['Rex', 'Noa', 'Botty', 'Ziggy', 'Max', 'Leah', 'Turbo', 'Pixel', 'Shadow', 'Ori', 'Scar', 'Mika', 'Grim', 'Dana', 'Wolf'];
 
 export const TASK_DURATION_SEC: Record<string, number> = {
   wires: 4,
@@ -158,9 +158,10 @@ function maybeUseAbility(world: BotWorld, p: EnginePlayer, level: BotLevel, now:
 
 function nearestPatient(world: BotWorld, p: EnginePlayer, level: BotLevel, now: number): EnginePlayer | null {
   let best: EnginePlayer | null = null;
-  let bestD = 400 * level.vision;
+  // The frozen player's beep carries across the map, so doctors don't need to see them.
+  let bestD = 1000 * level.vision;
   for (const o of world.players) {
-    if (!world.isFrozen(o, now) || o.startRole !== 'survivor' || !world.canSee(p, o, now)) continue;
+    if (!world.isFrozen(o, now) || o.startRole !== 'survivor') continue;
     const d = Math.hypot(o.x - p.x, o.y - p.y);
     if (d < bestD) {
       best = o;

@@ -25,9 +25,9 @@ interface ModeRow {
 }
 
 const MODES: ModeRow[] = [
-  { mode: 'tournament', title: 'טורנירים', subtitle: 'תחרויות מתוזמנות עם פרסים', icon: '🏆', tint: '#2a2210' },
-  { mode: 'obstacle', title: 'מסלול מכשולים', subtitle: 'רוץ נגד השעון, אסוף מדליות', icon: '🏃', tint: '#101c2e' },
-  { mode: 'training', title: 'אימון', subtitle: 'תרגל מול בוטים בלי לחץ', icon: '🎯', tint: '#231a33' },
+  { mode: 'tournament', title: 'Tournaments', subtitle: 'Scheduled competitions with prizes', icon: '🏆', tint: '#2a2210' },
+  { mode: 'obstacle', title: 'Obstacle Course', subtitle: 'Race the clock, collect medals', icon: '🏃', tint: '#101c2e' },
+  { mode: 'training', title: 'Training', subtitle: 'Practice against bots, no pressure', icon: '🎯', tint: '#231a33' },
 ];
 
 export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
@@ -60,16 +60,16 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   return (
     <Screen scroll>
       <View style={styles.headerRow}>
-        <Text style={styles.logo}>זומבי: התפרצות</Text>
+        <Text style={styles.logo}>Zombie Outbreak</Text>
         <View style={{ flex: 1 }} />
-        <Pressable onPress={() => navigation.navigate('Settings')} accessibilityLabel="הגדרות סאונד" style={[styles.iconBtn, { marginRight: 8 }]} hitSlop={6}>
+        <Pressable onPress={() => navigation.navigate('Settings')} accessibilityLabel="Sound settings" style={[styles.iconBtn, { marginRight: 8 }]} hitSlop={6}>
           <Text style={styles.iconBtnText}>⚙️</Text>
         </Pressable>
-        <Pressable onPress={signOut} accessibilityLabel="התנתקות" style={styles.iconBtn} hitSlop={6}>
+        <Pressable onPress={signOut} accessibilityLabel="Sign out" style={styles.iconBtn} hitSlop={6}>
           <Text style={styles.iconBtnText}>⎋</Text>
         </Pressable>
       </View>
-      {!authService.isOnline ? <Text style={styles.offline}>מצב לא מקוון · משחק מול בוטים</Text> : null}
+      {!authService.isOnline ? <Text style={styles.offline}>Offline mode · playing against bots</Text> : null}
 
       <Pressable onPress={() => navigation.navigate('Profile')} style={styles.playerCard}>
         <View style={styles.avatar}>
@@ -102,11 +102,11 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
       </Pressable>
 
       <View style={styles.hero}>
-        <Text style={styles.heroTag}>מצב מרכזי · 10 דקות</Text>
-        <Text style={styles.heroTitle}>קלאסי</Text>
-        <Text style={styles.heroSub}>שורדים נגד זומבים. מי שנתפס, מצטרף לנגיף.</Text>
+        <Text style={styles.heroTag}>Main mode · 10 minutes</Text>
+        <Text style={styles.heroTitle}>Classic</Text>
+        <Text style={styles.heroSub}>Survivors vs zombies. Get caught and you join the infection.</Text>
         <Pressable onPress={() => startMode('classic')} style={({ pressed }) => [styles.heroBtn, pressed && { transform: [{ scale: 0.97 }] }]}>
-          <Text style={styles.heroBtnText}>שחק עכשיו</Text>
+          <Text style={styles.heroBtnText}>Play now</Text>
         </Pressable>
         <Text style={styles.heroArt}>🧟</Text>
       </View>
@@ -121,27 +121,27 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
               <Text style={styles.rowTitle}>{m.title}</Text>
               <Text style={styles.rowSub}>{m.subtitle}</Text>
             </View>
-            {m.mode === 'tournament' && liveTournament ? <Text style={styles.live}>חי עכשיו</Text> : null}
-            <Text style={styles.chevron}>‹</Text>
+            {m.mode === 'tournament' && liveTournament ? <Text style={styles.live}>Live now</Text> : null}
+            <Text style={styles.chevron}>›</Text>
           </Pressable>
         ))}
       </View>
 
       <View style={styles.quick}>
         <Pressable onPress={() => navigation.navigate('SkinDesigner')} style={styles.quickBtn}>
-          <Text style={styles.quickText}>✏️ מעצב סקינים</Text>
+          <Text style={styles.quickText}>✏️ Skin designer</Text>
         </Pressable>
         <Pressable onPress={() => navigation.navigate('MapCreator')} style={styles.quickBtn}>
-          <Text style={styles.quickText}>🗺️ יוצר מפות</Text>
+          <Text style={styles.quickText}>🗺️ Map creator</Text>
         </Pressable>
       </View>
 
       <View style={styles.nav}>
-        <NavItem icon="🏠" label="בית" active />
-        <NavItem icon="🛒" label="חנות" onPress={() => navigation.navigate('Shop')} />
-        <NavItem icon="📋" label="משימות" badge={missionsReady} onPress={() => navigation.navigate('Missions')} />
-        <NavItem icon="🎨" label="סקינים" onPress={() => navigation.navigate('SkinSelect')} />
-        <NavItem icon="👤" label="פרופיל" onPress={() => navigation.navigate('Profile')} />
+        <NavItem icon="🏠" label="Home" active />
+        <NavItem icon="🛒" label="Shop" onPress={() => navigation.navigate('Shop')} />
+        <NavItem icon="📋" label="Missions" badge={missionsReady} onPress={() => navigation.navigate('Missions')} />
+        <NavItem icon="🎨" label="Skins" onPress={() => navigation.navigate('SkinSelect')} />
+        <NavItem icon="👤" label="Profile" onPress={() => navigation.navigate('Profile')} />
       </View>
     </Screen>
   );
@@ -172,34 +172,34 @@ const styles = StyleSheet.create({
   logo: { color: colors.toxic, fontSize: 22, fontWeight: '900' },
   iconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   iconBtnText: { color: colors.textDim, fontSize: 20 },
-  offline: { color: colors.textMuted, textAlign: 'right', fontSize: 12, marginTop: 2 },
-  playerCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, backgroundColor: colors.panel, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border, marginTop: 14 },
+  offline: { color: colors.textMuted, textAlign: 'left', fontSize: 12, marginTop: 2 },
+  playerCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.panel, borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border, marginTop: 14 },
   avatar: { width: 52, height: 52, borderRadius: 14, backgroundColor: colors.panelLight, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   levelBadge: { position: 'absolute', bottom: -6, left: -6, minWidth: 24, height: 24, borderRadius: 8, backgroundColor: colors.toxic, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   levelBadgeText: { color: colors.bg, fontSize: 12, fontWeight: '900' },
-  name: { color: colors.text, fontWeight: '700', fontSize: 16, textAlign: 'right' },
-  xp: { color: colors.textDim, fontSize: 12, textAlign: 'right' },
+  name: { color: colors.text, fontWeight: '700', fontSize: 16, textAlign: 'left' },
+  xp: { color: colors.textDim, fontSize: 12, textAlign: 'left' },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.bg, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 4 },
   statText: { fontWeight: '700', fontSize: 14 },
   statIcon: { fontSize: 14 },
-  hero: { marginTop: 14, minHeight: 230, borderRadius: radius.lg, backgroundColor: '#101a0e', borderWidth: 1, borderColor: colors.toxic, padding: 20, alignItems: 'flex-end', justifyContent: 'space-between', overflow: 'hidden' },
+  hero: { marginTop: 14, minHeight: 230, borderRadius: radius.lg, backgroundColor: '#101a0e', borderWidth: 1, borderColor: colors.toxic, padding: 20, alignItems: 'flex-start', justifyContent: 'space-between', overflow: 'hidden' },
   heroTag: { color: colors.toxic, fontSize: 12, fontWeight: '700' },
   heroTitle: { color: colors.text, fontSize: 40, fontWeight: '900', lineHeight: 46 },
-  heroSub: { color: colors.textDim, fontSize: 14, textAlign: 'right', maxWidth: 220, lineHeight: 20 },
+  heroSub: { color: colors.textDim, fontSize: 14, textAlign: 'left', maxWidth: 220, lineHeight: 20 },
   heroBtn: { height: 48, paddingHorizontal: 28, borderRadius: 12, backgroundColor: colors.toxic, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
   heroBtnText: { color: colors.bg, fontSize: 16, fontWeight: '900' },
-  heroArt: { position: 'absolute', left: 14, top: 40, fontSize: 96, opacity: 0.9 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, minHeight: 72, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.panel },
+  heroArt: { position: 'absolute', right: 14, top: 40, fontSize: 96, opacity: 0.9 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 72, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.panel },
   rowIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   rowIconText: { fontSize: 24 },
-  rowTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'right' },
-  rowSub: { color: colors.textDim, fontSize: 13, textAlign: 'right', marginTop: 2 },
+  rowTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'left' },
+  rowSub: { color: colors.textDim, fontSize: 13, textAlign: 'left', marginTop: 2 },
   live: { color: '#ff7b7e', backgroundColor: '#2a1213', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, fontSize: 12, fontWeight: '900', overflow: 'hidden' },
   chevron: { color: colors.textMuted, fontSize: 26 },
-  quick: { flexDirection: 'row-reverse', gap: 10, marginTop: 14 },
+  quick: { flexDirection: 'row', gap: 10, marginTop: 14 },
   quickBtn: { flex: 1, height: 48, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   quickText: { color: colors.textDim, fontSize: 14, fontWeight: '500' },
-  nav: { flexDirection: 'row-reverse', marginTop: 20, backgroundColor: colors.bgAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 4 },
+  nav: { flexDirection: 'row', marginTop: 20, backgroundColor: colors.bgAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: 4 },
   navItem: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 12 },
   navItemActive: { backgroundColor: colors.panelLight },
   navIcon: { fontSize: 20 },

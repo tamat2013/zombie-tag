@@ -233,6 +233,15 @@ const sfx = {
     tone(b, 0, 0.07, 1250, { vol: 0.6, decay: 0.02 });
     return b;
   },
+  // A bitten player is frozen somewhere: a monitor-style double beep everyone hears.
+  beacon() {
+    const b = buffer(0.32);
+    tone(b, 0, 0.09, 1568, { wave: 'square', vol: 0.32, decay: 0.05 });
+    tone(b, 0, 0.09, 784, { vol: 0.3, decay: 0.05 });
+    tone(b, 0.16, 0.09, 1568, { wave: 'square', vol: 0.32, decay: 0.05 });
+    tone(b, 0.16, 0.09, 784, { vol: 0.3, decay: 0.05 });
+    return lowpass(b, 4200, 1);
+  },
   win() {
     const b = buffer(1.6);
     const notes = [[72, 0], [76, 0.14], [79, 0.28], [84, 0.42]];

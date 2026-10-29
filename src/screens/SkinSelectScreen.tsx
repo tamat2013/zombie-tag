@@ -12,7 +12,7 @@ import { OUTFITS, outfitEmoji } from '../data/catalog';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
-const MODE_NAMES = { classic: 'קלאסי', tournament: 'טורניר', obstacle: 'מסלול מכשולים', training: 'אימון' } as const;
+const MODE_NAMES = { classic: 'Classic', tournament: 'Tournament', obstacle: 'Obstacle Course', training: 'Training' } as const;
 
 export function SkinSelectScreen({ navigation, route }: ScreenProps<'SkinSelect'>) {
   const flow = route.params?.flow;
@@ -29,31 +29,31 @@ export function SkinSelectScreen({ navigation, route }: ScreenProps<'SkinSelect'
 
   return (
     <Screen scroll>
-      <ScreenHeader title={flow ? `בחר סקין · ${MODE_NAMES[flow.mode]}` : 'הסקינים שלי'} />
+      <ScreenHeader title={flow ? `Choose skin · ${MODE_NAMES[flow.mode]}` : 'My skins'} />
 
       <Card style={styles.preview}>
         <Character skin={selected} size={110} outfit={outfitEmoji(profile.equippedOutfit)} />
         <View style={{ flex: 1 }}>
           <H>{selected.name}</H>
-          <Text style={[styles.rarity, { color: RARITY_COLORS[selected.rarity] }]}>{selected.custom ? 'עיצוב אישי' : selected.rarity.toUpperCase()}</Text>
+          <Text style={[styles.rarity, { color: RARITY_COLORS[selected.rarity] }]}>{selected.custom ? 'Custom design' : selected.rarity.toUpperCase()}</Text>
           {selected.power ? (
             <P dim>
               ⚡ {SKIN_POWERS[selected.power].name}: {SKIN_POWERS[selected.power].description}
             </P>
           ) : (
-            <P dim>ללא כוח מיוחד</P>
+            <P dim>No special power</P>
           )}
-          <View style={{ flexDirection: 'row-reverse', marginTop: 6 }}>
+          <View style={{ flexDirection: 'row', marginTop: 6 }}>
             <Character skin={selected} size={44} role="zombie" />
             <P dim style={{ marginRight: 8, alignSelf: 'center' }}>
-              ככה תיראה כזומבי
+              This is how you look as a zombie
             </P>
           </View>
         </View>
       </Card>
 
       <H size={17} style={styles.section}>
-        סקינים ({owned.length})
+        Skins ({owned.length})
       </H>
       <View style={styles.grid}>
         {owned.map((s) => (
@@ -72,30 +72,30 @@ export function SkinSelectScreen({ navigation, route }: ScreenProps<'SkinSelect'
         ))}
         <Pressable onPress={() => navigation.navigate('SkinDesigner')} style={[styles.skin, styles.add]}>
           <Text style={{ fontSize: 30 }}>➕</Text>
-          <Text style={styles.skinName}>עצב סקין</Text>
+          <Text style={styles.skinName}>Design skin</Text>
         </Pressable>
         {lockedCount > 0 ? (
           <Pressable onPress={() => navigation.navigate('Shop', { tab: 'skins' })} style={[styles.skin, styles.add]}>
             <Text style={{ fontSize: 30 }}>🔒</Text>
-            <Text style={styles.skinName}>{lockedCount} בחנות</Text>
+            <Text style={styles.skinName}>{lockedCount} in shop</Text>
           </Pressable>
         ) : null}
       </View>
 
       <H size={17} style={styles.section}>
-        תלבושת
+        Outfit
       </H>
       <View style={styles.outfits}>
-        <OutfitChip label="ללא" emoji="🚫" active={!profile.equippedOutfit} onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: null }))} />
+        <OutfitChip label="None" emoji="🚫" active={!profile.equippedOutfit} onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: null }))} />
         {OUTFITS.filter((o) => profile.ownedOutfits.includes(o.id)).map((o) => (
           <OutfitChip key={o.id} label={o.name} emoji={o.emoji} active={profile.equippedOutfit === o.id} onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: o.id }))} />
         ))}
-        <OutfitChip label="עוד בחנות" emoji="🛒" onPress={() => navigation.navigate('Shop', { tab: 'outfits' })} />
+        <OutfitChip label="More in shop" emoji="🛒" onPress={() => navigation.navigate('Shop', { tab: 'outfits' })} />
       </View>
 
       {flow ? (
         <Button
-          title="המשך לבחירת מפה"
+          title="Continue to map select"
           icon="🗺️"
           style={{ marginTop: 22 }}
           onPress={() => navigation.navigate('MapSelect', { flow })}
@@ -115,16 +115,16 @@ function OutfitChip({ label, emoji, active, onPress }: { label: string; emoji: s
 }
 
 const styles = StyleSheet.create({
-  preview: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16, padding: 16 },
-  rarity: { fontWeight: '900', fontSize: 12, textAlign: 'right', marginBottom: 4 },
+  preview: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 16 },
+  rarity: { fontWeight: '900', fontSize: 12, textAlign: 'left', marginBottom: 4 },
   section: { marginTop: 18, marginBottom: 8 },
-  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   skin: { width: 92, height: 106, borderRadius: radius.md, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', gap: 6 },
   skinName: { color: colors.text, fontSize: 12, fontWeight: '800', maxWidth: 84, textAlign: 'center' },
   rarityDot: { position: 'absolute', top: 7, left: 7, width: 8, height: 8, borderRadius: 4 },
   edit: { position: 'absolute', top: 4, right: 4 },
   add: { borderStyle: 'dashed' },
-  outfits: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  outfits: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   outfit: { width: 78, paddingVertical: 8, borderRadius: radius.md, backgroundColor: colors.panel, borderWidth: 2, borderColor: colors.border, alignItems: 'center', gap: 4 },
   outfitLabel: { color: colors.text, fontSize: 11, fontWeight: '700', textAlign: 'center' },
 });

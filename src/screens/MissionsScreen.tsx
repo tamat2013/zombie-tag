@@ -15,7 +15,7 @@ function countdown(ms: number): string {
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (d > 0) return `${d} ימים ${h} שע׳`;
+  if (d > 0) return `${d}d ${h}h`;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
@@ -34,11 +34,11 @@ export function MissionsScreen() {
 
   return (
     <Screen scroll>
-      <ScreenHeader title="משימות" />
-      <Section title="☀️ משימות יומיות" period="daily" list={daily} resetIn={nextDailyReset(now) - now} />
-      <Section title="📅 משימות שבועיות" period="weekly" list={weekly} resetIn={nextWeeklyReset(now) - now} />
+      <ScreenHeader title="Missions" />
+      <Section title="☀️ Daily missions" period="daily" list={daily} resetIn={nextDailyReset(now) - now} />
+      <Section title="📅 Weekly missions" period="weekly" list={weekly} resetIn={nextWeeklyReset(now) - now} />
       <P dim style={{ marginTop: 14, textAlign: 'center' }}>
-        ההתקדמות נספרת מכל המצבים — קלאסי, טורנירים, מסלול מכשולים ואימון.
+        Progress counts in every mode — Classic, Tournaments, Obstacle Course and Training.
       </P>
     </Screen>
   );
@@ -84,7 +84,7 @@ function Section({ title, period, list, resetIn }: { title: string; period: Miss
             {claimed ? (
               <Text style={styles.claimed}>✔</Text>
             ) : (
-              <Button small title="אסוף" variant="gold" disabled={!done} onPress={() => claim(m)} />
+              <Button small title="Claim" variant="gold" disabled={!done} onPress={() => claim(m)} />
             )}
           </Card>
         );
@@ -94,10 +94,10 @@ function Section({ title, period, list, resetIn }: { title: string; period: Miss
 }
 
 const styles = StyleSheet.create({
-  sectionHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reset: { color: colors.textDim, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
-  meta: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  meta: { flexDirection: 'row', justifyContent: 'space-between' },
   reward: { color: colors.coin, fontWeight: '800', fontSize: 12 },
   count: { color: colors.textDim, fontWeight: '800', fontSize: 12 },
   claimed: { color: colors.toxic, fontSize: 26, fontWeight: '900', width: 50, textAlign: 'center' },

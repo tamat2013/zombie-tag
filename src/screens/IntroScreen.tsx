@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme';
 
 const TITLE = 'ZOMBIE';
-const SUBTITLE = 'התפרצות';
+const SUBTITLE = 'OUTBREAK';
 
 export function IntroScreen({ onDone }: { onDone: () => void }) {
   const letters = useRef(TITLE.split('').map(() => new Animated.Value(0))).current;
@@ -84,7 +84,7 @@ export function IntroScreen({ onDone }: { onDone: () => void }) {
           <Animated.Text style={[styles.sub, { opacity: sub, transform: [{ scale: sub.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }]}>
             {SUBTITLE}
           </Animated.Text>
-          <Text style={styles.skip}>הקש כדי לדלג</Text>
+          <Text style={styles.skip}>Tap to skip</Text>
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#e5383b', opacity: flicker.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }) }]} />
         </LinearGradient>
       </Animated.View>

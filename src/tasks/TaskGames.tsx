@@ -13,11 +13,11 @@ export interface TaskProps {
 }
 
 export const TASK_INFO: Record<TaskType, { title: string; icon: string; hint: string }> = {
-  wires: { title: 'חיבור חוטים', icon: '🔌', hint: 'לחץ על חוט משמאל ואז על החוט באותו צבע מימין' },
-  machine: { title: 'תיקון מכונה', icon: '🛠️', hint: 'עצור את המחוג באזור הירוק 3 פעמים' },
-  download: { title: 'הורדת נתונים', icon: '💾', hint: 'התחל הורדה והישאר עד שתסתיים' },
-  trash: { title: 'זריקת אשפה', icon: '🗑️', hint: 'החזק את הידית לחוצה עד שהפח מתרוקן' },
-  temperature: { title: 'בדיקת טמפרטורה', icon: '🌡️', hint: 'כוון את הטמפרטורה בדיוק ליעד' },
+  wires: { title: 'Connect Wires', icon: '🔌', hint: 'Tap a wire on the left, then the wire of the same color on the right' },
+  machine: { title: 'Fix the Machine', icon: '🛠️', hint: 'Stop the needle in the green zone 3 times' },
+  download: { title: 'Download Data', icon: '💾', hint: 'Start the download and stay until it finishes' },
+  trash: { title: 'Empty the Trash', icon: '🗑️', hint: 'Hold the lever down until the bin is empty' },
+  temperature: { title: 'Check Temperature', icon: '🌡️', hint: 'Set the temperature exactly to the target' },
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -153,7 +153,7 @@ export function MachineTask({ onComplete, speed }: TaskProps) {
         <Animated.View testID="machine-needle" style={[styles.needle, { left: pos.interpolate({ inputRange: [0, 1], outputRange: ['0%', '98%'] }) }]} />
       </View>
       <Pressable testID="machine-stop" onPress={stop} style={({ pressed }) => [styles.bigBtn, pressed && { transform: [{ scale: 0.95 }] }]}>
-        <Text style={styles.bigBtnText}>עצור!</Text>
+        <Text style={styles.bigBtnText}>STOP!</Text>
       </Pressable>
     </View>
   );
@@ -161,7 +161,7 @@ export function MachineTask({ onComplete, speed }: TaskProps) {
 
 // ---------------------------------------------------------------------------------------------
 
-const FILES = ['נתוני_מחקר.db', 'מפת_מקלטים.map', 'יומן_מעבדה.log', 'חיסון_v2.dat'];
+const FILES = ['research_data.db', 'shelter_map.map', 'lab_journal.log', 'vaccine_v2.dat'];
 
 export function DownloadTask({ onComplete, speed }: TaskProps) {
   const [started, setStarted] = useState(false);
@@ -188,13 +188,13 @@ export function DownloadTask({ onComplete, speed }: TaskProps) {
       <Text style={{ fontSize: 46 }}>{started ? (progress >= 1 ? '✅' : '📥') : '🖥️'}</Text>
       {started ? (
         <>
-          <Text style={styles.mono}>{progress >= 1 ? 'ההורדה הושלמה' : `מוריד: ${FILES[fileIndex]}`}</Text>
+          <Text style={styles.mono}>{progress >= 1 ? 'Download complete' : `Downloading: ${FILES[fileIndex]}`}</Text>
           <ProgressBar value={progress} height={16} style={{ width: '100%' }} color={colors.survivor} />
           <Text style={styles.mono}>{Math.floor(progress * 100)}%</Text>
         </>
       ) : (
         <Pressable testID="download-start" onPress={() => setStarted(true)} style={({ pressed }) => [styles.bigBtn, pressed && { transform: [{ scale: 0.95 }] }]}>
-          <Text style={styles.bigBtnText}>התחל הורדה</Text>
+          <Text style={styles.bigBtnText}>Start download</Text>
         </Pressable>
       )}
     </View>
@@ -240,7 +240,7 @@ export function TrashTask({ onComplete, speed }: TaskProps) {
       </View>
       <Pressable testID="trash-lever" onPressIn={() => press(true)} onPressOut={() => press(false)} style={styles.leverSlot}>
         <Animated.View style={[styles.leverKnob, { transform: [{ translateY: lever.interpolate({ inputRange: [0, 1], outputRange: [0, 90] }) }] }]} />
-        <Text style={styles.leverLabel}>החזק</Text>
+        <Text style={styles.leverLabel}>Hold</Text>
       </Pressable>
     </View>
   );
@@ -285,7 +285,7 @@ export function TemperatureTask({ onComplete }: TaskProps) {
   return (
     <View style={{ width: 300, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
       <View style={{ alignItems: 'center' }}>
-        <Text style={styles.dimLabel}>יעד</Text>
+        <Text style={styles.dimLabel}>Target</Text>
         <Text testID="temp-target" style={[styles.tempBig, { color: colors.survivor }]}>{target}°</Text>
       </View>
       <View style={styles.thermo}>

@@ -32,8 +32,8 @@ function stamp(d: Date): string {
 function rush(start: Date): Tournament {
   return {
     id: `rush-${stamp(start)}-${String(start.getHours()).padStart(2, '0')}`,
-    name: 'ריצת בהלה',
-    description: 'טורניר נוקאאוט בזק של שעה. עולים שלב רק אם הקבוצה שלך מנצחת.',
+    name: 'Panic Run',
+    description: 'A one-hour blitz knockout. You advance only if your team wins.',
     icon: '⚡',
     startsAt: start.getTime(),
     endsAt: start.getTime() + HOUR,
@@ -44,8 +44,8 @@ function rush(start: Date): Tournament {
 function night(start: Date): Tournament {
   return {
     id: `night-${stamp(start)}`,
-    name: 'התפרצות לילית',
-    description: 'כל ערב 20:00–22:00. האלוף זוכה בסקין הבלעדי "אלוף הטורניר"!',
+    name: 'Night Outbreak',
+    description: 'Every evening 20:00–22:00. The champion wins the exclusive "Tournament Champion" skin!',
     icon: '🌙',
     startsAt: start.getTime(),
     endsAt: start.getTime() + 2 * HOUR,
@@ -56,8 +56,8 @@ function night(start: Date): Tournament {
 function cup(start: Date): Tournament {
   return {
     id: `cup-${stamp(start)}`,
-    name: 'גביע האפוקליפסה',
-    description: 'טורניר סוף השבוע עם הפרסים הכי גדולים, כולל הסקין הבלעדי "אלוף הטורניר"!',
+    name: 'Apocalypse Cup',
+    description: 'The weekend tournament with the biggest prizes, including the exclusive "Tournament Champion" skin!',
     icon: '🏆',
     startsAt: start.getTime(),
     endsAt: start.getTime() + 28 * HOUR,
@@ -137,10 +137,10 @@ export function knockoutOutcome(r: MatchResult): KnockoutOutcome | null {
 
 /** Name of the round played with `size` players. */
 export function roundName(size: number): string {
-  if (size <= 2) return 'גמר';
-  if (size <= 4) return 'חצי גמר';
-  if (size <= 8) return 'רבע גמר';
-  return 'סיבוב פתיחה';
+  if (size <= 2) return 'Final';
+  if (size <= 4) return 'Semi-final';
+  if (size <= 8) return 'Quarter-final';
+  return 'Opening round';
 }
 
 /** The prize for finishing a run, or null while the run is still going. */
@@ -150,7 +150,7 @@ export function knockoutPrize(t: Tournament, o: KnockoutOutcome): TournamentPriz
   return t.prizes[o.place - 1] ?? t.prizes[t.prizes.length - 1];
 }
 
-export const PRIZE_LABELS = ['אלוף', 'גמר', 'חצי גמר', 'השתתפות'];
+export const PRIZE_LABELS = ['Champion', 'Final', 'Semi-final', 'Participation'];
 
 export interface LeaderboardEntry {
   uid: string;
@@ -170,7 +170,7 @@ function seeded(seed: number) {
   };
 }
 
-const RIVALS = ['ZombieKing', 'נינג׳ה_לילה', 'Survivor99', 'דוקטור_מוות', 'BrainEater', 'הצל', 'Rex_IL', 'מלכת_הזומבים', 'Speedy', 'גיבור_על'];
+const RIVALS = ['ZombieKing', 'NightNinja', 'Survivor99', 'DrDeath', 'BrainEater', 'TheShadow', 'Rex_IL', 'ZombieQueen', 'Speedy', 'SuperHero'];
 
 /** Offline-mode rivals whose scores grow over the tournament window. */
 export function simulatedRivals(t: Tournament, now: number): LeaderboardEntry[] {

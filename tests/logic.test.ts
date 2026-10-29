@@ -39,7 +39,7 @@ test('every task pays extra coins, and doctors earn a bonus per heal', () => {
   assert.equal(four.coins - none.coins, 4 * TASK_COINS);
   const healer = applyMatchResult(p, classicWin({ cures: 2 }), NOW).rewards;
   assert.equal(healer.coins - four.coins, 2 * CURE_COINS);
-  assert.ok(healer.lines.some((l) => l.label.includes('ריפויים')));
+  assert.ok(healer.lines.some((l) => l.label.includes('cures')));
 });
 
 test('a survivor who turned into a zombie gets half when the zombies win', () => {
@@ -50,11 +50,11 @@ test('a survivor who turned into a zombie gets half when the zombies win', () =>
   const turned = applyMatchResult(p, classicWin({ ...zombieWin, startRole: 'survivor', finalRole: 'zombie' }), NOW).rewards;
   assert.equal(turned.coins, Math.round(full.coins / 2));
   assert.equal(turned.xp, Math.round(full.xp / 2));
-  assert.ok(turned.lines.some((l) => l.label.includes('חצי')));
-  assert.ok(!born.lines.some((l) => l.label.includes('חצי')), 'starting zombies keep the full reward');
+  assert.ok(turned.lines.some((l) => l.label.includes('half')));
+  assert.ok(!born.lines.some((l) => l.label.includes('half')), 'starting zombies keep the full reward');
   // Losing as a turned zombie is not halved again.
   const lost = computeRewards(classicWin({ won: false, winner: 'survivor', startRole: 'survivor', finalRole: 'zombie' }), p);
-  assert.ok(!lost.lines.some((l) => l.label.includes('חצי')));
+  assert.ok(!lost.lines.some((l) => l.label.includes('half')));
 });
 
 test('training gives reduced rewards', () => {
@@ -140,7 +140,7 @@ test('knockout prizes are paid when the run ends; the champion gets the biggest 
 
   const advance = play({ roundSize: 8, advancing: 4 });
   assert.equal(advance.rewards.coins, base, 'no prize while still in the run');
-  assert.ok(advance.rewards.lines.some((l) => l.label.includes('חצי גמר')));
+  assert.ok(advance.rewards.lines.some((l) => l.label.includes('Semi-final')));
 
   const champ = play({ roundSize: 2, advancing: 1 });
   assert.equal(champ.rewards.coins, base + t.prizes[0].coins);
@@ -148,7 +148,7 @@ test('knockout prizes are paid when the run ends; the champion gets the biggest 
   if (t.prizes[0].skin) assert.ok(champ.profile.ownedSkins.includes(t.prizes[0].skin));
 
   const runnerUp = play({ won: false, winner: 'zombie', roundSize: 2 });
-  assert.ok(runnerUp.rewards.lines.some((l) => l.coins === t.prizes[1].coins && l.label.includes('גמר')));
+  assert.ok(runnerUp.rewards.lines.some((l) => l.coins === t.prizes[1].coins && l.label.includes('Final')));
   assert.ok(t.prizes[0].coins > t.prizes[1].coins && t.prizes[1].coins > t.prizes[3].coins);
 });
 

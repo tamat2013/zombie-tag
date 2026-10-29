@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zombie Tag",
     "slug": "zombie-tag",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "default",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b0f0a",

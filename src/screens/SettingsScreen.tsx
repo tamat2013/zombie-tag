@@ -11,18 +11,18 @@ export function SettingsScreen() {
   const s = useSoundSettings();
   return (
     <Screen scroll>
-      <ScreenHeader title="הגדרות סאונד" />
+      <ScreenHeader title="Sound settings" />
 
       <Card>
-        <Toggle icon={s.muted ? '🔇' : '🔊'} title="השתק הכל" subtitle="מכבה מוזיקה ואפקטים בלי לאבד את הווליום שבחרת" value={s.muted} onChange={(muted) => updateSoundSettings({ muted })} />
+        <Toggle icon={s.muted ? '🔇' : '🔊'} title="Mute all" subtitle="Turns off music and effects without losing your volume levels" value={s.muted} onChange={(muted) => updateSoundSettings({ muted })} />
       </Card>
 
       <Card style={styles.card}>
-        <Volume icon="🎵" title="מוזיקה" value={s.music} disabled={s.muted} onChange={(music) => updateSoundSettings({ music })} />
+        <Volume icon="🎵" title="Music" value={s.music} disabled={s.muted} onChange={(music) => updateSoundSettings({ music })} />
         <View style={styles.divider} />
         <Volume
           icon="💥"
-          title="אפקטים קוליים"
+          title="Sound effects"
           value={s.sfx}
           disabled={s.muted}
           onChange={(sfx) => {
@@ -35,8 +35,8 @@ export function SettingsScreen() {
       <Card style={styles.card}>
         <Toggle
           icon="👣"
-          title="צלילי הליכה"
-          subtitle="צעדים שלך ושל הזומבים"
+          title="Footsteps"
+          subtitle="Your steps and the zombies' steps"
           value={s.footsteps}
           onChange={(footsteps) => {
             updateSoundSettings({ footsteps });
@@ -46,8 +46,8 @@ export function SettingsScreen() {
         <View style={styles.divider} />
         <Toggle
           icon="📳"
-          title="רטט"
-          subtitle="רטט כשנדבקים, מרפאים ומשתמשים ביכולת"
+          title="Vibration"
+          subtitle="Vibrate when bitten, curing or using an ability"
           value={s.vibration}
           onChange={(vibration) => {
             updateSoundSettings({ vibration });
@@ -56,7 +56,7 @@ export function SettingsScreen() {
         />
       </Card>
 
-      <Text style={styles.testTitle}>נסה צלילים</Text>
+      <Text style={styles.testTitle}>Try sounds</Text>
       <View style={styles.testRow}>
         {(
           [
@@ -74,7 +74,7 @@ export function SettingsScreen() {
         ))}
       </View>
       <P dim style={{ textAlign: 'center', marginTop: 10 }}>
-        ההגדרות נשמרות במכשיר.
+        Settings are saved on this device.
       </P>
     </Screen>
   );
@@ -89,7 +89,7 @@ function Toggle({ icon, title, subtitle, value, onChange }: { icon: string; titl
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
       <View style={[styles.switch, value && styles.switchOn]}>
-        <View style={[styles.knob, value ? { left: 2 } : { right: 2 }]} />
+        <View style={[styles.knob, value ? { right: 2 } : { left: 2 }]} />
       </View>
     </Pressable>
   );
@@ -131,10 +131,10 @@ function StepBtn({ label, onPress }: { label: string; onPress: () => void }) {
 const styles = StyleSheet.create({
   card: { marginTop: 12 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 44 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   icon: { fontSize: 24, width: 32, textAlign: 'center' },
-  title: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'right' },
-  subtitle: { color: colors.textDim, fontSize: 12, textAlign: 'right', marginTop: 2 },
+  title: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'left' },
+  subtitle: { color: colors.textDim, fontSize: 12, textAlign: 'left', marginTop: 2 },
   percent: { color: colors.toxic, fontWeight: '800', fontSize: 14, minWidth: 44, textAlign: 'left' },
   switch: { width: 50, height: 28, borderRadius: 14, backgroundColor: colors.panelLight, borderWidth: 1, borderColor: colors.border },
   switchOn: { backgroundColor: colors.toxicDark, borderColor: colors.toxic },
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   barOn: { backgroundColor: colors.toxic },
   step: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.panelLight, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   stepText: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  testTitle: { color: colors.textDim, fontWeight: '700', textAlign: 'right', marginTop: 18, marginBottom: 8 },
-  testRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
+  testTitle: { color: colors.textDim, fontWeight: '700', textAlign: 'left', marginTop: 18, marginBottom: 8 },
+  testRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   testBtn: { width: 54, height: 54, borderRadius: radius.md, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
 });

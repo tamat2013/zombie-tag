@@ -24,13 +24,13 @@ import { haptic } from '../utils/haptics';
 type Tab = 'bots' | 'online';
 
 const DIFFICULTIES: { id: BotDifficulty; label: string }[] = [
-  { id: 'dummy', label: 'בובות' },
-  { id: 'easy', label: 'קל' },
-  { id: 'normal', label: 'רגיל' },
-  { id: 'hard', label: 'קשה' },
+  { id: 'dummy', label: 'Dummies' },
+  { id: 'easy', label: 'Easy' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'hard', label: 'Hard' },
 ];
 
-const MODE_TITLE = { classic: 'לובי · קלאסי', tournament: 'לובי · טורניר', obstacle: 'מסלול מכשולים', training: 'אימון' } as const;
+const MODE_TITLE = { classic: 'Lobby · Classic', tournament: 'Lobby · Tournament', obstacle: 'Obstacle Course', training: 'Training' } as const;
 
 export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
   const { flow, map } = route.params;
@@ -49,7 +49,7 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
 
   const startLocal = () => {
     if (tournamentClosed) {
-      toast('הטורניר לא פעיל כרגע', { tone: 'bad' });
+      toast('The tournament is not live right now', { tone: 'bad' });
       return;
     }
     haptic('medium');
@@ -73,7 +73,7 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
         <View style={{ flex: 1 }}>
           <H size={17}>{map.name}</H>
           {tournament ? <P dim>{`${tournament.icon} ${tournament.name}`}</P> : null}
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <Character skin={skin} size={38} outfit={outfitEmoji(profile.equippedOutfit)} />
             <P>{profile.displayName}</P>
           </View>
@@ -86,8 +86,8 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
       {onlineCapable ? (
         <Tabs<Tab>
           tabs={[
-            { id: 'bots', label: '🤖 נגד בוטים' },
-            { id: 'online', label: '🌐 אונליין' },
+            { id: 'bots', label: '🤖 Vs bots' },
+            { id: 'online', label: '🌐 Online' },
           ]}
           value={tab}
           onChange={setTab}
@@ -98,52 +98,52 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
         <OnlineLobby flow={flow} map={map} initialCode={route.params.roomCode} navigation={navigation} />
       ) : flow.mode === 'obstacle' ? (
         <Card style={{ marginTop: 12 }}>
-          <H size={16}>🏃 ריצה נגד השעון</H>
+          <H size={16}>🏃 Race the clock</H>
           <P dim style={{ marginTop: 4 }}>
-            הגע לקו הסיום 🏁. מלכודות ומסורים מחזירים אותך לנקודת השמירה האחרונה 🚩. זמן מהיר = מדליה טובה יותר.
+            Reach the finish line 🏁. Traps and saws send you back to the last checkpoint 🚩. Faster time = better medal.
           </P>
           {map.medalTimes ? (
             <P style={{ marginTop: 6 }}>
-              🥇 {map.medalTimes[0]} שנ׳ · 🥈 {map.medalTimes[1]} שנ׳ · 🥉 {map.medalTimes[2]} שנ׳
+              🥇 {map.medalTimes[0]}s · 🥈 {map.medalTimes[1]}s · 🥉 {map.medalTimes[2]}s
             </P>
           ) : null}
-          <Button title="התחל ריצה" icon="🏁" onPress={startLocal} style={{ marginTop: 14 }} />
+          <Button title="Start run" icon="🏁" onPress={startLocal} style={{ marginTop: 14 }} />
         </Card>
       ) : (
         <Card style={{ marginTop: 12 }}>
           {flow.mode === 'training' ? (
             <>
-              <Label>תרגל בתור</Label>
+              <Label>Practice as</Label>
               <View style={styles.chips}>
-                <Chip label="🧍 שורד" active={trainingRole === 'survivor'} onPress={() => setTrainingRole('survivor')} color={colors.survivor} />
-                <Chip label="🧟 זומבי" active={trainingRole === 'zombie'} onPress={() => setTrainingRole('zombie')} />
+                <Chip label="🧍 Survivor" active={trainingRole === 'survivor'} onPress={() => setTrainingRole('survivor')} color={colors.survivor} />
+                <Chip label="🧟 Zombie" active={trainingRole === 'zombie'} onPress={() => setTrainingRole('zombie')} />
               </View>
-              <Label>משך</Label>
+              <Label>Duration</Label>
               <View style={styles.chips}>
                 {[2, 5, 10].map((m) => (
-                  <Chip key={m} label={`${m} דק׳`} active={trainingMinutes === m} onPress={() => setTrainingMinutes(m)} color={colors.gold} />
+                  <Chip key={m} label={`${m} min`} active={trainingMinutes === m} onPress={() => setTrainingMinutes(m)} color={colors.gold} />
                 ))}
               </View>
             </>
           ) : null}
           {flow.mode === 'tournament' ? (
             <>
-              <H size={16}>🏆 טורניר נוקאאוט</H>
+              <H size={16}>🏆 Knockout tournament</H>
               <P dim style={{ marginTop: 4 }}>
-                {KNOCKOUT_SIZE} שחקנים, חצי זומבים וחצי שורדים. עולים לשלב הבא רק אם הקבוצה שהתחלת בה ניצחה (גם אם נדבקת בדרך).
-                רבע גמר ← חצי גמר ← גמר של 2 שחקנים. האלוף זוכה בפרס הגדול!
+                {KNOCKOUT_SIZE} players, half zombies and half survivors. You advance only if the team you started on wins (even if you got infected along the way).
+                Quarter-final → Semi-final → a 2-player Final. The champion wins the big prize!
               </P>
               <P dim style={{ marginTop: 4 }}>
-                ⏱️ {TOURNAMENT_ROUND_SEC / 60} דקות לסיבוב · 🏃 שורדים מהירים יותר · 🐢 זומבים איטיים יותר
+                ⏱️ {TOURNAMENT_ROUND_SEC / 60} min per round · 🏃 faster survivors · 🐢 slower zombies
               </P>
             </>
           ) : (
             <>
-              <Label>מספר בוטים: {botCount}</Label>
+              <Label>Bots: {botCount}</Label>
               <Stepper value={botCount} min={1} max={MAX_ROOM_PLAYERS - 1} onChange={setBotCount} />
             </>
           )}
-          <Label>רמת קושי</Label>
+          <Label>Difficulty</Label>
           <View style={styles.chips}>
             {DIFFICULTIES.filter((d) => flow.mode === 'training' || d.id !== 'dummy').map((d) => (
               <Chip key={d.id} label={d.label} active={difficulty === d.id} onPress={() => setDifficulty(d.id)} color={d.id === 'hard' ? colors.blood : colors.toxic} />
@@ -151,15 +151,15 @@ export function LobbyScreen({ navigation, route }: ScreenProps<'Lobby'>) {
           </View>
           {flow.mode === 'training' ? (
             <P dim style={{ marginTop: 8 }}>
-              {difficulty === 'dummy' ? 'בובות: הבוטים עומדים במקום ולא זזים, מתאים לתרגול מטרות.' : 'באימון היכולות נטענות פי 2 מהר יותר.'}
+              {difficulty === 'dummy' ? 'Dummies: bots stand still and never move. Good for target practice.' : 'In training, abilities recharge 2x faster.'}
             </P>
           ) : null}
           {flow.mode === 'classic' ? (
             <P dim style={{ marginTop: 8 }}>
-              שורדים: בצעו משימות ושרדו 10 דקות. זומבים: הדביקו את כולם. הזומבים משתחררים אחרי 5 שניות.
+              Survivors: do tasks and survive 10 minutes. Zombies: infect everyone. Zombies are released after 5 seconds.
             </P>
           ) : null}
-          <Button title="התחל משחק" icon="▶️" onPress={startLocal} style={{ marginTop: 14 }} disabled={tournamentClosed} />
+          <Button title="Start match" icon="▶️" onPress={startLocal} style={{ marginTop: 14 }} disabled={tournamentClosed} />
         </Card>
       )}
     </Screen>
@@ -203,7 +203,7 @@ function OnlineLobby({
     if (!code) return;
     return roomService.subscribe(code, (r) => {
       if (!r) {
-        toast('החדר נסגר', { tone: 'bad' });
+        toast('The room was closed', { tone: 'bad' });
         setCode(null);
         setRoom(null);
         return;
@@ -252,7 +252,7 @@ function OnlineLobby({
       setCode(c);
       haptic('success');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'יצירת החדר נכשלה', { tone: 'bad' });
+      toast(e instanceof Error ? e.message : 'Could not create the room', { tone: 'bad' });
     } finally {
       setBusy(false);
     }
@@ -267,7 +267,7 @@ function OnlineLobby({
       setCode(c.trim().toUpperCase());
       haptic('success');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'ההצטרפות נכשלה', { tone: 'bad' });
+      toast(e instanceof Error ? e.message : 'Could not join', { tone: 'bad' });
     } finally {
       setBusy(false);
     }
@@ -283,16 +283,16 @@ function OnlineLobby({
     return (
       <View style={{ marginTop: 12, gap: 12 }}>
         <Card>
-          <H size={16}>צור חדר חדש</H>
+          <H size={16}>Create a new room</H>
           <P dim>
-            חברים מצטרפים עם קוד בן 5 אותיות. עד {flow.mode === 'tournament' ? KNOCKOUT_SIZE : MAX_ROOM_PLAYERS} שחקנים, בוטים ממלאים מקומות פנויים.
+            Friends join with a 5-letter code. Up to {flow.mode === 'tournament' ? KNOCKOUT_SIZE : MAX_ROOM_PLAYERS} players; bots fill empty spots.
           </P>
-          <Button title="צור חדר" icon="➕" onPress={create} loading={busy} style={{ marginTop: 10 }} />
+          <Button title="Create room" icon="➕" onPress={create} loading={busy} style={{ marginTop: 10 }} />
         </Card>
         <Card>
-          <H size={16}>הצטרף עם קוד</H>
+          <H size={16}>Join with a code</H>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' }}>
-            <Button title="הצטרף" small variant="blue" onPress={() => join(joinCode)} disabled={busy} />
+            <Button title="Join" small variant="blue" onPress={() => join(joinCode)} disabled={busy} />
             <TextInput
               value={joinCode}
               onChangeText={(t) => setJoinCode(t.toUpperCase())}
@@ -309,17 +309,17 @@ function OnlineLobby({
             <Pressable onPress={loadOpen} hitSlop={8}>
               <Text style={{ fontSize: 18 }}>🔄</Text>
             </Pressable>
-            <H size={16}>חדרים פתוחים</H>
+            <H size={16}>Open rooms</H>
           </View>
           {openRooms === null ? <ActivityIndicator color={colors.toxic} style={{ marginTop: 8 }} /> : null}
-          {openRooms?.length === 0 ? <P dim>אין חדרים פתוחים כרגע. צור אחד!</P> : null}
+          {openRooms?.length === 0 ? <P dim>No open rooms right now. Create one!</P> : null}
           {openRooms?.map((r) => (
             <Pressable key={r.code} onPress={() => join(r.code)} style={styles.openRoom}>
               <Text style={styles.openCount}>
                 {Object.keys(r.players ?? {}).length}/{roomCapacity(r)}
               </Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.openName}>{r.players?.[r.hostId]?.name ?? 'חדר'} · {roomMap(r)?.name ?? r.mapId}</Text>
+                <Text style={styles.openName}>{r.players?.[r.hostId]?.name ?? 'Room'} · {roomMap(r)?.name ?? r.mapId}</Text>
                 <Text style={styles.openCode}>{r.code}{r.mode === 'tournament' ? ' · 🏆' : ''}</Text>
               </View>
             </Pressable>
@@ -346,7 +346,7 @@ function OnlineLobby({
 
   const start = async () => {
     if (inRun.length + bots < 2) {
-      toast('צריך לפחות 2 משתתפים (שחקנים או בוטים)', { tone: 'bad' });
+      toast('Need at least 2 participants (players or bots)', { tone: 'bad' });
       return;
     }
     haptic('heavy');
@@ -358,7 +358,7 @@ function OnlineLobby({
     try {
       await roomService.start(room.code, { startedAt: 0, seed, roles, bots: botMap, durationSec: knockout ? TOURNAMENT_ROUND_SEC : CLASSIC_DURATION_SEC });
     } catch (e) {
-      toast('ההתחלה נכשלה', { tone: 'bad' });
+      toast('Could not start', { tone: 'bad' });
       console.warn(e);
     }
   };
@@ -366,34 +366,34 @@ function OnlineLobby({
   return (
     <View style={{ marginTop: 12, gap: 12 }}>
       <Card highlight={colors.toxic} style={{ alignItems: 'center' }}>
-        <P dim>קוד החדר</P>
+        <P dim>Room code</P>
         <Text style={styles.roomCode}>{room.code}</Text>
         <P dim>
-          {inRun.length} שחקנים · {bots} בוטים · {roomMap(room)?.name}
+          {inRun.length} players · {bots} bots · {roomMap(room)?.name}
         </P>
         {knockout ? (
           <P style={{ marginTop: 4, color: colors.gold, fontWeight: '800' }}>
-            🏆 {roundName(inRun.length + bots)} · {TOURNAMENT_ROUND_SEC / 60} דקות · חצי זומבים חצי שורדים
+            🏆 {roundName(inRun.length + bots)} · {TOURNAMENT_ROUND_SEC / 60} min · half zombies, half survivors
           </P>
         ) : null}
       </Card>
       {out ? (
         <Card highlight={colors.blood}>
-          <H size={16}>💀 הודחת מהטורניר</H>
-          <P dim>הקבוצה שלך הפסידה בסיבוב הקודם. הפרס שלך כבר התקבל. אפשר לעזוב את החדר או לחכות לסוף הטורניר.</P>
+          <H size={16}>💀 You are out of the tournament</H>
+          <P dim>Your team lost the last round. You already got your prize. You can leave the room or wait for the tournament to end.</P>
         </Card>
       ) : null}
 
       <Card>
-        <H size={16}>שחקנים</H>
+        <H size={16}>Players</H>
         {players.map(([id, p]) => (
           <View key={id} style={[styles.player, alive && !alive.includes(id) && { opacity: 0.4 }]}>
             <Text style={[styles.ready, { color: id === room.hostId ? colors.gold : p.ready ? colors.toxic : colors.textMuted }]}>
-              {alive && !alive.includes(id) ? '💀 הודח' : id === room.hostId ? '👑 מארח' : p.ready ? '✔ מוכן' : '… ממתין'}
+              {alive && !alive.includes(id) ? '💀 Out' : id === room.hostId ? '👑 Host' : p.ready ? '✔ Ready' : '… Waiting'}
             </Text>
             <Text style={styles.playerName} numberOfLines={1}>
               {p.name}
-              {id === profile.uid ? ' (אתה)' : ''}
+              {id === profile.uid ? ' (you)' : ''}
             </Text>
             <Character skin={p.skin} size={34} outfit={outfitEmoji(p.outfit)} />
           </View>
@@ -401,7 +401,7 @@ function OnlineLobby({
         {Array.from({ length: bots }, (_, i) => (
           <View key={`b${i}`} style={[styles.player, { opacity: 0.55 }]}>
             <Text style={[styles.ready, { color: colors.textMuted }]}>🤖</Text>
-            <Text style={styles.playerName}>בוט</Text>
+            <Text style={styles.playerName}>Bot</Text>
             <View style={{ width: 34 }} />
           </View>
         ))}
@@ -411,27 +411,27 @@ function OnlineLobby({
         <Card>
           {knockout ? null : (
             <>
-              <Label>בוטים: {room.botCount}</Label>
+              <Label>Bots: {room.botCount}</Label>
               <Stepper value={room.botCount} min={0} max={MAX_ROOM_PLAYERS - 1} onChange={(n) => roomService.updateSettings(room.code, { botCount: n })} />
             </>
           )}
-          <Label>רמת הבוטים</Label>
+          <Label>Bot level</Label>
           <View style={styles.chips}>
             {DIFFICULTIES.filter((d) => d.id !== 'dummy').map((d) => (
               <Chip key={d.id} label={d.label} active={room.difficulty === d.id} onPress={() => roomService.updateSettings(room.code, { difficulty: d.id })} />
             ))}
           </View>
-          <Button title={allReady ? 'התחל משחק' : 'ממתין שכולם יהיו מוכנים'} icon="▶️" onPress={start} disabled={!allReady} style={{ marginTop: 14 }} />
+          <Button title={allReady ? 'Start match' : 'Waiting for everyone to be ready'} icon="▶️" onPress={start} disabled={!allReady} style={{ marginTop: 14 }} />
         </Card>
       ) : (
         <Button
-          title={me?.ready ? 'לא מוכן' : 'אני מוכן!'}
+          title={me?.ready ? 'Not ready' : 'I am ready!'}
           icon={me?.ready ? '✋' : '✅'}
           variant={me?.ready ? 'dark' : 'primary'}
           onPress={() => roomService.setReady(room.code, profile.uid, !me?.ready)}
         />
       )}
-      <Button title="עזוב חדר" icon="🚪" variant="danger" small onPress={leave} />
+      <Button title="Leave room" icon="🚪" variant="danger" small onPress={leave} />
     </View>
   );
 }
@@ -461,21 +461,21 @@ function Stepper({ value, min, max, onChange }: { value: number; min: number; ma
 }
 
 const styles = StyleSheet.create({
-  summary: { flexDirection: 'row-reverse', gap: 12, alignItems: 'center', marginBottom: 10 },
-  label: { color: colors.textDim, fontWeight: '800', fontSize: 13, textAlign: 'right', marginTop: 12, marginBottom: 6 },
-  chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  summary: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 10 },
+  label: { color: colors.textDim, fontWeight: '800', fontSize: 13, textAlign: 'left', marginTop: 12, marginBottom: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   input: { flex: 1, backgroundColor: '#0a0f09', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 9, fontSize: 18, textAlign: 'center', letterSpacing: 4 },
   roomCode: { color: colors.toxic, fontSize: 40, fontWeight: '900', letterSpacing: 8 },
   player: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   ready: { width: 80, fontWeight: '800', fontSize: 12 },
-  playerName: { flex: 1, color: colors.text, fontWeight: '800', textAlign: 'right' },
+  playerName: { flex: 1, color: colors.text, fontWeight: '800', textAlign: 'left' },
   openRoom: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   openCount: { color: colors.toxic, fontWeight: '900', width: 48 },
-  openName: { color: colors.text, fontWeight: '800', textAlign: 'right' },
-  openCode: { color: colors.textDim, fontSize: 12, textAlign: 'right', letterSpacing: 2 },
+  openName: { color: colors.text, fontWeight: '800', textAlign: 'left' },
+  openCode: { color: colors.textDim, fontSize: 12, textAlign: 'left', letterSpacing: 2 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
   stepText: { color: colors.text, fontSize: 22, fontWeight: '900' },
-  stepTrack: { flex: 1, flexDirection: 'row-reverse', gap: 4 },
+  stepTrack: { flex: 1, flexDirection: 'row', gap: 4 },
   stepDot: { flex: 1, height: 12, borderRadius: 6, backgroundColor: '#0a0f09', borderWidth: 1, borderColor: colors.border },
 });

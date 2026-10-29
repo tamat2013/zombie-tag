@@ -19,19 +19,19 @@ import { haptic } from '../utils/haptics';
 type Tab = 'stats' | 'achievements' | 'loadout';
 
 const STAT_ROWS: { key: keyof PlayerStats; label: string; icon: string; format?: (n: number) => string }[] = [
-  { key: 'matchesPlayed', label: 'משחקים', icon: '🎮' },
-  { key: 'wins', label: 'ניצחונות', icon: '🏆' },
-  { key: 'survivorWins', label: 'ניצחונות כשורד', icon: '🛡️' },
-  { key: 'zombieWins', label: 'ניצחונות כזומבי', icon: '🧟' },
-  { key: 'infections', label: 'הדבקות', icon: '☣️' },
-  { key: 'tasksCompleted', label: 'משימות', icon: '🔧' },
-  { key: 'secondsSurvived', label: 'זמן הישרדות', icon: '⏱️', format: formatSeconds },
-  { key: 'abilitiesUsed', label: 'שימוש ביכולות', icon: '⚡' },
-  { key: 'obstacleRuns', label: 'ריצות מכשולים', icon: '🏁' },
-  { key: 'obstacleGolds', label: 'מדליות זהב', icon: '🥇' },
-  { key: 'tournamentMatches', label: 'משחקי טורניר', icon: '🎖️' },
-  { key: 'skinsCreated', label: 'סקינים שעוצבו', icon: '🎨' },
-  { key: 'mapsCreated', label: 'מפות שנוצרו', icon: '🗺️' },
+  { key: 'matchesPlayed', label: 'Matches', icon: '🎮' },
+  { key: 'wins', label: 'Wins', icon: '🏆' },
+  { key: 'survivorWins', label: 'Survivor wins', icon: '🛡️' },
+  { key: 'zombieWins', label: 'Zombie wins', icon: '🧟' },
+  { key: 'infections', label: 'Infections', icon: '☣️' },
+  { key: 'tasksCompleted', label: 'Tasks', icon: '🔧' },
+  { key: 'secondsSurvived', label: 'Time survived', icon: '⏱️', format: formatSeconds },
+  { key: 'abilitiesUsed', label: 'Abilities used', icon: '⚡' },
+  { key: 'obstacleRuns', label: 'Obstacle runs', icon: '🏁' },
+  { key: 'obstacleGolds', label: 'Gold medals', icon: '🥇' },
+  { key: 'tournamentMatches', label: 'Tournament matches', icon: '🎖️' },
+  { key: 'skinsCreated', label: 'Skins designed', icon: '🎨' },
+  { key: 'mapsCreated', label: 'Maps created', icon: '🗺️' },
 ];
 
 export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
@@ -46,22 +46,22 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
 
   const saveName = () => {
     const n = name.trim().slice(0, 16);
-    if (n.length < 2) return toast('שם קצר מדי', { tone: 'bad' });
+    if (n.length < 2) return toast('Name is too short', { tone: 'bad' });
     updateProfile((p) => ({ ...p, displayName: n }));
     setEditingName(false);
-    toast('השם עודכן', { icon: '✏️', tone: 'good' });
+    toast('Name updated', { icon: '✏️', tone: 'good' });
   };
 
   return (
     <Screen scroll>
-      <ScreenHeader title="פרופיל" />
+      <ScreenHeader title="Profile" />
       <Card style={styles.hero}>
         <Character skin={skin} size={96} outfit={outfitEmoji(profile.equippedOutfit)} />
         <View style={{ flex: 1, gap: 4 }}>
           {editingName ? (
-            <View style={{ flexDirection: 'row-reverse', gap: 6, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
               <TextInput value={name} onChangeText={setName} maxLength={16} style={styles.nameInput} autoFocus onSubmitEditing={saveName} />
-              <Button small title="שמור" onPress={saveName} />
+              <Button small title="Save" onPress={saveName} />
             </View>
           ) : (
             <Text style={styles.name} onPress={() => setEditingName(true)}>
@@ -70,12 +70,12 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
           )}
           <P dim style={{ fontSize: 12 }}>{profile.email}</P>
           <Text style={styles.level}>
-            ⭐ רמה {info.level}
-            {info.level >= MAX_LEVEL ? ' (מקסימום)' : ''}
+            ⭐ Level {info.level}
+            {info.level >= MAX_LEVEL ? ' (max)' : ''}
           </Text>
           <ProgressBar value={info.progress} color={colors.gold} height={9} />
           <P dim style={{ fontSize: 11 }}>
-            {info.level >= MAX_LEVEL ? 'הגעת לרמה הגבוהה ביותר!' : `${info.into}/${info.needed} XP לרמה הבאה`}
+            {info.level >= MAX_LEVEL ? 'You reached the top level!' : `${info.into}/${info.needed} XP to the next level`}
           </P>
         </View>
       </Card>
@@ -84,15 +84,15 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
         <Pill icon="🪙" text={profile.coins.toLocaleString()} color={colors.coin} />
         <Pill icon="🏅" text={String(profile.medals)} color={colors.medal} />
         <Pill icon="🎖️" text={`${profile.achievements.length}/${ACHIEVEMENTS.length}`} color={colors.purple} />
-        <Pill icon="📈" text={`${winRate}% ניצחונות`} color={colors.toxic} />
-        <Pill icon={authService.isOnline ? '🌐' : '📴'} text={authService.isOnline ? 'מחובר לענן' : 'מצב מקומי'} color={authService.isOnline ? colors.survivor : colors.textDim} />
+        <Pill icon="📈" text={`${winRate}% wins`} color={colors.toxic} />
+        <Pill icon={authService.isOnline ? '🌐' : '📴'} text={authService.isOnline ? 'Cloud synced' : 'Local mode'} color={authService.isOnline ? colors.survivor : colors.textDim} />
       </View>
 
       <Tabs
         tabs={[
-          { id: 'stats', label: '📊 סטטיסטיקה' },
-          { id: 'achievements', label: '🎖️ הישגים' },
-          { id: 'loadout', label: '⚡ יכולות' },
+          { id: 'stats', label: '📊 Stats' },
+          { id: 'achievements', label: '🎖️ Achievements' },
+          { id: 'loadout', label: '⚡ Abilities' },
         ]}
         value={tab}
         onChange={setTab}
@@ -119,7 +119,7 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
                   {a.badge}
                 </Text>
               ))}
-              {profile.achievements.length === 0 ? <P dim>עוד אין תגים. שחק כדי לפתוח הישגים!</P> : null}
+              {profile.achievements.length === 0 ? <P dim>No badges yet. Play to unlock achievements!</P> : null}
             </View>
             {ACHIEVEMENTS.map((a) => {
               const done = profile.achievements.includes(a.id);
@@ -148,8 +148,8 @@ export function ProfileScreen({ navigation }: ScreenProps<'Profile'>) {
       </View>
 
       <View style={{ gap: 10, marginTop: 20 }}>
-        <Button title="עיצוב סקין" icon="🎨" variant="dark" onPress={() => navigation.navigate('SkinDesigner')} />
-        <Button title="התנתק" icon="🚪" variant="danger" onPress={() => signOut()} />
+        <Button title="Design a skin" icon="🎨" variant="dark" onPress={() => navigation.navigate('SkinDesigner')} />
+        <Button title="Sign out" icon="🚪" variant="danger" onPress={() => signOut()} />
       </View>
     </Screen>
   );
@@ -159,12 +159,12 @@ function LoadoutEditor() {
   const profile = useProfile();
   const { updateProfile, toast } = useGame();
   const roles: { role: Role; title: string }[] = [
-    { role: 'survivor', title: '🧍 שורד' },
-    { role: 'zombie', title: '🧟 זומבי' },
+    { role: 'survivor', title: '🧍 Survivor' },
+    { role: 'zombie', title: '🧟 Zombie' },
   ];
   return (
     <View style={{ gap: 14 }}>
-      <P dim>היכולות שנבחרו יופיעו במשחק. אפשר לקנות יכולות נוספות בחנות.</P>
+      <P dim>Selected abilities show up in matches. You can buy more in the shop.</P>
       {roles.map(({ role, title }) => (
         <View key={role} style={{ gap: 6 }}>
           <H size={16}>
@@ -191,7 +191,7 @@ function LoadoutEditor() {
                   >
                     <Text style={{ fontSize: 30, opacity: on ? 1 : 0.4 }}>{a.icon}</Text>
                     <Text style={styles.abilityName}>{a.name}</Text>
-                    <Text style={{ color: on ? colors.toxic : colors.textMuted, fontSize: 11, fontWeight: '800' }}>{on ? 'מצויד' : 'לא מצויד'}</Text>
+                    <Text style={{ color: on ? colors.toxic : colors.textMuted, fontSize: 11, fontWeight: '800' }}>{on ? 'Equipped' : 'Not equipped'}</Text>
                   </Card>
                 );
               })}
@@ -203,18 +203,18 @@ function LoadoutEditor() {
 }
 
 const styles = StyleSheet.create({
-  hero: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
-  name: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'right' },
-  nameInput: { flex: 1, backgroundColor: colors.bgAlt, color: colors.text, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 16, textAlign: 'right', borderWidth: 1, borderColor: colors.border },
-  level: { color: colors.gold, fontWeight: '900', fontSize: 16, textAlign: 'right' },
-  pills: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginVertical: 12 },
-  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  hero: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  name: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'left' },
+  nameInput: { flex: 1, backgroundColor: colors.bgAlt, color: colors.text, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 16, textAlign: 'left', borderWidth: 1, borderColor: colors.border },
+  level: { color: colors.gold, fontWeight: '900', fontSize: 16, textAlign: 'left' },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stat: { width: '31%', flexGrow: 1, backgroundColor: colors.panel, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', paddingVertical: 10, gap: 2 },
   statValue: { color: colors.text, fontWeight: '900', fontSize: 18 },
   statLabel: { color: colors.textDim, fontSize: 11, textAlign: 'center' },
-  badges: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
   badge: { fontSize: 30 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   achBadge: { fontSize: 34 },
   done: { color: colors.gold, fontSize: 22, fontWeight: '900' },
   prog: { color: colors.textDim, fontWeight: '800' },

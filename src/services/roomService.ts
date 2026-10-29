@@ -105,17 +105,17 @@ export const roomService = {
       });
       if (res.committed) return c;
     }
-    throw new Error('לא הצלחנו ליצור חדר, נסה שוב');
+    throw new Error('Could not create a room, try again');
   },
 
   async join(roomCode: string, profile: Profile): Promise<void> {
     const c = roomCode.trim().toUpperCase();
     const snap = await get(ref(realtimeDb(), `rooms/${c}`));
-    if (!snap.exists()) throw new Error('החדר לא נמצא');
+    if (!snap.exists()) throw new Error('Room not found');
     const room = snap.val() as Room;
-    if (room.status !== 'lobby') throw new Error('המשחק בחדר הזה כבר התחיל');
-    if (room.knockout?.alive?.length && !room.players?.[profile.uid]) throw new Error('הטורניר בחדר הזה כבר באמצע');
-    if (Object.keys(room.players ?? {}).length >= roomCapacity(room) && !room.players?.[profile.uid]) throw new Error('החדר מלא');
+    if (room.status !== 'lobby') throw new Error('The match in this room has already started');
+    if (room.knockout?.alive?.length && !room.players?.[profile.uid]) throw new Error('The tournament in this room is already underway');
+    if (Object.keys(room.players ?? {}).length >= roomCapacity(room) && !room.players?.[profile.uid]) throw new Error('The room is full');
     await set(ref(realtimeDb(), `rooms/${c}/players/${profile.uid}`), roomPlayerFrom(profile));
   },
 

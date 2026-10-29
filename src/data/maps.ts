@@ -178,15 +178,15 @@ export const CITY_ROWS = generateRows(37, 80, 48, { minLeaf: 12, mud: 0.35, loop
 export const BUNKER_ROWS = generateRows(51, 96, 56, { minLeaf: 12, clutter: 0.7, loops: 0.6 });
 
 export const BUILT_IN_MAPS: GameMap[] = [
-  mapFromAscii('hospital', 'בית חולים נטוש', BIG_HOSPITAL_ROWS),
-  mapFromAscii('mall', 'הקניון המת', BIG_MALL_ROWS),
-  mapFromAscii('base', 'מחנה צבאי', BIG_BASE_ROWS),
-  mapFromAscii('lab', 'מעבדה סודית', LAB_ROWS),
-  mapFromAscii('prison', 'כלא מחמירה', PRISON_ROWS),
-  mapFromAscii('city', 'עיר רפאים', CITY_ROWS),
-  mapFromAscii('bunker', 'בונקר ענק', BUNKER_ROWS),
-  mapFromAscii('obstacle_rookie', 'מסלול טירונים', OBSTACLE_ROOKIE_ROWS, 'obstacle', { medalTimes: [30, 45, 70] }),
-  mapFromAscii('obstacle_saw', 'עמק המסורים', OBSTACLE_SAW_ROWS, 'obstacle', { medalTimes: [35, 55, 80] }),
+  mapFromAscii('hospital', 'Abandoned Hospital', BIG_HOSPITAL_ROWS),
+  mapFromAscii('mall', 'Dead Mall', BIG_MALL_ROWS),
+  mapFromAscii('base', 'Army Camp', BIG_BASE_ROWS),
+  mapFromAscii('lab', 'Secret Lab', LAB_ROWS),
+  mapFromAscii('prison', 'Max Security Prison', PRISON_ROWS),
+  mapFromAscii('city', 'Ghost Town', CITY_ROWS),
+  mapFromAscii('bunker', 'Giant Bunker', BUNKER_ROWS),
+  mapFromAscii('obstacle_rookie', 'Rookie Course', OBSTACLE_ROOKIE_ROWS, 'obstacle', { medalTimes: [30, 45, 70] }),
+  mapFromAscii('obstacle_saw', 'Saw Valley', OBSTACLE_SAW_ROWS, 'obstacle', { medalTimes: [35, 55, 80] }),
 ];
 
 export function findBuiltInMap(id: string): GameMap | undefined {

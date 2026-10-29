@@ -10,8 +10,8 @@ export function RotateHint() {
   return (
     <View style={styles.cover} pointerEvents="auto">
       <Text style={styles.icon}>📱</Text>
-      <Text style={styles.title}>סובב את המכשיר לרוחב</Text>
-      <Text style={styles.sub}>המשחק מיועד למסך אופקי</Text>
+      <Text style={styles.title}>Rotate your device to landscape</Text>
+      <Text style={styles.sub}>This game is played in landscape</Text>
     </View>
   );
 }

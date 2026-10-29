@@ -215,23 +215,23 @@ export interface MapValidation {
 export function validateMap(map: GameMap): MapValidation {
   const errors: string[] = [];
   const survivorSpawns = findTiles(map, T.SURVIVOR_SPAWN);
-  if (survivorSpawns.length === 0) errors.push('חסרה נקודת התחלה לשורדים (S)');
+  if (survivorSpawns.length === 0) errors.push('Missing a survivor spawn (S)');
   if (map.kind === 'arena') {
-    if (findTiles(map, T.ZOMBIE_SPAWN).length === 0) errors.push('חסרה נקודת התחלה לזומבים (Z)');
-    if (findTiles(map, T.TASK).length < 3) errors.push('נדרשות לפחות 3 עמדות משימה (T)');
+    if (findTiles(map, T.ZOMBIE_SPAWN).length === 0) errors.push('Missing a zombie spawn (Z)');
+    if (findTiles(map, T.TASK).length < 3) errors.push('Needs at least 3 task stations (T)');
   } else if (findTiles(map, T.FINISH).length === 0) {
-    errors.push('חסר קו סיום (F)');
+    errors.push('Missing a finish line (F)');
   }
   if (survivorSpawns.length > 0) {
     const reach = floodFill(map, survivorSpawns[0]);
     const unreachableTask = findTiles(map, T.TASK).some(
       (t) => ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => reach.has(`${t.x + dx},${t.y + dy}`)),
     );
-    if (unreachableTask) errors.push('יש עמדת משימה שאי אפשר להגיע אליה');
+    if (unreachableTask) errors.push('A task station cannot be reached');
     const unreachableZ = findTiles(map, T.ZOMBIE_SPAWN).some((t) => !reach.has(`${t.x},${t.y}`));
-    if (unreachableZ) errors.push('יש נקודת זומבים מנותקת משאר המפה');
+    if (unreachableZ) errors.push('A zombie spawn is cut off from the rest of the map');
     const finish = findTiles(map, T.FINISH);
-    if (finish.length && !finish.some((t) => reach.has(`${t.x},${t.y}`))) errors.push('אי אפשר להגיע לקו הסיום');
+    if (finish.length && !finish.some((t) => reach.has(`${t.x},${t.y}`))) errors.push('The finish line cannot be reached');
   }
   return { ok: errors.length === 0, errors };
 }

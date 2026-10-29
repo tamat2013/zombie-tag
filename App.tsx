@@ -68,8 +68,8 @@ function Root() {
   const syncMusic = () => musicForRoute(navRef.getCurrentRoute()?.name);
 
   if (!introDone) return <IntroScreen onDone={() => setIntroDone(true)} />;
-  if (user === undefined) return <Loading text="טוען..." />;
-  if (user && !profile) return <Loading text="טוען את הפרופיל..." />;
+  if (user === undefined) return <Loading text="Loading..." />;
+  if (user && !profile) return <Loading text="Loading profile..." />;
 
   return (
     <NavigationContainer ref={navRef} theme={navTheme} onReady={syncMusic} onStateChange={syncMusic}>

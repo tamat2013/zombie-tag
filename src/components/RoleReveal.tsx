@@ -26,14 +26,14 @@ export function RoleReveal({ role, doctor, skin, outfit, mode, secondsLeft }: Pr
 
   const zombie = role === 'zombie';
   const obstacle = mode === 'obstacle';
-  const title = obstacle ? 'מסלול מכשולים' : zombie ? 'אתה זומבי!' : doctor ? 'אתה רופא! 🩺' : 'אתה שורד!';
+  const title = obstacle ? 'Obstacle Course' : zombie ? 'You are a zombie!' : doctor ? 'You are a doctor! 🩺' : 'You are a survivor!';
   const subtitle = obstacle
-    ? 'הגע לקו הסיום כמה שיותר מהר. הימנע ממסורים ומלכודות!'
+    ? 'Reach the finish line as fast as you can. Avoid saws and traps!'
     : zombie
-      ? 'גע בשורדים כדי להדביק אותם. הפוך את כולם לזומבים!'
+      ? 'Touch survivors to infect them. Turn everyone into zombies!'
       : doctor
-        ? 'שורד שנדבק קפוא ל-10 שניות – גע בו כדי לרפא אותו. אם רופא אחר ירפא אותך, תאבד את כוח הריפוי.'
-        : 'בצע משימות, השתמש ביכולות ושרוד עד סוף הזמן! יש לך אבן אחת לזרוק כדי למשוך זומבים למקום אחר 🪨';
+        ? 'A bitten survivor is frozen for 10 seconds – touch them to cure them. Follow the beeping and the blue arrows. If another doctor cures you, you lose your healing power.'
+        : 'Do tasks, use abilities and survive until time runs out! You have one stone to throw to lure zombies somewhere else 🪨';
   const tint = obstacle ? colors.gold : zombie ? colors.zombie : colors.survivor;
 
   return (

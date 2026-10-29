@@ -28,7 +28,7 @@ export function TaskModal({ type, speed, onComplete, onClose, danger }: Props) {
           </Text>
         </View>
         <Text style={styles.hint}>{info.hint}</Text>
-        {danger ? <Text style={styles.danger}>⚠️ זומבי מתקרב!</Text> : null}
+        {danger ? <Text style={styles.danger}>⚠️ Zombie nearby!</Text> : null}
         <View style={styles.body}>
           <Game onComplete={onComplete} speed={speed} />
         </View>
