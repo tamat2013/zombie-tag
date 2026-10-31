@@ -1,4 +1,4 @@
-// Main menu: player card, featured classic mode, other game modes and a bottom navigation bar.
+// Main menu: player card, featured classic mode and the other modes. The phone fits it in two columns under a top bar; the desktop stretches it to the window.
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 import { Pressable, View } from '../i18n/Layout';
@@ -63,107 +63,154 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     else navigation.navigate('SkinSelect', { flow: { mode } });
   };
 
+  const offline = !authService.isOnline;
+
+  // Desktop only: the phone shows the same player in the top bar instead.
+  const playerCard = (
+    <Pressable onPress={() => navigation.navigate('Profile')} style={({ pressed }) => [styles.playerCard, pressed && styles.pressed]}>
+      <View style={styles.avatar}>
+        <Animated.View style={{ transform: [{ translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }] }}>
+          <Character skin={skin} size={40} outfit={outfitEmoji(profile.equippedOutfit)} />
+        </Animated.View>
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelBadgeText}>{lvl.level}</Text>
+        </View>
+      </View>
+      <View style={{ flex: 1, gap: 6 }}>
+        <Text style={styles.name} numberOfLines={1}>
+          {profile.displayName}
+        </Text>
+        <ProgressBar value={lvl.progress} height={10} />
+        <Text style={styles.xp}>
+          {lvl.into} / {lvl.needed} XP
+        </Text>
+      </View>
+      <View style={{ gap: 6 }}>
+        <View style={styles.stat}>
+          <Coin />
+          <Text style={[styles.statText, { color: colors.coin }]}>{profile.coins.toLocaleString()}</Text>
+        </View>
+        <View style={styles.stat}>
+          <Icon name="medal-outline" size={15} color={colors.medal} />
+          <Text style={[styles.statText, { color: colors.medal }]}>{profile.medals}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+
+  const hero = (
+    <View style={[styles.hero, isDesktop ? styles.heroDesk : styles.heroPhone]}>
+      <HazardStripe height={14} style={styles.heroStripe} />
+      <View style={[styles.heroBody, isDesktop ? styles.heroBodyDesk : styles.heroBodyPhone]}>
+        <Tag text="Main mode · 10 minutes" />
+        <Text style={[styles.heroTitle, !isDesktop && styles.heroTitlePhone]}>Classic</Text>
+        {isDesktop ? <Text style={styles.heroSub}>Survivors vs zombies. Get caught and you join the infection.</Text> : null}
+        <Pressable onPress={() => startMode('classic')} style={styles.heroBtnShadow}>
+          {({ pressed }) => (
+            <View style={[styles.heroBtn, !isDesktop && styles.heroBtnPhone, pressed && { transform: [{ translateY: 4 }] }]}>
+              <Text style={styles.heroBtnText}>Play now</Text>
+              <Icon name="play" size={18} color={colors.ink} directional />
+            </View>
+          )}
+        </Pressable>
+        <Animated.View
+          style={[isDesktop ? styles.heroArt : styles.heroArtPhone, { transform: [{ translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }, { scale: isDesktop ? 1 : 0.6 }] }]}
+          pointerEvents="none"
+        >
+          <ZombieArt />
+        </Animated.View>
+      </View>
+    </View>
+  );
+
+  const modeRows = (
+    <View style={{ flex: 1, gap: isDesktop ? 12 : 6 }}>
+      {MODES.map((m) => (
+        <Pressable key={m.mode} onPress={() => startMode(m.mode)} style={({ pressed }) => [styles.row, !isDesktop && styles.rowPhone, pressed && styles.pressed]}>
+          <View style={[styles.rowIcon, !isDesktop && styles.rowIconPhone, { backgroundColor: m.tint }]}>
+            <Icon name={m.icon} size={isDesktop ? 22 : 18} color={colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowTitle, !isDesktop && styles.rowTitlePhone]}>{m.title}</Text>
+            <Text style={[styles.rowSub, !isDesktop && styles.rowSubPhone]} numberOfLines={1}>
+              {m.subtitle}
+            </Text>
+          </View>
+          {m.mode === 'tournament' && liveTournament ? (
+            <View style={styles.live}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Live now</Text>
+            </View>
+          ) : null}
+          <Icon name="chevron-right" size={isDesktop ? 22 : 18} color={colors.textMuted} directional />
+        </Pressable>
+      ))}
+    </View>
+  );
+
   return (
-    <Screen scroll shell="Home">
-      {!isDesktop ? (
-      <View style={styles.headerRow}>
-        <Text style={styles.logo}>ZOMBIE TAG</Text>
-        <View style={{ flex: 1 }} />
-        <Pressable onPress={() => navigation.navigate('Settings')} accessibilityLabel={tr('Sound settings')} style={({ pressed }) => [styles.iconBtn, { marginRight: 8 }, pressed && styles.pressed]} hitSlop={6}>
-          <Icon name="cog-outline" color={colors.textDim} />
-        </Pressable>
-        <Pressable onPress={signOut} accessibilityLabel={tr('Sign out')} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} hitSlop={6}>
-          <Icon name="logout" color={colors.textDim} directional />
-        </Pressable>
-      </View>
-      ) : null}
-      {!authService.isOnline ? <Text style={styles.offline}>Offline mode · playing against bots</Text> : null}
-
-      <Pressable onPress={() => navigation.navigate('Profile')} style={({ pressed }) => [styles.playerCard, pressed && styles.pressed]}>
-        <View style={styles.avatar}>
-          <Animated.View style={{ transform: [{ translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }] }}>
-            <Character skin={skin} size={40} outfit={outfitEmoji(profile.equippedOutfit)} />
-          </Animated.View>
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelBadgeText}>{lvl.level}</Text>
+    <Screen shell="Home">
+      {isDesktop ? (
+        <>
+          {playerCard}
+          {offline ? <Text style={styles.offline}>Offline mode · playing against bots</Text> : null}
+          <View style={styles.deskRow}>
+            {hero}
+            {modeRows}
           </View>
-        </View>
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={styles.name} numberOfLines={1}>
-            {profile.displayName}
-          </Text>
-          <ProgressBar value={lvl.progress} height={10} />
-          <Text style={styles.xp}>
-            {lvl.into} / {lvl.needed} XP
-          </Text>
-        </View>
-        <View style={{ gap: 6 }}>
-          <View style={styles.stat}>
-            <Coin />
-            <Text style={[styles.statText, { color: colors.coin }]}>{profile.coins.toLocaleString()}</Text>
+          <View style={styles.quick}>
+            <Pressable onPress={() => navigation.navigate('SkinDesigner')} style={({ pressed }) => [styles.quickBtn, pressed && styles.pressed]}>
+              <Icon name="pencil-outline" size={18} color={colors.textDim} />
+              <Text style={styles.quickText}>Skin designer</Text>
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('MapCreator')} style={({ pressed }) => [styles.quickBtn, pressed && styles.pressed]}>
+              <Icon name="map-outline" size={18} color={colors.textDim} />
+              <Text style={styles.quickText}>Map creator</Text>
+            </Pressable>
           </View>
-          <View style={styles.stat}>
-            <Icon name="medal-outline" size={15} color={colors.medal} />
-            <Text style={[styles.statText, { color: colors.medal }]}>{profile.medals}</Text>
-          </View>
-        </View>
-      </Pressable>
-
-      <View style={isDesktop ? styles.deskRow : undefined}>
-      <View style={[styles.hero, isDesktop && styles.heroDesk]}>
-        <HazardStripe height={14} style={styles.heroStripe} />
-        <View style={styles.heroBody}>
-          <Tag text="Main mode · 10 minutes" />
-          <Text style={styles.heroTitle}>Classic</Text>
-          <Text style={styles.heroSub}>Survivors vs zombies. Get caught and you join the infection.</Text>
-          <Pressable onPress={() => startMode('classic')} style={styles.heroBtnShadow}>
-            {({ pressed }) => (
-              <View style={[styles.heroBtn, pressed && { transform: [{ translateY: 4 }] }]}>
-                <Text style={styles.heroBtnText}>Play now</Text>
-                <Icon name="play" size={18} color={colors.ink} directional />
+        </>
+      ) : (
+        <>
+          <View style={styles.topRow}>
+            <Text style={[styles.logo, styles.logoPhone]}>ZOMBIE TAG</Text>
+            <Pressable onPress={() => navigation.navigate('Profile')} accessibilityLabel={tr('Profile')} style={({ pressed }) => [styles.pill, pressed && styles.pressed]}>
+              <View style={styles.pillAvatar}>
+                <Character skin={skin} size={22} outfit={outfitEmoji(profile.equippedOutfit)} />
               </View>
-            )}
-          </Pressable>
-          <Animated.View style={[styles.heroArt, { transform: [{ translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]} pointerEvents="none">
-            <ZombieArt />
-          </Animated.View>
-        </View>
-      </View>
-
-      <View style={[{ gap: 10, marginTop: 14 }, isDesktop && { flex: 1, marginTop: 0 }]}>
-        {MODES.map((m) => (
-          <Pressable key={m.mode} onPress={() => startMode(m.mode)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-            <View style={[styles.rowIcon, { backgroundColor: m.tint }]}>
-              <Icon name={m.icon} size={22} color={colors.ink} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{m.title}</Text>
-              <Text style={styles.rowSub}>{m.subtitle}</Text>
-            </View>
-            {m.mode === 'tournament' && liveTournament ? (
-              <View style={styles.live}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>Live now</Text>
+              <Text style={styles.pillName} numberOfLines={1}>
+                {profile.displayName}
+              </Text>
+              <View style={styles.pillLevel}>
+                <Text style={styles.pillLevelText}>{lvl.level}</Text>
               </View>
+              <Coin size={12} />
+              <Text style={styles.pillCoins}>{profile.coins.toLocaleString()}</Text>
+            </Pressable>
+            {offline ? (
+              <Text style={styles.offlinePhone} numberOfLines={1}>
+                Offline · bots
+              </Text>
             ) : null}
-            <Icon name="chevron-right" size={22} color={colors.textMuted} directional />
-          </Pressable>
-        ))}
-      </View>
-
-      </View>
-
-      <View style={styles.quick}>
-        <Pressable onPress={() => navigation.navigate('SkinDesigner')} style={({ pressed }) => [styles.quickBtn, pressed && styles.pressed]}>
-          <Icon name="pencil-outline" size={18} color={colors.textDim} />
-          <Text style={styles.quickText}>Skin designer</Text>
-        </Pressable>
-        <Pressable onPress={() => navigation.navigate('MapCreator')} style={({ pressed }) => [styles.quickBtn, pressed && styles.pressed]}>
-          <Icon name="map-outline" size={18} color={colors.textDim} />
-          <Text style={styles.quickText}>Map creator</Text>
-        </Pressable>
-      </View>
-
+            <View style={{ flex: 1 }} />
+            <Pressable onPress={() => navigation.navigate('SkinDesigner')} accessibilityLabel={tr('Skin designer')} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} hitSlop={6}>
+              <Icon name="pencil-outline" size={20} color={colors.textDim} />
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('MapCreator')} accessibilityLabel={tr('Map creator')} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} hitSlop={6}>
+              <Icon name="map-outline" size={20} color={colors.textDim} />
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('Settings')} accessibilityLabel={tr('Sound settings')} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} hitSlop={6}>
+              <Icon name="cog-outline" size={20} color={colors.textDim} />
+            </Pressable>
+            <Pressable onPress={signOut} accessibilityLabel={tr('Sign out')} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} hitSlop={6}>
+              <Icon name="logout" size={20} color={colors.textDim} directional />
+            </Pressable>
+          </View>
+          <View style={styles.phoneBody}>
+            <View style={{ flex: 1.25 }}>{hero}</View>
+            {modeRows}
+          </View>
+        </>
+      )}
     </Screen>
   );
 }
@@ -194,11 +241,20 @@ function ZombieArt() {
 const ink = { borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' };
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  phoneBody: { flex: 1, flexDirection: 'row', gap: 10, marginTop: 8 },
   logo: { color: colors.toxic, fontSize: 32, fontFamily: fonts.logo, textShadowColor: colors.ink, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0 },
-  iconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.panel, ...ink, borderBottomWidth: 4, alignItems: 'center', justifyContent: 'center' },
+  logoPhone: { fontSize: 24 },
+  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.panel, ...ink, borderBottomWidth: 4, alignItems: 'center', justifyContent: 'center' },
   pressed: { transform: [{ translateY: 2 }], opacity: 0.85 },
   offline: { color: colors.textMuted, textAlign: 'left', fontSize: 12, marginTop: 4 },
+  offlinePhone: { color: colors.textMuted, fontSize: 12 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 250, backgroundColor: colors.panel, borderRadius: radius.md, paddingLeft: 4, paddingRight: 10, paddingVertical: 4, ...ink, borderBottomWidth: 4 },
+  pillAvatar: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center' },
+  pillName: { flexShrink: 1, color: colors.text, fontWeight: '700', fontSize: 14, textAlign: 'left' },
+  pillLevel: { minWidth: 22, height: 20, borderRadius: 6, backgroundColor: colors.toxic, ...ink, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  pillLevelText: { color: colors.ink, fontSize: 12, fontWeight: '900' },
+  pillCoins: { color: colors.coin, fontWeight: '700', fontSize: 14 },
   playerCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.panel, borderRadius: radius.lg, padding: 12, ...ink, borderBottomWidth: 5, marginTop: 14 },
   avatar: { width: 56, height: 56, borderRadius: 14, backgroundColor: colors.panelLight, ...ink, alignItems: 'center', justifyContent: 'center' },
   levelBadge: { position: 'absolute', bottom: -8, left: -8, minWidth: 26, height: 26, borderRadius: 8, backgroundColor: colors.toxic, ...ink, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
@@ -210,30 +266,35 @@ const styles = StyleSheet.create({
   hero: { marginTop: 14, borderRadius: radius.lg, backgroundColor: colors.panel, ...ink, borderBottomWidth: 6, overflow: 'hidden' },
   heroStripe: { borderBottomWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
   heroBody: { minHeight: 240, padding: 18, paddingBottom: 20, alignItems: 'flex-start', gap: 8 },
+  heroBodyDesk: { flex: 1, justifyContent: 'center' },
+  heroBodyPhone: { minHeight: 0, flex: 1, padding: 10, paddingBottom: 12, justifyContent: 'center', gap: 6 },
   heroTitle: { color: colors.text, fontSize: 46, fontWeight: '900', lineHeight: 50, letterSpacing: -1, marginTop: 4 },
+  heroTitlePhone: { fontSize: 36, lineHeight: 40, marginTop: 0 },
   heroSub: { color: colors.textDim, fontSize: 14, textAlign: 'left', maxWidth: 196, lineHeight: 20 },
   heroBtnShadow: { marginTop: 8, borderRadius: 18, backgroundColor: colors.ink, paddingBottom: 4, zIndex: 2 },
   heroBtn: { height: 56, paddingHorizontal: 30, borderRadius: 18, backgroundColor: colors.toxic, ...ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  heroBtnPhone: { height: 44, paddingHorizontal: 22, borderRadius: 14 },
   heroBtnText: { color: colors.ink, fontSize: 17, fontWeight: '800' },
   heroArt: { position: 'absolute', right: 12, bottom: 14 },
-  deskRow: { flexDirection: 'row', gap: 20, marginTop: 14, alignItems: 'stretch' },
+  // Scaled down to 60% on the phone; its box hangs past the card corner so the drawing sits in it.
+  heroArtPhone: { position: 'absolute', right: -16, bottom: -18 },
+  deskRow: { flex: 1, flexDirection: 'row', gap: 20, marginTop: 14, alignItems: 'stretch' },
   heroDesk: { flex: 1.4, marginTop: 0 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 70, paddingHorizontal: 14, borderRadius: radius.md, ...ink, borderBottomWidth: 5, backgroundColor: colors.panel },
+  heroPhone: { flex: 1, marginTop: 0 },
+  row: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 70, paddingHorizontal: 14, borderRadius: radius.md, ...ink, borderBottomWidth: 5, backgroundColor: colors.panel },
+  rowPhone: { minHeight: 0, gap: 10, paddingHorizontal: 10, borderBottomWidth: 4 },
   rowIcon: { width: 44, height: 44, borderRadius: 12, ...ink, alignItems: 'center', justifyContent: 'center' },
+  rowIconPhone: { width: 34, height: 34, borderRadius: 10 },
   rowTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'left' },
+  rowTitlePhone: { fontSize: 15 },
   rowSub: { color: colors.textDim, fontSize: 13, textAlign: 'left', marginTop: 2 },
+  rowSubPhone: { fontSize: 11, marginTop: 0 },
   live: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.blood, borderRadius: 6, ...ink, paddingHorizontal: 7, paddingVertical: 3 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.ink },
   liveText: { color: colors.ink, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
   quick: { flexDirection: 'row', gap: 10, marginTop: 14 },
   quickBtn: { flex: 1, height: 48, borderRadius: 12, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   quickText: { color: colors.textDim, fontSize: 14, fontWeight: '500' },
-  nav: { flexDirection: 'row', marginTop: 20, backgroundColor: colors.bgAlt, borderRadius: radius.lg, ...ink, padding: 4 },
-  navItem: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: 12 },
-  navItemActive: { backgroundColor: colors.panelLight },
-  navLabel: { color: colors.textDim, fontSize: 12, fontWeight: '500' },
-  badge: { position: 'absolute', top: 4, right: '50%', marginRight: -26, minWidth: 19, height: 19, borderRadius: 10, backgroundColor: colors.blood, ...ink, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  badgeText: { color: colors.ink, fontWeight: '900', fontSize: 11 },
 });
 
 const za = StyleSheet.create({

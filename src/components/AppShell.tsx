@@ -123,9 +123,9 @@ const s = StyleSheet.create({
   sideLabel: { color: colors.textDim, fontWeight: '800', fontSize: 15 },
   badge: { marginLeft: 'auto', minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.blood, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, borderWidth: 2, borderColor: colors.bgAlt },
   badgeText: { color: colors.text, fontWeight: '900', fontSize: 12 },
-  tabs: { flexDirection: 'row', backgroundColor: colors.bgAlt, borderTopWidth: 2, borderTopColor: colors.border, paddingTop: 6, paddingBottom: 6 },
-  tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 56, justifyContent: 'center' },
-  tabIcon: { width: 52, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tabs: { flexDirection: 'row', backgroundColor: colors.bgAlt, borderTopWidth: 2, borderTopColor: colors.border, paddingTop: 3, paddingBottom: 3 },
+  tab: { flex: 1, alignItems: 'center', gap: 1, minHeight: 50, justifyContent: 'center' },
+  tabIcon: { width: 52, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   tabIconOn: { backgroundColor: colors.toxic },
   tabLabel: { color: colors.textDim, fontSize: 11, fontWeight: '800' },
 });

@@ -30,7 +30,12 @@ export function TaskModal({ type, speed, onComplete, onClose, danger }: Props) {
           <Text style={styles.title}>{info.title}</Text>
         </View>
         <Text style={styles.hint}>{info.hint}</Text>
-        {danger ? <Text style={styles.danger}>⚠️ Zombie nearby!</Text> : null}
+        {danger ? (
+          <View style={styles.dangerRow}>
+            <Glyph emoji="⚠️" size={16} color={colors.blood} />
+            <Text style={styles.danger}>Zombie nearby!</Text>
+          </View>
+        ) : null}
         <View style={styles.body}>
           <Game onComplete={onComplete} speed={speed} />
         </View>
@@ -47,6 +52,7 @@ const styles = StyleSheet.create({
   close: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center' },
   closeText: { color: colors.text, fontSize: 16, fontWeight: '900' },
   hint: { color: colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 8 },
-  danger: { color: colors.blood, fontWeight: '900', marginBottom: 6 },
+  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  danger: { color: colors.blood, fontWeight: '900' },
   body: { paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
 });

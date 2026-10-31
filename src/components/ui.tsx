@@ -1,5 +1,5 @@
 // Small shared building blocks: screen wrapper, header, currency bar, progress bar, cards, toasts.
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 import { Pressable, ScrollView, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
@@ -16,14 +16,13 @@ import { useDevice } from '../utils/device';
 
 export function Screen({ children, scroll, style, shell }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle>; shell?: ShellKey }) {
   const { isDesktop } = useDevice();
-  // Desktop keeps content in a centered column; menu screens get a sidebar (desktop) or tab bar (phone).
-  const column = isDesktop ? { width: '100%' as const, maxWidth: 1080, alignSelf: 'center' as const } : null;
-  const body = scroll ? (
-    <ScrollView contentContainerStyle={[{ padding: isDesktop ? 32 : 16, paddingBottom: 40 }, column, style]} showsVerticalScrollIndicator={false}>
+  // The phone never scrolls: every screen is laid out to fit its height. The desktop fills the window; long screens scroll, short ones stretch.
+  const body = isDesktop && scroll ? (
+    <ScrollView contentContainerStyle={[{ flexGrow: 1, padding: 28, paddingBottom: 40 }, style]} showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1, padding: 12 }, column, style]}>{children}</View>
+    <View style={[{ flex: 1, padding: isDesktop ? 28 : 10, overflow: 'hidden' }, style]}>{children}</View>
   );
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -54,17 +53,18 @@ export function P({ children, style, dim }: { children: React.ReactNode; style?:
 
 export function ScreenHeader({ title, right, onBack }: { title: string; right?: React.ReactNode; onBack?: () => void }) {
   const nav = useNavigation();
+  const { isDesktop } = useDevice();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, !isDesktop && styles.headerPhone]}>
       <Pressable
         onPress={() => (onBack ? onBack() : nav.canGoBack() && nav.goBack())}
-        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.back, !isDesktop && styles.backPhone, pressed && styles.pressed]}
         hitSlop={10}
         accessibilityLabel="Back"
       >
-        <Icon name="arrow-left" size={24} directional />
+        <Icon name="arrow-left" size={isDesktop ? 24 : 20} directional />
       </Pressable>
-      <Text style={styles.headerTitle} numberOfLines={1}>
+      <Text style={[styles.headerTitle, !isDesktop && styles.headerTitlePhone]} numberOfLines={1}>
         {title}
       </Text>
       <View style={styles.headerSide}>{right ?? <CurrencyBar compact />}</View>
@@ -95,7 +95,7 @@ export function Pill({ text, icon, lead, color = colors.text, style }: { text: s
     <View style={[styles.pill, style]}>
       {lead}
       <Text style={[styles.pillText, { color }]}>{text}</Text>
-      {icon ? <Text style={styles.pillIcon}>{icon}</Text> : null}
+      {icon ? <Glyph emoji={icon} size={16} color={color} /> : null}
     </View>
   );
 }
@@ -144,15 +144,94 @@ export function Card({ children, style, onPress, highlight }: { children: React.
   );
 }
 
+/** Tabs wrap onto a second line instead of scrolling sideways, so nothing hides off-screen. */
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string }[]; value: T; onChange: (t: T) => void }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4, flexDirection: 'row' }} style={{ flexGrow: 0 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {tabs.map((t) => (
         <Pressable key={t.id} onPress={() => onChange(t.id)} style={[styles.tab, value === t.id && styles.tabActive]}>
           <Text style={[styles.tabText, value === t.id && styles.tabTextActive]}>{t.label}</Text>
         </Pressable>
       ))}
-    </ScrollView>
+    </View>
+  );
+}
+
+/**
+ * A grid that fills the space it is given. With `paged` it fits as many rows as the height allows and
+ * pages through the rest with arrows, so nothing scrolls. Without it the grid wraps and grows with its content.
+ * A footer (e.g. filter chips) sits under the grid and shares its row with the pager.
+ */
+export function Grid<T>({
+  items,
+  renderItem,
+  minWidth,
+  minHeight = 80,
+  gap = 10,
+  paged = false,
+  footer,
+}: {
+  items: T[];
+  renderItem: (item: T, size: { width: number; height: number }) => React.ReactNode;
+  minWidth: number;
+  minHeight?: number;
+  gap?: number;
+  paged?: boolean;
+  footer?: React.ReactNode;
+}) {
+  const [box, setBox] = useState<{ width: number; height: number } | null>(null);
+  const [page, setPage] = useState(0);
+  const measure = (e: { nativeEvent: { layout: { width: number; height: number } } }) => {
+    const { width, height } = e.nativeEvent.layout;
+    setBox((prev) => (prev && prev.width === width && prev.height === height ? prev : { width, height }));
+  };
+  const cols = box ? Math.max(1, Math.floor((box.width + gap) / (minWidth + gap))) : 1;
+  const rows = paged && box ? Math.max(1, Math.floor((box.height + gap) / (minHeight + gap))) : 0;
+  const perPage = paged ? Math.max(1, cols * rows) : items.length;
+  const pages = Math.max(1, Math.ceil(items.length / Math.max(1, perPage)));
+  const current = Math.min(page, pages - 1);
+  const shown = paged ? items.slice(current * perPage, current * perPage + perPage) : items;
+  const cellW = box ? (box.width - gap * (cols - 1)) / cols : 0;
+  const cellH = paged && box ? (box.height - gap * (rows - 1)) / rows : minHeight;
+  const grid = (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap, alignContent: 'flex-start' }}>
+      {box
+        ? shown.map((item, i) => (
+            <View key={current * perPage + i} style={{ width: cellW, height: cellH }}>
+              {renderItem(item, { width: cellW, height: cellH })}
+            </View>
+          ))
+        : null}
+    </View>
+  );
+  // The footer row holds the caller's footer (e.g. filter chips) and the pager, side by side.
+  const footerRow =
+    footer || pages > 1 ? (
+      <View style={styles.footer}>
+        <View style={{ flex: 1 }}>{footer}</View>
+        {pages > 1 ? (
+          <View style={styles.pager}>
+            <Pressable onPress={() => setPage(current - 1)} disabled={current === 0} accessibilityLabel="Previous page" style={[styles.pagerBtn, current === 0 && styles.pagerOff]}>
+              <Icon name="chevron-left" size={20} color={colors.ink} directional />
+            </Pressable>
+            <Text style={styles.pagerText}>
+              {current + 1} / {pages}
+            </Text>
+            <Pressable onPress={() => setPage(current + 1)} disabled={current === pages - 1} accessibilityLabel="Next page" style={[styles.pagerBtn, current === pages - 1 && styles.pagerOff]}>
+              <Icon name="chevron-right" size={20} color={colors.ink} directional />
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+    ) : null;
+  if (!paged) return <View onLayout={measure}>{grid}{footerRow}</View>;
+  return (
+    <View style={{ flex: 1, gap: 8 }}>
+      <View style={{ flex: 1, overflow: 'hidden' }} onLayout={measure}>
+        {grid}
+      </View>
+      {footerRow}
+    </View>
   );
 }
 
@@ -198,13 +277,20 @@ function ToastItem({ text, icon, tone }: { text: string; icon?: string; tone?: '
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   headerSide: { alignItems: 'flex-end' },
+  headerPhone: { marginBottom: 6, gap: 8 },
   headerTitle: { flex: 1, color: colors.text, fontSize: 28, fontWeight: '900', textAlign: 'left' },
+  headerTitlePhone: { fontSize: 22 },
   back: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.panelLight, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 4, borderColor: 'rgba(0,0,0,0.3)' },
+  backPhone: { width: 36, height: 36, borderRadius: 18, borderBottomWidth: 3 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10, height: 36 },
+  pagerBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.toxic, borderBottomWidth: 3, borderColor: colors.toxicDark, alignItems: 'center', justifyContent: 'center' },
+  pagerOff: { opacity: 0.3 },
+  pagerText: { color: colors.textDim, fontWeight: '800', fontSize: 13, minWidth: 48, textAlign: 'center' },
   pressed: { transform: [{ translateY: 2 }], opacity: 0.85 },
   currency: { flexDirection: 'row', gap: 6 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(13,10,31,0.55)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 2, borderColor: 'rgba(255,255,255,0.14)' },
   pillText: { fontWeight: '800', fontSize: 14 },
-  pillIcon: { fontSize: 13 },
   tag: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
   tagText: { color: colors.ink, fontSize: 11, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
   card: { backgroundColor: colors.panel, borderRadius: radius.md, padding: 14, borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.1)', borderBottomColor: 'rgba(0,0,0,0.35)' },

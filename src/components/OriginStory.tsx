@@ -1,10 +1,11 @@
 // "How it started" cut-scene played before the role reveal: shows how the starting
 // zombie(s) got infected. Driven by the time left, so every client sees the same frame.
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text as RNText, View } from 'react-native';
+import { StyleSheet, Text as RNText, View, useWindowDimensions } from 'react-native';
 import { Text } from '../i18n/Text';
 import type { Skin } from '../types';
 import { Character } from './Character';
+import { Glyph } from './Icon';
 import { colors, fonts } from '../theme';
 import { playSfx } from '../services/sound';
 
@@ -62,7 +63,10 @@ export function OriginStory({ zombies, seed, msLeft, totalMs, localIsZombie, loc
   const story = storyFor(seed);
   const t = clamp01(1 - msLeft / totalMs);
   const shown = zombies.slice(0, 4);
-  const size = shown.length <= 1 ? 120 : shown.length === 2 ? 96 : 76;
+  const { height } = useWindowDimensions();
+  const base = shown.length <= 1 ? 120 : shown.length === 2 ? 96 : 76;
+  // Figures shrink on short screens (phone landscape) so the whole cut-scene fits without scrolling.
+  const size = Math.min(base, Math.max(64, height - 270));
   const gap = size * 0.5;
 
   // Timeline: set the scene → the cause reaches patient zero → flash → transformation.
@@ -103,7 +107,11 @@ export function OriginStory({ zombies, seed, msLeft, totalMs, localIsZombie, loc
                 <Character skin={z.skin} size={size} role={turn > 0.25 ? 'zombie' : 'survivor'} outfit={z.outfit} />
               </View>
               {!hit ? <Cause story={story} progress={travel} size={size} index={i} /> : null}
-              {hit ? <RNText style={[styles.splat, { fontSize: size * 0.5, opacity: flash }]}>💥</RNText> : null}
+              {hit ? (
+                <View style={[styles.splat, { opacity: flash }]}>
+                  <Glyph emoji="💥" size={size * 0.5} color={colors.gold} />
+                </View>
+              ) : null}
               <RNText numberOfLines={1} style={[styles.name, { color: turn > 0.25 ? colors.zombie : colors.text, maxWidth: size + gap }]}>
                 {z.name}
               </RNText>
@@ -149,14 +157,9 @@ function Cause({ story, progress, size, index }: { story: Story; progress: numbe
     rot = p * 90;
   }
   return (
-    <RNText
-      style={[
-        styles.cause,
-        { fontSize: story.path === 'cloud' ? emoji * (1 + p) : emoji, opacity, transform: [{ translateX: x }, { translateY: y }, { rotate: `${rot}deg` }] },
-      ]}
-    >
-      {story.cause}
-    </RNText>
+    <View style={[styles.cause, { opacity, transform: [{ translateX: x }, { translateY: y }, { rotate: `${rot}deg` }] }]}>
+      <Glyph emoji={story.cause} size={story.path === 'cloud' ? emoji * (1 + p) : emoji} color={colors.text} />
+    </View>
   );
 }
 
@@ -176,7 +179,7 @@ const styles = StyleSheet.create({
   what: { color: colors.text, fontFamily: fonts.bold, fontSize: 20, marginTop: 8, textAlign: 'center' },
   stage: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', marginTop: 18, marginBottom: 10 },
   slot: { alignItems: 'center', justifyContent: 'flex-end' },
-  cause: { position: 'absolute', top: 0, textAlign: 'center' },
+  cause: { position: 'absolute', top: 0 },
   splat: { position: 'absolute', top: '20%' },
   name: { marginTop: 6, fontFamily: fonts.extraBold, fontSize: 13, textAlign: 'center' },
   patient: { color: colors.zombie, fontFamily: fonts.logo, fontSize: 40, textAlign: 'center' },

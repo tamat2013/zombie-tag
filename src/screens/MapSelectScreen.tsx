@@ -1,16 +1,17 @@
-// Pick a map for the match: built-in, your own, community maps, or import one by share code.
+// Pick a map for the match: built-in, your own, community maps, or import one by share code. The phone shows the chosen map on the left and pages through the maps on the right.
 import { useDevice } from '../utils/device';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Pressable, TextInput, View } from '../i18n/Layout';
 import { tr } from '../i18n/language';
 import { Text } from '../i18n/Text';
 import { useFocusEffect } from '@react-navigation/native';
 import type { ScreenProps } from '../navigation/types';
 import type { GameMap } from '../types';
-import { Screen, ScreenHeader, H, P, Tabs } from '../components/ui';
+import { Grid, Screen, ScreenHeader, H, P, Tabs } from '../components/ui';
 import { Button } from '../components/Button';
 import { MapPreview } from '../components/MapPreview';
+import { Icon } from '../components/Icon';
 import { useGame, useProfile } from '../state/GameContext';
 import { BUILT_IN_MAPS } from '../data/maps';
 import { mapService } from '../services/mapService';
@@ -20,11 +21,17 @@ import { colors, radius } from '../theme';
 
 type Source = 'builtin' | 'mine' | 'community';
 
+/** The widest preview of a map that still fits a box of maxWidth × maxHeight, keeping the map's shape. */
+function fitWidth(map: GameMap, maxWidth: number, maxHeight: number): number {
+  return Math.max(40, Math.min(maxWidth, (maxHeight * map.width) / map.height));
+}
+
+const MEDAL_COLORS = { gold: colors.gold, silver: colors.silver, bronze: colors.bronze };
+
 export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>) {
   const { flow } = route.params;
   const profile = useProfile();
   const { toast } = useGame();
-  const { width } = useWindowDimensions();
   const { isDesktop } = useDevice();
   const kind: GameMap['kind'] = flow.mode === 'obstacle' ? 'obstacle' : 'arena';
   // Tournaments are played on official maps only so scores are comparable.
@@ -53,7 +60,6 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
   }, [source, community.length]);
 
   const list = (source === 'builtin' ? BUILT_IN_MAPS : source === 'mine' ? mine : community).filter((m) => m.kind === kind);
-  const cardW = isDesktop ? 200 : Math.min(220, (Math.min(width, 900) - 32 - 12) / 2);
 
   const importCode = async () => {
     if (code.trim().length < 4) return;
@@ -73,25 +79,88 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
     }
   };
 
-  return (
-    <Screen scroll>
-      <ScreenHeader title={kind === 'obstacle' ? 'Choose a course' : 'Choose a map'} />
+  const best = profile.bestObstacleTimes[selected.id];
 
-      <View style={isDesktop ? { flexDirection: 'row', gap: 28, alignItems: 'flex-start' } : undefined}>
-      <View style={[styles.selected, isDesktop && { width: 400 }]}>
-        <MapPreview map={selected} width={isDesktop ? 380 : Math.min(width - 32, 520)} />
-        <View style={{ marginTop: 8 }}>
-          <H size={18}>{selected.name}</H>
-          <P dim>
-            {selected.width}×{selected.height} · by {selected.author}
-            {selected.medalTimes ? ` · 🥇 ${formatSeconds(selected.medalTimes[0])}` : ''}
-            {profile.bestObstacleTimes[selected.id] ? ` · your best ${formatSeconds(profile.bestObstacleTimes[selected.id] / 1000)}` : ''}
-          </P>
-        </View>
+  const left = (
+    <View style={[styles.left, isDesktop ? styles.leftDesk : styles.leftPhone]}>
+      <MapPreview map={selected} width={isDesktop ? 360 : fitWidth(selected, 230, 110)} />
+      <View style={styles.info}>
+        <H size={isDesktop ? 18 : 15}>{selected.name}</H>
+        <Text style={styles.meta} numberOfLines={1}>
+          {`${selected.width}×${selected.height} · by ${selected.author}`}
+        </Text>
+        {selected.medalTimes || best ? (
+          <View style={styles.metaRow}>
+            {selected.medalTimes ? (
+              <View style={styles.metaItem}>
+                <Icon name="medal" size={13} color={colors.gold} />
+                <Text style={styles.meta}>{formatSeconds(selected.medalTimes[0])}</Text>
+              </View>
+            ) : null}
+            {best ? (
+              <View style={styles.metaItem}>
+                <Icon name="timer-outline" size={13} color={colors.textDim} />
+                <Text style={styles.meta}>{formatSeconds(best / 1000)}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
+      <View style={{ flex: 1 }} />
+      <Button title="Continue to lobby" icon="▶️" small={!isDesktop} onPress={() => navigation.navigate('Lobby', { flow, map: selected })} />
+    </View>
+  );
 
-      <View style={isDesktop ? { flex: 1 } : undefined}>
-      {!officialOnly ? (
+  const importRow = (
+    <View style={styles.importRow}>
+      <Button title="Load" small variant="blue" onPress={importCode} />
+      <TextInput
+        value={code}
+        onChangeText={(t) => setCode(t.toUpperCase())}
+        placeholder={tr('Map share code')}
+        placeholderTextColor={colors.textMuted}
+        autoCapitalize="characters"
+        maxLength={6}
+        style={styles.input}
+      />
+      <Button title="Create map" small variant="dark" onPress={() => navigation.navigate('MapCreator')} />
+    </View>
+  );
+
+  const body = loading ? (
+    <ActivityIndicator color={colors.toxic} />
+  ) : list.length === 0 ? (
+    <P dim>{source === 'mine' ? 'You have not made any maps of this kind yet.' : 'No maps to show.'}</P>
+  ) : (
+    <Grid
+      items={list}
+      minWidth={isDesktop ? 200 : 96}
+      minHeight={isDesktop ? 190 : 90}
+      gap={isDesktop ? 12 : 8}
+      paged
+      renderItem={(m, size) => (
+        <Pressable onPress={() => setSelected(m)} style={[styles.card, selected.id === m.id && styles.cardOn]}>
+          <MapPreview map={m} width={fitWidth(m, size.width - 16, size.height - (isDesktop ? 56 : 44))} />
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {m.name}
+          </Text>
+          <View style={styles.cardSubRow}>
+            <Text style={styles.cardSub} numberOfLines={1}>
+              {m.builtIn ? 'Official' : m.author}
+              {m.shareCode && !m.builtIn ? ` · ${m.shareCode}` : ''}
+            </Text>
+            {profile.obstacleMedals[m.id] ? <Icon name="medal" size={12} color={MEDAL_COLORS[profile.obstacleMedals[m.id]]} /> : null}
+          </View>
+        </Pressable>
+      )}
+    />
+  );
+
+  const right = (
+    <View style={styles.right}>
+      {officialOnly ? (
+        <P dim>Tournaments use official maps only.</P>
+      ) : (
         <Tabs<Source>
           tabs={[
             { id: 'builtin', label: 'Official' },
@@ -101,61 +170,40 @@ export function MapSelectScreen({ navigation, route }: ScreenProps<'MapSelect'>)
           value={source}
           onChange={setSource}
         />
-      ) : (
-        <P dim style={{ marginBottom: 6 }}>
-          Tournaments use official maps only.
-        </P>
       )}
+      <View style={styles.gridWrap}>{body}</View>
+      {officialOnly ? null : importRow}
+    </View>
+  );
 
-      {loading ? <ActivityIndicator color={colors.toxic} style={{ marginTop: 16 }} /> : null}
-      <View style={styles.grid}>
-        {list.map((m) => (
-          <Pressable key={m.id} onPress={() => setSelected(m)} style={[styles.card, { width: cardW }, selected.id === m.id && { borderColor: colors.toxic, borderWidth: 2 }]}>
-            <MapPreview map={m} width={cardW - 16} />
-            <Text style={styles.cardTitle} numberOfLines={1}>
-              {m.name}
-            </Text>
-            <Text style={styles.cardSub} numberOfLines={1}>
-              {m.builtIn ? 'Official' : m.author}
-              {m.shareCode && !m.builtIn ? ` · ${m.shareCode}` : ''}
-              {profile.obstacleMedals[m.id] ? ` · ${{ gold: '🥇', silver: '🥈', bronze: '🥉' }[profile.obstacleMedals[m.id]]}` : ''}
-            </Text>
-          </Pressable>
-        ))}
-        {!loading && list.length === 0 ? <P dim>{source === 'mine' ? 'You have not made any maps of this kind yet.' : 'No maps to show.'}</P> : null}
-      </View>
-
-      {!officialOnly ? (
-        <View style={styles.importRow}>
-          <Button title="Load" small variant="blue" onPress={importCode} />
-          <TextInput
-            value={code}
-            onChangeText={(t) => setCode(t.toUpperCase())}
-            placeholder={tr('Map share code')}
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="characters"
-            maxLength={6}
-            style={styles.input}
-          />
-        </View>
-      ) : null}
-
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-        <Button title="Continue to lobby" icon="▶️" style={{ flex: 2 }} onPress={() => navigation.navigate('Lobby', { flow, map: selected })} />
-        {!officialOnly ? <Button title="Create map" icon="✏️" variant="dark" style={{ flex: 1 }} onPress={() => navigation.navigate('MapCreator')} /> : null}
-      </View>
-      </View>
+  return (
+    <Screen>
+      <ScreenHeader title={kind === 'obstacle' ? 'Choose a course' : 'Choose a map'} />
+      <View style={[styles.row, isDesktop && styles.rowDesk]}>
+        {left}
+        {right}
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  selected: { alignItems: 'center', marginBottom: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
-  card: { backgroundColor: colors.panel, borderRadius: radius.md, padding: 8, borderWidth: 1, borderColor: colors.border },
-  cardTitle: { color: colors.text, fontWeight: '800', marginTop: 6, textAlign: 'left' },
-  cardSub: { color: colors.textDim, fontSize: 11, textAlign: 'left' },
-  importRow: { flexDirection: 'row', gap: 8, marginTop: 16, alignItems: 'center' },
+  row: { flex: 1, flexDirection: 'row', gap: 14 },
+  rowDesk: { gap: 28 },
+  left: { alignItems: 'center', gap: 8 },
+  leftPhone: { width: 250 },
+  leftDesk: { width: 400 },
+  info: { alignSelf: 'stretch', gap: 2 },
+  meta: { color: colors.textDim, fontSize: 13, lineHeight: 18, textAlign: 'left' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  right: { flex: 1, gap: 8 },
+  gridWrap: { flex: 1 },
+  importRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   input: { flex: 1, backgroundColor: '#0a0f09', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 12, paddingVertical: 9, fontSize: 15, textAlign: 'left', letterSpacing: 2 },
+  card: { flex: 1, backgroundColor: colors.panel, borderRadius: radius.md, padding: 8, borderWidth: 1, borderColor: colors.border },
+  cardOn: { borderColor: colors.toxic, borderWidth: 2 },
+  cardTitle: { color: colors.text, fontWeight: '800', marginTop: 6, textAlign: 'left' },
+  cardSubRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cardSub: { color: colors.textDim, fontSize: 11, textAlign: 'left', flexShrink: 1 },
 });

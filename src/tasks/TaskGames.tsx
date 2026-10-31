@@ -8,6 +8,7 @@ import type { TaskType } from '../types';
 import { colors } from '../theme';
 import { haptic } from '../utils/haptics';
 import { ProgressBar } from '../components/ui';
+import { Glyph } from '../components/Icon';
 
 export interface TaskProps {
   onComplete: () => void;
@@ -187,7 +188,7 @@ export function DownloadTask({ onComplete, speed }: TaskProps) {
   const fileIndex = Math.min(FILES.length - 1, Math.floor(progress * FILES.length));
   return (
     <View style={{ width: 300, alignItems: 'center', gap: 12 }}>
-      <Text style={{ fontSize: 46 }}>{started ? (progress >= 1 ? '✅' : '📥') : '🖥️'}</Text>
+      <Glyph emoji={started ? (progress >= 1 ? '✅' : '📥') : '🖥️'} size={46} color={colors.text} />
       {started ? (
         <>
           <Text style={styles.mono}>{progress >= 1 ? 'Download complete' : `Downloading: ${FILES[fileIndex]}`}</Text>
@@ -237,7 +238,11 @@ export function TrashTask({ onComplete, speed }: TaskProps) {
     <View style={{ width: 300, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
       <View style={styles.bin}>
         <View style={[styles.binFill, { height: `${level * 100}%` }]}>
-          <Text style={{ fontSize: 20, textAlign: 'center' }}>{level > 0.3 ? '🍌🥫🦴' : level > 0 ? '🥫' : ''}</Text>
+          <View style={styles.binItems}>
+            {(level > 0.3 ? ['🍌', '🥫', '🦴'] : level > 0 ? ['🥫'] : []).map((e, i) => (
+              <Glyph key={i} emoji={e} size={20} color={colors.text} />
+            ))}
+          </View>
         </View>
       </View>
       <Pressable testID="trash-lever" onPressIn={() => press(true)} onPressOut={() => press(false)} style={styles.leverSlot}>
@@ -325,6 +330,7 @@ const styles = StyleSheet.create({
   mono: { color: colors.text, fontFamily: 'monospace', fontSize: 14 },
   bin: { width: 90, height: 140, borderWidth: 4, borderColor: '#9ca3af', borderTopWidth: 0, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, justifyContent: 'flex-end', overflow: 'hidden' },
   binFill: { backgroundColor: '#6b4f2a', justifyContent: 'flex-start', paddingTop: 4 },
+  binItems: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4 },
   leverSlot: { width: 60, height: 150, borderRadius: 30, backgroundColor: '#0a0f09', borderWidth: 2, borderColor: colors.border, alignItems: 'center', paddingTop: 6 },
   leverKnob: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.blood, borderWidth: 3, borderColor: '#fff' },
   leverLabel: { position: 'absolute', bottom: -22, color: colors.textDim, fontWeight: '800' },

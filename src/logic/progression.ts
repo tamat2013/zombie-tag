@@ -89,6 +89,8 @@ const TASK_STAT: Record<TaskType, StatKey> = {
 
 export interface RewardLine {
   label: string;
+  /** Data emoji drawn as line icons before the label. */
+  icons?: string[];
   xp: number;
   coins: number;
   medals?: number;
@@ -142,7 +144,7 @@ export function computeRewards(result: MatchResult, profile: Profile, medalTimes
   } else {
     lines.push({ label: 'Participation', xp: 20, coins: 10 });
     if (result.tasks) lines.push({ label: `${result.tasks} tasks`, xp: result.tasks * 25, coins: result.tasks * TASK_COINS });
-    if (result.cures) lines.push({ label: `${result.cures} cures 🩺`, xp: result.cures * CURE_XP, coins: result.cures * CURE_COINS });
+    if (result.cures) lines.push({ label: `${result.cures} cures`, icons: ['🩺'], xp: result.cures * CURE_XP, coins: result.cures * CURE_COINS });
     if (result.infections) lines.push({ label: `${result.infections} infections`, xp: result.infections * 30, coins: result.infections * 10 });
     if (result.secondsSurvived) {
       lines.push({
@@ -234,14 +236,17 @@ export function applyMatchResult(profile: Profile, result: MatchResult, now: num
     // Knockout prize, paid as soon as the run ends (champion or knocked out).
     const outcome = knockoutOutcome(result);
     if (outcome?.kind === 'advance') {
-      rewards.lines.push({ label: `Advanced to the ${roundName(outcome.nextSize)}! ⏭️`, xp: 0, coins: 0 });
+      rewards.lines.push({ label: `Advanced to the ${roundName(outcome.nextSize)}!`, icons: ['⏭️'], xp: 0, coins: 0 });
     } else if (t && outcome) {
       const prize = knockoutPrize(t, outcome)!;
       const place = outcome.kind === 'champion' ? 0 : outcome.place - 1;
       const newSkin = prize.skin && !p.ownedSkins.includes(prize.skin) ? prize.skin : null;
       if (newSkin) p.ownedSkins = [...p.ownedSkins, newSkin];
-      const label = `Tournament prize: ${PRIZE_LABELS[place]}${place === 0 ? ' 🏆' : ''}${newSkin ? ' + exclusive skin 👑' : ''}`;
-      rewards.lines.push({ label, xp: 0, coins: prize.coins, medals: prize.medals });
+      const label = `Tournament prize: ${PRIZE_LABELS[place]}${newSkin ? ' + exclusive skin' : ''}`;
+      const icons: string[] = [];
+      if (place === 0) icons.push('🏆');
+      if (newSkin) icons.push('👑');
+      rewards.lines.push({ label, icons, xp: 0, coins: prize.coins, medals: prize.medals });
       rewards.coins += prize.coins;
       rewards.medals += prize.medals;
     }

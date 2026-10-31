@@ -1,12 +1,12 @@
 // Shop: skins, outfits, abilities, upgrades, zombie filters and the medal shop.
+// Desktop shows storefront tiles in sections. The phone shows each tab as one paged grid of compact tiles, so nothing scrolls.
 import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
-import { View } from '../i18n/Layout';
+import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { ScreenProps, ShopTab } from '../navigation/types';
 import type { AbilityId, Role, Skin, UpgradeId } from '../types';
-import { Screen, ScreenHeader, Card, H, P, Tabs, ProgressBar, Chip, Coin, Tag, HazardStripe } from '../components/ui';
-import { Pressable } from '../i18n/Layout';
+import { Screen, ScreenHeader, Grid, P, Tabs, ProgressBar, Chip, Coin, Tag } from '../components/ui';
 import { useDevice } from '../utils/device';
 import { Button } from '../components/Button';
 import { Icon, Glyph } from '../components/Icon';
@@ -73,12 +73,51 @@ const RARITY_LABEL: Record<Skin['rarity'], string> = {
 };
 
 type Apply = (r: ShopResult, success: string, icon?: string) => void;
+type Profile = ReturnType<typeof useProfile>;
+type UpdateProfile = ReturnType<typeof useGame>['updateProfile'];
+type AbilityDef = (typeof ABILITIES)[keyof typeof ABILITIES];
+
+/** What the item builders need: the player, the purchase callbacks and whether cards are drawn at desktop size. */
+interface Ctx {
+  profile: Profile;
+  updateProfile: UpdateProfile;
+  apply: Apply;
+  big: boolean;
+}
+
+/** One shop item. Desktop draws it as a storefront tile, the phone as a compact tile. */
+interface Entry {
+  key: string;
+  accent: string;
+  tag?: string;
+  selected?: boolean;
+  art: React.ReactNode;
+  title: string;
+  sub?: string;
+  meta?: React.ReactNode;
+  action: React.ReactNode;
+}
+
+interface Group {
+  title: string;
+  color: string;
+  kind: 'show' | 'slot';
+  count?: string;
+  entries: Entry[];
+}
+
+function useCtx(apply: Apply): Ctx {
+  const profile = useProfile();
+  const { updateProfile } = useGame();
+  const { isDesktop } = useDevice();
+  return { profile, updateProfile, apply, big: isDesktop };
+}
 
 export function ShopScreen({ route }: ScreenProps<'Shop'>) {
   const [tab, setTab] = useState<ShopTab>(route.params?.tab ?? 'skins');
   const { updateProfile, toast } = useGame();
 
-  const apply: Apply = (r, success, icon = undefined) => {
+  const apply: Apply = (r, success, icon) => {
     if (r.ok) {
       updateProfile(r.profile);
       haptic('success');
@@ -91,21 +130,21 @@ export function ShopScreen({ route }: ScreenProps<'Shop'>) {
 
   const { isDesktop } = useDevice();
   const content = (
-      <View style={{ marginTop: isDesktop ? 0 : 14, flex: isDesktop ? 1 : undefined }}>
-        {tab === 'skins' ? <SkinsTab apply={apply} /> : null}
-        {tab === 'outfits' ? <OutfitsTab apply={apply} /> : null}
-        {tab === 'abilities' ? <AbilitiesTab apply={apply} /> : null}
-        {tab === 'upgrades' ? <UpgradesTab apply={apply} /> : null}
-        {tab === 'filters' ? <FiltersTab apply={apply} /> : null}
-        {tab === 'coins' ? <MedalShopTab apply={apply} /> : null}
-      </View>
+    <View style={styles.content}>
+      {tab === 'skins' ? <SkinsTab apply={apply} /> : null}
+      {tab === 'outfits' ? <OutfitsTab apply={apply} /> : null}
+      {tab === 'abilities' ? <AbilitiesTab apply={apply} /> : null}
+      {tab === 'upgrades' ? <UpgradesTab apply={apply} /> : null}
+      {tab === 'filters' ? <FiltersTab apply={apply} /> : null}
+      {tab === 'coins' ? <MedalShopTab apply={apply} /> : null}
+    </View>
   );
 
   return (
     <Screen scroll shell="Shop">
       <ScreenHeader title="Shop" />
       {isDesktop ? (
-        <View style={{ flexDirection: 'row', gap: 24, alignItems: 'flex-start' }}>
+        <View style={styles.deskRow}>
           <View style={styles.rail}>
             {TABS.map((t) => (
               <Pressable key={t.id} onPress={() => setTab(t.id)} style={[styles.railItem, tab === t.id && styles.railItemOn]}>
@@ -138,7 +177,7 @@ function Locker() {
         <Character skin={findSkin(profile.selectedSkinId, profile.customSkins)} size={96} outfit={outfit?.emoji} />
       </View>
       <Text style={styles.lockerLevel}>Level {li.level}</Text>
-      <ProgressBar value={li.progress} style={{ alignSelf: "stretch" }} color={colors.toxic} />
+      <ProgressBar value={li.progress} style={{ alignSelf: 'stretch' }} color={colors.toxic} />
       <View style={styles.lockerBal}>
         <View style={styles.lockerChip}>
           <Coin size={14} />
@@ -153,7 +192,7 @@ function Locker() {
   );
 }
 
-/** Storefront tile: a tinted stage with the item art, a ribbon tag, name, blurb and one action. */
+/** Desktop storefront tile: a tinted stage with the item art, a ribbon tag, name, blurb and one action. */
 function Showcase({ accent, tag, art, title, sub, action, selected }: { accent: string; tag?: string; art: React.ReactNode; title: string; sub?: string; action: React.ReactNode; selected?: boolean }) {
   return (
     <View style={[styles.show, selected && { borderColor: colors.toxic }]}>
@@ -184,7 +223,7 @@ function Showcase({ accent, tag, art, title, sub, action, selected }: { accent: 
   );
 }
 
-/** Wide slot for abilities, upgrades and filters: icon plate, title and blurb on top, meta and action in a footer. */
+/** Desktop wide slot for abilities, upgrades and filters: icon plate, title and blurb on top, meta and action in a footer. */
 function Slot({ accent, plate, title, desc, meta, action, selected }: { accent: string; plate: React.ReactNode; title: string; desc: string; meta?: React.ReactNode; action: React.ReactNode; selected?: boolean }) {
   return (
     <View style={[styles.slot, selected && { borderColor: colors.toxic }]}>
@@ -203,6 +242,65 @@ function Slot({ accent, plate, title, desc, meta, action, selected }: { accent: 
         <View style={{ flex: 1 }}>{meta}</View>
         {action}
       </View>
+    </View>
+  );
+}
+
+/** Phone tile: art on the left, name and detail on the right, the action at the bottom. */
+function MiniCard({ entry }: { entry: Entry }) {
+  const { accent, tag, selected, art, title, sub, meta, action } = entry;
+  return (
+    <View style={[styles.mini, selected && { borderColor: colors.toxic }]}>
+      <View style={[styles.miniArt, { backgroundColor: accent + '33' }]}>
+        {art}
+        {tag ? (
+          <Text style={[styles.miniTag, { backgroundColor: accent }]} numberOfLines={1}>
+            {tag}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.miniBody}>
+        <Text style={styles.miniName} numberOfLines={1}>
+          {title}
+        </Text>
+        {sub ? (
+          <Text style={styles.miniSub} numberOfLines={1}>
+            {sub}
+          </Text>
+        ) : null}
+        {meta}
+        <View style={styles.miniAction}>{action}</View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The items of a tab. Desktop: one section per group, each a wrapping grid, with the toolbar above.
+ * Phone: every group flattened into one paged grid, with the toolbar in its footer.
+ */
+function Shelf({ groups, toolbar }: { groups: Group[]; toolbar?: React.ReactNode }) {
+  const { isDesktop } = useDevice();
+  if (!isDesktop) {
+    return <Grid paged items={groups.flatMap((g) => g.entries)} minWidth={190} minHeight={74} gap={8} footer={toolbar} renderItem={(e) => <MiniCard entry={e} />} />;
+  }
+  return (
+    <View style={{ gap: 16 }}>
+      {toolbar}
+      {groups.map((g) => (
+        <View key={g.title} style={{ gap: 8 }}>
+          <SectionTitle text={g.title} color={g.color} count={g.count} />
+          <View style={styles.grid}>
+            {g.entries.map((e) =>
+              g.kind === 'show' ? (
+                <Showcase key={e.key} accent={e.accent} tag={e.tag} art={e.art} title={e.title} sub={e.sub} action={e.action} selected={e.selected} />
+              ) : (
+                <Slot key={e.key} accent={e.accent} plate={e.art} title={e.title} desc={e.sub ?? ''} meta={e.meta} action={e.action} selected={e.selected} />
+              ),
+            )}
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -249,36 +347,33 @@ function SectionTitle({ text, color = colors.gold, count }: { text: string; colo
 
 // ---------- Skins ----------
 
-function SkinCard({ s, apply }: { s: Skin; apply: Apply }) {
-  const profile = useProfile();
-  const { updateProfile } = useGame();
+function skinEntry(s: Skin, { profile, updateProfile, apply, big }: Ctx): Entry {
   const owned = profile.ownedSkins.includes(s.id);
   const selected = profile.selectedSkinId === s.id;
-  return (
-    <Showcase
-      accent={RARITY_COLORS[s.rarity]}
-      tag={RARITY_LABEL[s.rarity]}
-      selected={selected}
-      art={<Character skin={s} size={64} />}
-      title={s.name}
-      sub={s.power ? SKIN_POWERS[s.power].description : undefined}
-      action={
-        owned ? (
-          <Button small title={selected ? 'Selected' : 'Select'} variant={selected ? 'dark' : 'primary'} disabled={selected} onPress={() => updateProfile((p) => ({ ...p, selectedSkinId: s.id }))} />
-        ) : s.rarity === 'exclusive' ? (
-          <Button small title="Tournament prize" variant="dark" lead={<Icon name="trophy-outline" size={14} color={colors.gold} />} disabled />
-        ) : s.medalPrice ? (
-          <PriceButton price={s.medalPrice} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`, undefined)} />
-        ) : (
-          <PriceButton price={s.price} onPress={() => apply(buySkin(profile, s.id), `The ${s.name} skin is yours!`, undefined)} />
-        )
-      }
-    />
-  );
+  return {
+    key: s.id,
+    accent: RARITY_COLORS[s.rarity],
+    tag: RARITY_LABEL[s.rarity],
+    selected,
+    art: <Character skin={s} size={big ? 64 : 40} />,
+    title: s.name,
+    sub: s.power ? SKIN_POWERS[s.power].description : undefined,
+    action: owned ? (
+      <Button small title={selected ? 'Selected' : 'Select'} variant={selected ? 'dark' : 'primary'} disabled={selected} onPress={() => updateProfile((p) => ({ ...p, selectedSkinId: s.id }))} />
+    ) : s.rarity === 'exclusive' ? (
+      <Button small title="Tournament prize" variant="dark" lead={<Icon name="trophy-outline" size={14} color={colors.gold} />} disabled />
+    ) : s.medalPrice ? (
+      <PriceButton price={s.medalPrice} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`)} />
+    ) : (
+      <PriceButton price={s.price} onPress={() => apply(buySkin(profile, s.id), `The ${s.name} skin is yours!`)} />
+    ),
+  };
 }
 
 function SkinsTab({ apply }: { apply: Apply }) {
-  const profile = useProfile();
+  const ctx = useCtx(apply);
+  const { isDesktop } = useDevice();
+  const { profile } = ctx;
   const [show, setShow] = useState<Show>('all');
   const featured = BUILT_IN_SKINS.filter((s) => s.medalPrice && !profile.ownedSkins.includes(s.id)).sort((a, b) => (b.medalPrice ?? 0) - (a.medalPrice ?? 0))[0];
   const list = BUILT_IN_SKINS.filter((s) => {
@@ -289,15 +384,12 @@ function SkinsTab({ apply }: { apply: Apply }) {
   });
   const owned = BUILT_IN_SKINS.filter((s) => profile.ownedSkins.includes(s.id)).length;
   return (
-    <View style={{ gap: 12 }}>
-      {featured && show === 'all' ? <FeaturedSkin s={featured} apply={apply} /> : null}
-      <ShowFilter value={show} onChange={setShow} />
-      <SectionTitle text="Skins" count={`${owned}/${BUILT_IN_SKINS.length}`} />
-      <View style={styles.grid}>
-        {list.map((s) => (
-          <SkinCard key={s.id} s={s} apply={apply} />
-        ))}
-      </View>
+    <View style={styles.tabBody}>
+      {isDesktop && featured && show === 'all' ? <FeaturedSkin s={featured} apply={apply} /> : null}
+      <Shelf
+        toolbar={<ShowFilter value={show} onChange={setShow} />}
+        groups={[{ title: 'Skins', color: colors.gold, kind: 'show', count: `${owned}/${BUILT_IN_SKINS.length}`, entries: list.map((s) => skinEntry(s, ctx)) }]}
+      />
     </View>
   );
 }
@@ -318,7 +410,7 @@ function FeaturedSkin({ s, apply }: { s: Skin; apply: Apply }) {
         <Text style={styles.featuredName}>{s.name}</Text>
         {s.power ? <Text style={styles.featuredPower}>{SKIN_POWERS[s.power].description}</Text> : null}
         <View style={{ alignSelf: 'flex-start', marginTop: 6 }}>
-          <PriceButton price={s.medalPrice!} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`, undefined)} />
+          <PriceButton price={s.medalPrice!} medals onPress={() => apply(buySkinWithMedals(profile, s.id), `The ${s.name} skin is yours!`)} />
         </View>
       </View>
     </View>
@@ -327,36 +419,32 @@ function FeaturedSkin({ s, apply }: { s: Skin; apply: Apply }) {
 
 // ---------- Outfits ----------
 
-function OutfitCard({ o, apply }: { o: Outfit; apply: Apply }) {
-  const profile = useProfile();
-  const { updateProfile } = useGame();
+function outfitEntry(o: Outfit, { profile, updateProfile, apply, big }: Ctx): Entry {
   const owned = profile.ownedOutfits.includes(o.id);
   const equipped = profile.equippedOutfit === o.id;
-  return (
-    <Showcase
-      accent={o.medalPrice ? colors.medal : colors.blue}
-      tag={o.medalPrice ? 'Medals' : undefined}
-      selected={equipped}
-      art={<Character skin={findSkin(profile.selectedSkinId, profile.customSkins)} size={60} outfit={o.emoji} />}
-      title={o.name}
-      action={
-        owned ? (
-          <Button small title={equipped ? 'Remove' : 'Wear'} variant={equipped ? 'dark' : 'primary'} onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: equipped ? null : o.id }))} />
-        ) : (
-          <PriceButton
-            price={o.medalPrice ?? o.price}
-            medals={!!o.medalPrice}
-            needLevel={o.medalPrice ? undefined : o.minLevel}
-            onPress={() => apply(buyOutfit(profile, o.id), `Bought ${o.name}`, o.emoji)}
-          />
-        )
-      }
-    />
-  );
+  return {
+    key: o.id,
+    accent: o.medalPrice ? colors.medal : colors.blue,
+    tag: o.medalPrice ? 'Medals' : undefined,
+    selected: equipped,
+    art: <Character skin={findSkin(profile.selectedSkinId, profile.customSkins)} size={big ? 60 : 40} outfit={o.emoji} />,
+    title: o.name,
+    action: owned ? (
+      <Button small title={equipped ? 'Remove' : 'Wear'} variant={equipped ? 'dark' : 'primary'} onPress={() => updateProfile((p) => ({ ...p, equippedOutfit: equipped ? null : o.id }))} />
+    ) : (
+      <PriceButton
+        price={o.medalPrice ?? o.price}
+        medals={!!o.medalPrice}
+        needLevel={o.medalPrice ? undefined : o.minLevel}
+        onPress={() => apply(buyOutfit(profile, o.id), `Bought ${o.name}`, o.emoji)}
+      />
+    ),
+  };
 }
 
 function OutfitsTab({ apply }: { apply: Apply }) {
-  const profile = useProfile();
+  const ctx = useCtx(apply);
+  const { profile } = ctx;
   const [show, setShow] = useState<Show>('all');
   const list = OUTFITS.filter((o) => {
     if (show === 'owned') return profile.ownedOutfits.includes(o.id);
@@ -365,285 +453,285 @@ function OutfitsTab({ apply }: { apply: Apply }) {
     return true;
   }).sort((a, b) => (a.medalPrice ? 1 : 0) - (b.medalPrice ? 1 : 0) || a.minLevel - b.minLevel || a.price - b.price);
   return (
-    <View style={{ gap: 12 }}>
-      <ShowFilter value={show} onChange={setShow} />
-      <SectionTitle text="Outfits" count={`${profile.ownedOutfits.length}/${OUTFITS.length}`} />
-      <View style={styles.grid}>
-        {list.map((o) => (
-          <OutfitCard key={o.id} o={o} apply={apply} />
-        ))}
-      </View>
+    <View style={styles.tabBody}>
+      <Shelf
+        toolbar={<ShowFilter value={show} onChange={setShow} />}
+        groups={[{ title: 'Outfits', color: colors.gold, kind: 'show', count: `${profile.ownedOutfits.length}/${OUTFITS.length}`, entries: list.map((o) => outfitEntry(o, ctx)) }]}
+      />
     </View>
   );
 }
 
 // ---------- Abilities ----------
 
+function abilityEntry(a: AbilityDef, role: Role, color: string, { profile, apply, big }: Ctx): Entry {
+  const owned = profile.ownedAbilities.includes(a.id);
+  const equipped = profile.loadout[role].includes(a.id);
+  const price = ABILITY_PRICES[a.id as AbilityId];
+  return {
+    key: a.id,
+    accent: color,
+    tag: role === 'survivor' ? 'Survivor' : 'Zombie',
+    selected: equipped,
+    art: <Glyph emoji={a.icon} size={big ? 26 : 22} color={colors.ink} />,
+    title: a.name,
+    sub: a.description,
+    meta: (
+      <View style={styles.meta}>
+        <Icon name="timer-sand" size={13} color={colors.textMuted} />
+        <Text style={styles.metaText}>{a.cooldownSec}s</Text>
+      </View>
+    ),
+    action: owned ? (
+      <Button
+        small
+        title={equipped ? 'Equipped' : 'Equip'}
+        lead={equipped ? <Icon name="check-bold" size={14} color={colors.text} /> : undefined}
+        variant={equipped ? 'dark' : 'primary'}
+        onPress={() => apply(toggleLoadout(profile, role, a.id), equipped ? `${a.name} removed` : `${a.name} equipped`, a.icon)}
+      />
+    ) : price ? (
+      <PriceButton price={price.price} needLevel={price.minLevel} onPress={() => apply(buyAbility(profile, a.id), `${a.name} unlocked!`, a.icon)} />
+    ) : null,
+  };
+}
+
 function AbilitiesTab({ apply }: { apply: Apply }) {
-  const profile = useProfile();
+  const ctx = useCtx(apply);
+  const { isDesktop } = useDevice();
+  const { profile } = ctx;
   const roles: { role: Role; title: string; color: string }[] = [
     { role: 'survivor', title: 'Survivor abilities', color: colors.survivor },
     { role: 'zombie', title: 'Zombie abilities', color: colors.zombie },
   ];
+  const groups: Group[] = roles.map(({ role, title, color }) => ({
+    title,
+    color,
+    kind: 'slot',
+    count: `${profile.loadout[role].length}/${MAX_LOADOUT}`,
+    entries: Object.values(ABILITIES)
+      .filter((a) => a.role === role)
+      .sort((a, b) => (ABILITY_PRICES[a.id]?.minLevel ?? 0) - (ABILITY_PRICES[b.id]?.minLevel ?? 0))
+      .map((a) => abilityEntry(a, role, color, ctx)),
+  }));
   return (
-    <View style={{ gap: 16 }}>
-      <P dim>Pick up to {MAX_LOADOUT} abilities per role. They show up as buttons in the match, and the smart ability helper highlights when each one is worth using.</P>
-      {roles.map(({ role, title, color }) => (
-        <View key={role} style={{ gap: 8 }}>
-          <SectionTitle text={title} color={color} count={`${profile.loadout[role].length}/${MAX_LOADOUT}`} />
-          <View style={styles.slots}>
-          {Object.values(ABILITIES)
-            .filter((a) => a.role === role)
-            .sort((a, b) => (ABILITY_PRICES[a.id]?.minLevel ?? 0) - (ABILITY_PRICES[b.id]?.minLevel ?? 0))
-            .map((a) => {
-              const owned = profile.ownedAbilities.includes(a.id);
-              const equipped = profile.loadout[role].includes(a.id);
-              const price = ABILITY_PRICES[a.id as AbilityId];
-              return (
-                <Slot
-                  key={a.id}
-                  accent={color}
-                  selected={equipped}
-                  plate={<Glyph emoji={a.icon} size={26} color={colors.ink} />}
-                  title={a.name}
-                  desc={a.description}
-                  meta={
-                    <View style={styles.meta}>
-                      <Icon name="timer-sand" size={13} color={colors.textMuted} />
-                      <Text style={styles.metaText}>{a.cooldownSec}s</Text>
-                    </View>
-                  }
-                  action={
-                    owned ? (
-                      <Button
-                        small
-                        title={equipped ? 'Equipped' : 'Equip'}
-                        lead={equipped ? <Icon name="check-bold" size={14} color={colors.text} /> : undefined}
-                        variant={equipped ? 'dark' : 'primary'}
-                        onPress={() => apply(toggleLoadout(profile, role, a.id), equipped ? `${a.name} removed` : `${a.name} equipped`, a.icon)}
-                      />
-                    ) : price ? (
-                      <PriceButton price={price.price} needLevel={price.minLevel} onPress={() => apply(buyAbility(profile, a.id), `${a.name} unlocked!`, a.icon)} />
-                    ) : null
-                  }
-                />
-              );
-            })}
-          </View>
-        </View>
-      ))}
+    <View style={styles.tabBody}>
+      <Shelf
+        toolbar={isDesktop ? <P dim>Pick up to {MAX_LOADOUT} abilities per role. They show up as buttons in the match, and the smart ability helper highlights when each one is worth using.</P> : undefined}
+        groups={groups}
+      />
     </View>
   );
 }
 
 // ---------- Upgrades ----------
 
+function upgradeEntry(id: UpgradeId, color: string, { profile, apply, big }: Ctx): Entry {
+  const u = UPGRADES.find((x) => x.id === id)!;
+  const cur = profile.upgrades[u.id] ?? 0;
+  const max = cur >= u.maxLevel;
+  return {
+    key: u.id,
+    accent: color,
+    art: <Icon name={UPGRADE_ICON[u.id]} size={big ? 24 : 20} color={colors.ink} />,
+    title: u.name,
+    sub: u.description,
+    meta: (
+      <View style={styles.pips}>
+        {Array.from({ length: u.maxLevel }, (_, i) => (
+          <View key={i} style={[styles.pip, i < cur && { backgroundColor: color }]} />
+        ))}
+      </View>
+    ),
+    action: max ? (
+      <Tag text="Max" color={colors.toxic} tilt={3} />
+    ) : (
+      <PriceButton price={upgradePrice(u, cur)} needLevel={upgradeMinLevel(cur)} onPress={() => apply(buyUpgrade(profile, u.id), `${u.name} upgraded to level ${cur + 1}`, u.icon)} />
+    ),
+  };
+}
+
 function UpgradesTab({ apply }: { apply: Apply }) {
-  const profile = useProfile();
+  const ctx = useCtx(apply);
+  const groups: Group[] = UPGRADE_GROUPS.map((g) => ({ title: g.title, color: g.color, kind: 'slot', entries: g.ids.map((id) => upgradeEntry(id, g.color, ctx)) }));
   return (
-    <View style={{ gap: 16 }}>
-      {UPGRADE_GROUPS.map((g) => (
-        <View key={g.title} style={{ gap: 8 }}>
-          <SectionTitle text={g.title} color={g.color} />
-          <View style={styles.slots}>
-          {g.ids.map((id) => {
-            const u = UPGRADES.find((x) => x.id === id)!;
-            const cur = profile.upgrades[u.id] ?? 0;
-            const max = cur >= u.maxLevel;
-            return (
-              <Slot
-                key={u.id}
-                accent={g.color}
-                plate={<Icon name={UPGRADE_ICON[u.id]} size={24} color={colors.ink} />}
-                title={u.name}
-                desc={u.description}
-                meta={
-                  <View style={styles.pips}>
-                    {Array.from({ length: u.maxLevel }, (_, i) => (
-                      <View key={i} style={[styles.pip, i < cur && { backgroundColor: g.color }]} />
-                    ))}
-                  </View>
-                }
-                action={
-                  max ? (
-                    <Tag text="Max" color={colors.toxic} tilt={3} />
-                  ) : (
-                    <PriceButton price={upgradePrice(u, cur)} needLevel={upgradeMinLevel(cur)} onPress={() => apply(buyUpgrade(profile, u.id), `${u.name} upgraded to level ${cur + 1}`, u.icon)} />
-                  )
-                }
-              />
-            );
-          })}
-          </View>
-        </View>
-      ))}
+    <View style={styles.tabBody}>
+      <Shelf groups={groups} />
     </View>
   );
 }
 
 // ---------- Filters ----------
 
-function FilterRow({ f, apply }: { f: ZombieFilter; apply: Apply }) {
-  const profile = useProfile();
-  const { updateProfile } = useGame();
+function filterEntry(f: ZombieFilter, { profile, updateProfile, apply }: Ctx): Entry {
   const owned = profile.ownedFilters.includes(f.id);
   const equipped = profile.equippedFilter === f.id;
-  return (
-    <Slot
-      accent={f.medalPrice ? colors.medal : colors.zombie}
-      selected={equipped}
-      plate={
-        <View style={[styles.filterSwatch, { backgroundColor: f.vignette }]}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: f.color, opacity: f.opacity * 3 }]} />
-          <Icon name="virus-outline" size={22} color={colors.toxic} />
-        </View>
-      }
-      title={f.name}
-      desc={f.description}
-      meta={
-        Object.keys(f.bonus).length ? (
-          <View style={styles.meta}>
-            <Icon name="arrow-up-bold" size={13} color={colors.toxic} />
-            <Text style={styles.perk} numberOfLines={1}>
-              {f.perk}
-            </Text>
-          </View>
-        ) : undefined
-      }
-      action={
-        owned ? (
-          <Button small title={equipped ? 'Active' : 'Use'} variant={equipped ? 'dark' : 'primary'} disabled={equipped} onPress={() => updateProfile((p) => ({ ...p, equippedFilter: f.id }))} />
-        ) : (
-          <PriceButton price={f.medalPrice ?? f.price} medals={!!f.medalPrice} onPress={() => apply(buyFilter(profile, f.id), `Bought the ${f.name} filter`, undefined)} />
-        )
-      }
-    />
-  );
+  return {
+    key: f.id,
+    accent: f.medalPrice ? colors.medal : colors.zombie,
+    tag: f.medalPrice ? 'Medals' : undefined,
+    selected: equipped,
+    art: (
+      <View style={[styles.filterSwatch, { backgroundColor: f.vignette }]}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: f.color, opacity: f.opacity * 3 }]} />
+        <Icon name="virus-outline" size={22} color={colors.toxic} />
+      </View>
+    ),
+    title: f.name,
+    sub: f.description,
+    meta: Object.keys(f.bonus).length ? (
+      <View style={styles.meta}>
+        <Icon name="arrow-up-bold" size={13} color={colors.toxic} />
+        <Text style={styles.perk} numberOfLines={1}>
+          {f.perk}
+        </Text>
+      </View>
+    ) : undefined,
+    action: owned ? (
+      <Button small title={equipped ? 'Active' : 'Use'} variant={equipped ? 'dark' : 'primary'} disabled={equipped} onPress={() => updateProfile((p) => ({ ...p, equippedFilter: f.id }))} />
+    ) : (
+      <PriceButton price={f.medalPrice ?? f.price} medals={!!f.medalPrice} onPress={() => apply(buyFilter(profile, f.id), `Bought the ${f.name} filter`)} />
+    ),
+  };
 }
 
 function FiltersTab({ apply }: { apply: Apply }) {
-  const profile = useProfile();
+  const ctx = useCtx(apply);
+  const { isDesktop } = useDevice();
+  const { profile } = ctx;
   const list = [...ZOMBIE_FILTERS].sort((a, b) => (a.medalPrice ? 1 : 0) - (b.medalPrice ? 1 : 0) || a.price - b.price);
   return (
-    <View style={{ gap: 10 }}>
-      <P dim>A filter tints your screen while you are a zombie, and each filter gives your zombie a bonus in the match.</P>
-      <SectionTitle text="Zombie filters" color={colors.zombie} count={`${profile.ownedFilters.length}/${ZOMBIE_FILTERS.length}`} />
-      <View style={styles.slots}>
-        {list.map((f) => (
-          <FilterRow key={f.id} f={f} apply={apply} />
-        ))}
-      </View>
+    <View style={styles.tabBody}>
+      <Shelf
+        toolbar={isDesktop ? <P dim>A filter tints your screen while you are a zombie, and each filter gives your zombie a bonus in the match.</P> : undefined}
+        groups={[{ title: 'Zombie filters', color: colors.zombie, kind: 'slot', count: `${profile.ownedFilters.length}/${ZOMBIE_FILTERS.length}`, entries: list.map((f) => filterEntry(f, ctx)) }]}
+      />
     </View>
   );
 }
 
 // ---------- Medal shop ----------
 
+/** Phone only: the medal exchange as one tile. Desktop shows the full exchange block instead. */
+function exchangeEntry({ profile, apply }: Ctx): Entry {
+  return {
+    key: 'exchange',
+    accent: colors.gold,
+    art: <Icon name="swap-horizontal-bold" size={24} color={colors.ink} />,
+    title: 'Medal exchange',
+    sub: `Each medal is worth ${MEDAL_TO_COINS} coins.`,
+    action: (
+      <View style={styles.convert}>
+        <Button small variant="dark" title={`1 → ${MEDAL_TO_COINS}`} lead={<Coin size={12} />} disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, 1), `You got ${MEDAL_TO_COINS} coins`)} />
+        <Button small variant="gold" title="All" disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, profile.medals), `You got ${profile.medals * MEDAL_TO_COINS} coins`)} />
+      </View>
+    ),
+  };
+}
+
 function MedalShopTab({ apply }: { apply: Apply }) {
-  const profile = useProfile();
+  const ctx = useCtx(apply);
+  const { isDesktop } = useDevice();
+  const { profile } = ctx;
   const skins = BUILT_IN_SKINS.filter((s) => s.medalPrice).sort((a, b) => a.medalPrice! - b.medalPrice!);
   const outfits = OUTFITS.filter((o) => o.medalPrice).sort((a, b) => a.medalPrice! - b.medalPrice!);
   const filters = ZOMBIE_FILTERS.filter((f) => f.medalPrice);
+  const groups: Group[] = [
+    { title: 'Medal skins', color: colors.medal, kind: 'show', entries: skins.map((s) => skinEntry(s, ctx)) },
+    { title: 'Medal outfits', color: colors.medal, kind: 'show', entries: outfits.map((o) => outfitEntry(o, ctx)) },
+    { title: 'Medal filters', color: colors.medal, kind: 'slot', entries: filters.map((f) => filterEntry(f, ctx)) },
+  ];
+  if (!isDesktop) groups.push({ title: 'Swap medals for coins', color: colors.gold, kind: 'show', entries: [exchangeEntry(ctx)] });
   return (
-    <View style={{ gap: 14 }}>
-      <View style={styles.medalHero}>
-        <View style={styles.medalDisc}>
-          <Icon name="medal" size={40} color={colors.medal} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.medalCount}>{profile.medals}</Text>
-          <Text style={styles.medalHint}>Earn medals in tournaments and obstacle runs. Spend them on items you cannot buy with coins.</Text>
-        </View>
-      </View>
-
-      <SectionTitle text="Medal skins" color={colors.medal} />
-      <View style={styles.grid}>
-        {skins.map((s) => (
-          <SkinCard key={s.id} s={s} apply={apply} />
-        ))}
-      </View>
-
-      <SectionTitle text="Medal outfits" color={colors.medal} />
-      <View style={styles.grid}>
-        {outfits.map((o) => (
-          <OutfitCard key={o.id} o={o} apply={apply} />
-        ))}
-      </View>
-
-      <SectionTitle text="Medal filters" color={colors.medal} />
-      <View style={styles.slots}>
-        {filters.map((f) => (
-          <FilterRow key={f.id} f={f} apply={apply} />
-        ))}
-      </View>
-
-      <SectionTitle text="Swap medals for coins" color={colors.gold} />
-      <View style={styles.slot}>
-        <View style={styles.slotHead}>
-          <View style={[styles.slotPlate, { backgroundColor: colors.gold }]}>
-            <Icon name="swap-horizontal-bold" size={26} color={colors.ink} />
+    <View style={styles.tabBody}>
+      {isDesktop ? (
+        <>
+          <View style={styles.medalHero}>
+            <View style={styles.medalDisc}>
+              <Icon name="medal" size={40} color={colors.medal} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.medalCount}>{profile.medals}</Text>
+              <Text style={styles.medalHint}>Earn medals in tournaments and obstacle runs. Spend them on items you cannot buy with coins.</Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.slotTitle}>Medal exchange</Text>
-            <Text style={styles.slotDesc}>Each medal is worth {MEDAL_TO_COINS} coins.</Text>
+          <Shelf groups={groups} />
+          <SectionTitle text="Swap medals for coins" color={colors.gold} />
+          <View style={styles.exchange}>
+            <View style={styles.slotHead}>
+              <View style={[styles.slotPlate, { backgroundColor: colors.gold }]}>
+                <Icon name="swap-horizontal-bold" size={26} color={colors.ink} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.slotTitle}>Medal exchange</Text>
+                <Text style={styles.slotDesc}>Each medal is worth {MEDAL_TO_COINS} coins.</Text>
+              </View>
+            </View>
+            <View style={styles.convert}>
+              {[1, 5, 10].map((n) => (
+                <Button
+                  key={n}
+                  small
+                  variant="dark"
+                  title={`${n} → ${n * MEDAL_TO_COINS}`}
+                  lead={<Coin size={12} />}
+                  disabled={profile.medals < n}
+                  onPress={() => apply(convertMedals(profile, n), `You got ${n * MEDAL_TO_COINS} coins`)}
+                />
+              ))}
+              <Button small variant="gold" title="Convert all" disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, profile.medals), `You got ${profile.medals * MEDAL_TO_COINS} coins`)} />
+            </View>
           </View>
-        </View>
-        <View style={styles.convert}>
-          {[1, 5, 10].map((n) => (
-            <Button
-              key={n}
-              small
-              variant="dark"
-              title={`${n} → ${n * MEDAL_TO_COINS}`}
-              lead={<Coin size={12} />}
-              disabled={profile.medals < n}
-              onPress={() => apply(convertMedals(profile, n), `You got ${n * MEDAL_TO_COINS} coins`, undefined)}
-            />
-          ))}
-          <Button small variant="gold" title="Convert all" disabled={profile.medals < 1} onPress={() => apply(convertMedals(profile, profile.medals), `You got ${profile.medals * MEDAL_TO_COINS} coins`, undefined)} />
-        </View>
-      </View>
+        </>
+      ) : (
+        <Shelf groups={groups} />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  content: { flex: 1, marginTop: 12 },
+  tabBody: { flex: 1, gap: 12 },
+  deskRow: { flex: 1, flexDirection: 'row', gap: 24, alignItems: 'stretch' },
   rail: { width: 220, gap: 6, backgroundColor: colors.panel, borderRadius: radius.lg, padding: 10 },
   railItem: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 48, paddingHorizontal: 14, borderRadius: radius.md },
   railItemOn: { backgroundColor: colors.toxic },
   railText: { color: colors.textDim, fontWeight: '800', fontSize: 15 },
-  locker: { marginTop: 10, borderRadius: radius.md, backgroundColor: colors.bgAlt, padding: 12, alignItems: 'center', gap: 8, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
+  locker: { marginTop: 'auto', borderRadius: radius.md, backgroundColor: colors.bgAlt, padding: 12, alignItems: 'center', gap: 8, borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
   lockerArt: { width: 124, height: 124, borderRadius: 62, backgroundColor: colors.panel, alignItems: 'center', justifyContent: 'center' },
   lockerLevel: { color: colors.text, fontWeight: '900', fontSize: 16 },
   lockerBal: { flexDirection: 'row', gap: 8 },
   lockerChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.panel, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
   lockerNum: { color: colors.text, fontWeight: '900', fontSize: 14 },
-  show: { width: 168, backgroundColor: colors.panel, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.08)' },
+  show: { flexGrow: 1, flexBasis: 168, minWidth: 168, backgroundColor: colors.panel, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.08)' },
   stage: { height: 104, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   stageGlow: { position: 'absolute', width: 120, height: 120, borderRadius: 60 },
   ribbon: { position: 'absolute', top: 8, left: 0, paddingHorizontal: 9, paddingVertical: 2, borderTopRightRadius: 8, borderBottomRightRadius: 8 },
   ribbonText: { color: colors.ink, fontWeight: '900', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' },
   tick: { position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.toxic, alignItems: 'center', justifyContent: 'center' },
   showBody: { padding: 10, gap: 5, alignItems: 'center' },
-  slots: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   slot: { flexGrow: 1, flexBasis: '47%', minWidth: 280, backgroundColor: colors.panel, borderRadius: radius.lg, padding: 12, gap: 10, borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.08)' },
   slotHead: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   slotPlate: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   slotTitle: { color: colors.text, fontWeight: '900', fontSize: 15, textAlign: 'left' },
   slotDesc: { color: colors.textDim, fontSize: 12, textAlign: 'left', marginTop: 2 },
   slotFoot: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  exchange: { backgroundColor: colors.panel, borderRadius: radius.lg, padding: 12, gap: 10, borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(255,255,255,0.08)' },
+  mini: { flex: 1, flexDirection: 'row', backgroundColor: colors.panel, borderRadius: radius.md, borderWidth: 2, borderBottomWidth: 4, borderColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' },
+  miniArt: { width: 64, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  miniTag: { position: 'absolute', top: 4, left: 0, color: colors.ink, fontSize: 8, fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase', paddingHorizontal: 5, paddingVertical: 1, borderTopRightRadius: 6, borderBottomRightRadius: 6, overflow: 'hidden' },
+  miniBody: { flex: 1, paddingHorizontal: 8, paddingVertical: 6, justifyContent: 'space-between' },
+  miniName: { color: colors.text, fontWeight: '900', fontSize: 13, textAlign: 'left' },
+  miniSub: { color: colors.textDim, fontSize: 11, textAlign: 'left' },
+  miniAction: { alignSelf: 'flex-start' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  item: { width: 150, alignItems: 'center', gap: 6, paddingTop: 20, paddingBottom: 12 },
-  cornerTag: { position: 'absolute', top: -8, left: 8, zIndex: 2 },
   itemName: { color: colors.text, fontWeight: '800', fontSize: 14, textAlign: 'center' },
   power: { color: colors.textDim, fontSize: 11, textAlign: 'center', minHeight: 28 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  badge: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   metaText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
-  pips: { flexDirection: 'row', gap: 4, marginTop: 6 },
+  pips: { flexDirection: 'row', gap: 4, marginTop: 3 },
   pip: { flex: 1, maxWidth: 28, height: 8, borderRadius: 3, backgroundColor: colors.bgAlt, borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
   filterSwatch: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)' },
   perk: { color: colors.toxic, fontWeight: '700', fontSize: 12, flexShrink: 1 },
@@ -662,5 +750,5 @@ const styles = StyleSheet.create({
   medalHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.medal, borderRadius: 16, padding: 16, borderWidth: 2, borderBottomWidth: 6, borderColor: 'rgba(255,255,255,0.12)' },
   medalCount: { color: colors.ink, fontSize: 34, fontWeight: '900', textAlign: 'left' },
   medalHint: { color: colors.ink, fontSize: 13, fontWeight: '500', textAlign: 'left', opacity: 0.8 },
-  convert: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
+  convert: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
 });
