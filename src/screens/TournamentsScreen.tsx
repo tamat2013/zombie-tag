@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
+import { tr } from '../i18n/language';
 import { useFocusEffect } from '@react-navigation/native';
 import type { ScreenProps } from '../navigation/types';
 import { Card, Grid, H, P, Pill, Screen, ScreenHeader, Tabs } from '../components/ui';
@@ -43,7 +44,7 @@ function timeLeft(ms: number): string {
 function clock(ms: number): string {
   const d = new Date(ms);
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return `${days[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${tr(days[d.getDay()])} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 function statusPill(t: Tournament, now: number) {

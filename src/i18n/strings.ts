@@ -1,7 +1,11 @@
 // Translation table. The key is the English string used in the UI (column 0).
 // Column order matches LANGUAGES: en he es fr de pt ru ar it tr zh ja ko hi pl nl.
 // `{1}`, `{2}` mark parts that vary (numbers, names). Strings that are missing stay in English.
-export const ROWS: readonly (readonly string[])[] = [
+import { ROWS_CATALOG } from './strings.catalog.ts';
+import { ROWS_GAME } from './strings.game.ts';
+import { ROWS_SCREENS } from './strings.screens.ts';
+
+const BASE: readonly (readonly string[])[] = [
   // --- Sign up / log in ---
   ['Zombie Outbreak', 'זומבי: התפרצות', 'Brote Zombi', 'Épidémie Zombie', 'Zombie-Ausbruch', 'Surto Zumbi', 'Зомби: Вспышка', 'تفشي الزومبي', 'Epidemia Zombie', 'Zombi Salgını', '僵尸爆发', 'ゾンビ・アウトブレイク', '좀비 아웃브레이크', 'ज़ॉम्बी प्रकोप', 'Zombie: Epidemia', 'Zombie-uitbraak'],
   ['Survive 10 minutes... or become one of them', 'שרוד 10 דקות... או הפוך לאחד מהם', 'Sobrevive 10 minutos... o conviértete en uno de ellos', "Survis 10 minutes... ou deviens l'un d'eux", 'Überlebe 10 Minuten... oder werde einer von ihnen', 'Sobreviva 10 minutos... ou vire um deles', 'Выживи 10 минут... или стань одним из них', 'انجُ لمدة 10 دقائق... أو كن واحدًا منهم', 'Sopravvivi 10 minuti... o diventa uno di loro', '10 dakika hayatta kal... ya da onlardan biri ol', '存活10分钟……否则就成为它们的一员', '10分間生き延びろ……さもなくば奴らの仲間に', '10분 동안 살아남아라... 아니면 그들 중 하나가 된다', '10 मिनट जीवित रहो... या उनमें से एक बन जाओ', 'Przetrwaj 10 minut... albo dołącz do nich', 'Overleef 10 minuten... of word er een van'],
@@ -162,3 +166,5 @@ export const ROWS: readonly (readonly string[])[] = [
   ['Upcoming', 'בקרוב', 'Próximamente', 'À venir', 'Demnächst', 'Em breve', 'Скоро', 'قريبًا', 'In arrivo', 'Yakında', '即将开始', '近日開催', '예정', 'जल्द आ रहा है', 'Wkrótce', 'Binnenkort'],
   ['Tap to skip', 'הקש כדי לדלג', 'Toca para saltar', 'Touche pour passer', 'Tippen zum Überspringen', 'Toque para pular', 'Нажмите, чтобы пропустить', 'المس للتخطي', 'Tocca per saltare', 'Geçmek için dokun', '点击跳过', 'タップでスキップ', '탭하여 건너뛰기', 'छोड़ने के लिए टैप करें', 'Dotknij, aby pominąć', 'Tik om over te slaan'],
 ];
+
+export const ROWS: readonly (readonly string[])[] = [...BASE, ...ROWS_SCREENS, ...ROWS_GAME, ...ROWS_CATALOG];

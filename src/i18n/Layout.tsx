@@ -4,6 +4,7 @@ import { Pressable as RNPressable, ScrollView as RNScrollView, StyleSheet, TextI
 import type { PressableProps, ScrollViewProps, StyleProp, TextInputProps, ViewProps } from 'react-native';
 import { isRtl, mirrorStyle } from './direction';
 import { useLanguage } from './language';
+import { translate } from './translate';
 import { fonts } from '../theme';
 
 function useRtl() {
@@ -20,10 +21,12 @@ export const View = React.forwardRef<RNView, ViewProps>(function View({ style, .
   return <RNView ref={ref} style={mirror(style, rtl)} {...rest} />;
 });
 
-export const Pressable = React.forwardRef<RNView, PressableProps>(function Pressable({ style, ...rest }, ref) {
-  const rtl = useRtl();
+export const Pressable = React.forwardRef<RNView, PressableProps>(function Pressable({ style, accessibilityLabel, ...rest }, ref) {
+  const lang = useLanguage();
+  const rtl = isRtl(lang);
   const s = typeof style === 'function' ? (state: any) => mirror(style(state), rtl) : mirror(style, rtl);
-  return <RNPressable ref={ref} style={s as PressableProps['style']} {...rest} />;
+  const label = accessibilityLabel ? translate(accessibilityLabel, lang) : accessibilityLabel;
+  return <RNPressable ref={ref} style={s as PressableProps['style']} accessibilityLabel={label} {...rest} />;
 });
 
 export const ScrollView = React.forwardRef<RNScrollView, ScrollViewProps>(function ScrollView({ style, contentContainerStyle, ...rest }, ref) {
@@ -31,7 +34,9 @@ export const ScrollView = React.forwardRef<RNScrollView, ScrollViewProps>(functi
   return <RNScrollView ref={ref} style={mirror(style, rtl)} contentContainerStyle={mirror(contentContainerStyle, rtl)} {...rest} />;
 });
 
-export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, ...rest }, ref) {
-  const rtl = useRtl();
-  return <RNTextInput ref={ref} style={[{ fontFamily: fonts.medium }, mirror(style, rtl, true)]} {...rest} />;
+export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, placeholder, ...rest }, ref) {
+  const lang = useLanguage();
+  const rtl = isRtl(lang);
+  const hint = placeholder ? translate(placeholder, lang) : placeholder;
+  return <RNTextInput ref={ref} style={[{ fontFamily: fonts.medium }, mirror(style, rtl, true)]} placeholder={hint} {...rest} />;
 });

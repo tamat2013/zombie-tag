@@ -19,6 +19,10 @@ for (const row of ROWS) {
   }
 }
 
+// The pattern with the most fixed text wins, so "{1} coins" never swallows "+{1} coins · +{2} XP".
+const fixedLength = (key: string) => key.replace(/\{\d\}/g, '').length;
+PATTERNS.sort((a, b) => fixedLength(b.row[0]) - fixedLength(a.row[0]));
+
 // Emoji, symbols and spaces around a string are kept as they are.
 const DECOR = /^([\s…←-⯿\u{1F000}-\u{1FFFF}️‍]*)(.*?)([\s…←-⯿\u{1F000}-\u{1FFFF}️‍]*)$/su;
 

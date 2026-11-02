@@ -755,7 +755,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         timeText={timeText}
         urgent={!obstacle && engine.timeLeftMs < 30000}
         role={isZombie ? 'zombie' : 'survivor'}
-        roleLabel={`${obstacle ? 'Obstacle Course' : isZombie ? 'Zombie' : local.doctor ? 'Survivor · Doctor' : 'Survivor'}${mode === 'training' ? ' · Training' : mode === 'tournament' ? ' · Tournament' : ''}`}
+        roleLabel={`${tr(obstacle ? 'Obstacle Course' : isZombie ? 'Zombie' : local.doctor ? 'Survivor · Doctor' : 'Survivor')}${mode === 'training' ? ` · ${tr('Training')}` : mode === 'tournament' ? ` · ${tr('Tournament')}` : ''}`}
         obstacle={obstacle}
         deaths={local.deaths}
         medalTimes={engine.map.medalTimes as any}
