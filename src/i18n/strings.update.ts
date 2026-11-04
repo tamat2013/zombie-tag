@@ -1,0 +1,8 @@
+// Strings for the Android "new version" dialog (see src/services/appUpdate.ts).
+// Column order matches LANGUAGES: en he es fr de pt ru ar it tr zh ja ko hi pl nl.
+export const ROWS_UPDATE: readonly (readonly string[])[] = [
+  ['New version available', 'גרסה חדשה זמינה', 'Hay una nueva versión', 'Une nouvelle version est disponible', 'Neue Version verfügbar', 'Nova versão disponível', 'Доступна новая версия', 'يتوفر إصدار جديد', 'Nuova versione disponibile', 'Yeni sürüm mevcut', '有新版本可用', '新しいバージョンがあります', '새 버전이 있습니다', 'नया संस्करण उपलब्ध है', 'Dostępna nowa wersja', 'Nieuwe versie beschikbaar'],
+  ['Download the new version as an APK file?', 'להוריד את הגרסה החדשה כקובץ APK?', '¿Descargar la nueva versión como archivo APK?', 'Télécharger la nouvelle version en fichier APK ?', 'Neue Version als APK-Datei herunterladen?', 'Baixar a nova versão como arquivo APK?', 'Скачать новую версию в виде APK-файла?', 'هل تريد تنزيل الإصدار الجديد كملف APK؟', 'Scaricare la nuova versione come file APK?', 'Yeni sürümü APK dosyası olarak indirilsin mi?', '要将新版本下载为 APK 文件吗？', '新しいバージョンを APK ファイルとしてダウンロードしますか？', '새 버전을 APK 파일로 다운로드할까요?', 'नए संस्करण को APK फ़ाइल के रूप में डाउनलोड करें?', 'Pobrać nową wersję jako plik APK?', 'Nieuwe versie als APK-bestand downloaden?'],
+  ['Download APK', 'הורד APK', 'Descargar APK', "Télécharger l'APK", 'APK herunterladen', 'Baixar APK', 'Скачать APK', 'تنزيل APK', 'Scarica APK', 'APK indir', '下载 APK', 'APK をダウンロード', 'APK 다운로드', 'APK डाउनलोड करें', 'Pobierz APK', 'APK downloaden'],
+  ['Not now', 'לא עכשיו', 'Ahora no', 'Pas maintenant', 'Nicht jetzt', 'Agora não', 'Не сейчас', 'ليس الآن', 'Non ora', 'Şimdi değil', '暂不', '今はしない', '나중에', 'अभी नहीं', 'Nie teraz', 'Niet nu'],
+];

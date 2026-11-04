@@ -59,6 +59,7 @@
     ],
     "owner": "tamat2013",
     "updates": {
+      "enabled": false,
       "url": "https://u.expo.dev/e0fbc474-0fdf-45cc-a79b-d994cfe35b7a",
       "requestHeaders": {
         "expo-channel-name": "production"

@@ -1,6 +1,6 @@
 // App root: providers, intro animation, auth gate and the navigation stack.
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, I18nManager, Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, I18nManager, Linking, Platform, StyleSheet } from 'react-native';
 import { View } from './src/i18n/Layout';
 import { Text } from './src/i18n/Text';
 import { StatusBar } from 'expo-status-bar';
@@ -29,7 +29,8 @@ import { TournamentsScreen } from './src/screens/TournamentsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { initSound, setMusic } from './src/services/sound';
-import { initLanguage } from './src/i18n/language';
+import { initLanguage, tr } from './src/i18n/language';
+import { checkAndroidUpdate } from './src/services/appUpdate';
 import { useFonts } from 'expo-font';
 import { Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black } from '@expo-google-fonts/rubik';
 import { LilitaOne_400Regular } from '@expo-google-fonts/lilita-one';
@@ -106,6 +107,20 @@ function Root() {
 }
 
 export default function App() {
+  // Android only: offer the newer APK from GitHub Releases. Silent when offline or already up to date.
+  useEffect(() => {
+    let alive = true;
+    checkAndroidUpdate().then((update) => {
+      if (!alive || !update) return;
+      Alert.alert(tr('New version available'), tr('Download the new version as an APK file?'), [
+        { text: tr('Not now'), style: 'cancel' },
+        { text: tr('Download APK'), onPress: () => Linking.openURL(update.apkUrl) },
+      ]);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   // Text falls back to the system font until these finish (or if they fail), so never block on them for long.
   const [fontsLoaded, fontError] = useFonts({
     Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black, LilitaOne_400Regular,
