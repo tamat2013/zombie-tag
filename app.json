@@ -3,6 +3,9 @@
     "name": "Zombie Tag",
     "slug": "zombie-tag",
     "version": "1.2.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "default",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b0f0a",
@@ -38,7 +41,10 @@
       "baseUrl": "/zombie-tag"
     },
     "extra": {
-      "supportsRTL": false
+      "supportsRTL": false,
+      "eas": {
+        "projectId": "e0fbc474-0fdf-45cc-a79b-d994cfe35b7a"
+      }
     },
     "plugins": [
       [
@@ -50,6 +56,13 @@
       ],
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "owner": "tamat2013",
+    "updates": {
+      "url": "https://u.expo.dev/e0fbc474-0fdf-45cc-a79b-d994cfe35b7a",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    }
   }
 }
