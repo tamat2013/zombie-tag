@@ -3,6 +3,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInAnonymously,
   signOut as fbSignOut,
@@ -58,6 +59,8 @@ const ERRORS: Record<string, string> = {
   'auth/invalid-credential': 'Wrong email or password',
   'auth/wrong-password': 'Wrong email or password',
   'auth/user-not-found': 'Wrong email or password',
+  'auth/missing-email': 'Type your email above first',
+  'auth/offline-reset': 'Password reset works only online. Offline accounts are saved on this device only.',
   'auth/too-many-requests': 'Too many attempts. Try again in a few minutes',
   'auth/network-request-failed': 'No network connection',
   'auth/operation-not-allowed': 'Guest login is not enabled in Firebase (Authentication > Sign-in method > Anonymous)',
@@ -140,6 +143,17 @@ export const authService = {
     await writeJson(LOCAL_SESSION, session);
     emitLocal(session);
     return session;
+  },
+
+  /** Emails a password reset link (Firebase only). Returns the cleaned-up email it was sent to. */
+  async resetPassword(email: string): Promise<string> {
+    email = email.trim().toLowerCase();
+    if (!email) throw Object.assign(new Error(), { code: 'auth/missing-email' });
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw Object.assign(new Error(), { code: 'auth/invalid-email' });
+    // Local accounts have no email server behind them, so there is nothing to send.
+    if (!isFirebaseConfigured) throw Object.assign(new Error(), { code: 'auth/offline-reset' });
+    await sendPasswordResetEmail(firebaseAuth(), email);
+    return email;
   },
 
   /** Enter without an email or password: an anonymous Firebase user, or a local guest account offline. */

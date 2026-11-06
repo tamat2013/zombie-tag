@@ -3,7 +3,7 @@
 import { useDevice } from '../utils/device';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { TextInput, View } from '../i18n/Layout';
+import { Pressable, TextInput, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import { Screen, Tabs } from '../components/ui';
 import { Button } from '../components/Button';
@@ -27,9 +27,11 @@ export function AuthScreen() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const submit = async () => {
     setError(null);
+    setNotice(null);
     if (mode === 'register' && name.trim().length < 2) {
       setError('Choose a player name (at least 2 characters)');
       return;
@@ -39,6 +41,22 @@ export function AuthScreen() {
       if (mode === 'register') await authService.signUp(email, password, name);
       else await authService.signIn(email, password);
       haptic('success');
+    } catch (e) {
+      haptic('error');
+      setError(authErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const forgotPassword = async () => {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const sentTo = await authService.resetPassword(email);
+      haptic('success');
+      setNotice(`Reset link sent to ${sentTo}. Check your inbox and spam folder.`);
     } catch (e) {
       haptic('error');
       setError(authErrorMessage(e));
@@ -83,6 +101,7 @@ export function AuthScreen() {
       onChange={(m) => {
         setMode(m);
         setError(null);
+        setNotice(null);
       }}
     />
   );
@@ -124,7 +143,13 @@ export function AuthScreen() {
           {passwordField}
         </>
       )}
+      {mode === 'login' ? (
+        <Pressable onPress={forgotPassword} disabled={busy} hitSlop={8} accessibilityRole="button" style={[styles.forgot, compact && styles.forgotPhone]}>
+          <Text style={[styles.forgotText, compact && styles.forgotTextPhone]}>Forgot password?</Text>
+        </Pressable>
+      ) : null}
       {error ? <Text style={[styles.error, compact && styles.errorPhone]}>{error}</Text> : null}
+      {notice ? <Text style={[styles.notice, compact && styles.errorPhone]}>{notice}</Text> : null}
       <Button title={mode === 'login' ? 'Enter game' : 'Create account'} onPress={submit} loading={busy} small={compact} style={{ marginTop: compact ? 8 : 12 }} />
       <Button title="Continue as guest (no account)" variant="ghost" onPress={guest} disabled={busy} small={compact} style={{ marginTop: compact ? 6 : 8 }} />
       {compact ? null : offline}
@@ -193,6 +218,11 @@ const styles = StyleSheet.create({
   labelPhone: { fontSize: 12, marginBottom: 2 },
   input: { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: radius.md, borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)', color: colors.text, paddingHorizontal: 16, paddingVertical: 13, fontSize: 16, textAlign: 'left' },
   inputPhone: { paddingHorizontal: 12, paddingVertical: 8, fontSize: 15, borderRadius: 14 },
+  forgot: { alignSelf: 'flex-end', marginTop: 8 },
+  forgotPhone: { marginTop: 5 },
+  forgotText: { color: colors.toxic, fontSize: 13, fontWeight: '800', textDecorationLine: 'underline' },
+  forgotTextPhone: { fontSize: 12 },
+  notice: { color: colors.toxic, fontWeight: '800', marginTop: 10, textAlign: 'left' },
   error: { color: colors.blood, fontWeight: '800', marginTop: 10, textAlign: 'left' },
   errorPhone: { fontSize: 13, marginTop: 8 },
   offline: { color: colors.textMuted, fontSize: 12, textAlign: 'left', lineHeight: 18, maxWidth: 440 },
