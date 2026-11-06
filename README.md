@@ -12,6 +12,20 @@ To try the browser version without installing the Android tools: `npm install`, 
 
 [.github/workflows/deploy-web.yml](.github/workflows/deploy-web.yml) builds the site and deploys it on every push to `main` (or by hand from the Actions tab). Once: Settings > Pages > Source = "GitHub Actions". The site is served at `https://<user>.github.io/zombie-tag/` (`experiments.baseUrl` in `app.json` must match the repository name). Files in `site/` are copied next to the game, so the player guide in `site/guide/index.html` is served at `https://<user>.github.io/zombie-tag/guide/`. To enable Firebase on the site, add the `EXPO_PUBLIC_FIREBASE_*` values from `.env.example` as repository variables; without them it runs in offline mode.
 
+### Releasing a new version
+
+1. Set the new version (for example `0.0.1`) in `version` in `app.json` and `package.json`, and commit.
+2. Tag the commit with the same version and push: `git tag v0.0.1 && git push origin main v0.0.1`.
+
+[.github/workflows/release.yml](.github/workflows/release.yml) then checks that the tag matches `app.json`, runs the tests, builds every download and publishes a GitHub Release with these files attached:
+
+- `ZombieTag.apk`: Android app. Installed Android apps find it through the update check in `src/services/appUpdate.ts`.
+- `ZombieTag.ipa`: iOS app, unsigned (install with Sideloadly or AltStore).
+- `ZombieTag-web.zip`: the web version, ready to host anywhere.
+- `SHA256SUMS.txt`: checksums of the files above.
+
+Keep these file names: the guide page links to `releases/latest/download/ZombieTag.apk` and `ZombieTag.ipa`. To build a tag again, run the Release workflow by hand from the Actions tab and enter the tag.
+
 ### Automatic install (Windows)
 
 Run `setup.cmd` (double-click), or press F5 in VS Code (it runs `scripts/setup.js` first). Everything runs unattended, using `winget` for Node.js and the JDK:
