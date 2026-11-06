@@ -58,6 +58,7 @@ jobs:
   android:
     needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -74,6 +75,14 @@ jobs:
       - run: npm ci
       - name: Generate the Android project
         run: npx expo prebuild --platform android --no-install
+      # The defaults (4 CPU types, 2 GB for Gradle) made the build crawl for 30+ minutes on GitHub's runner.
+      # Real phones only need the two ARM types; x86 is for emulators.
+      - name: Speed up the build
+        working-directory: android
+        run: |
+          sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=armeabi-v7a,arm64-v8a/' gradle.properties
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g/' gradle.properties
+          grep -E '^(reactNativeArchitectures|org.gradle.jvmargs)=' gradle.properties
       - name: Build release APK
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
@@ -86,6 +95,7 @@ jobs:
   ios:
     needs: check
     runs-on: macos-15
+    timeout-minutes: 45
     env:
       EXPO_IOS_OTA: '1'
     steps:
