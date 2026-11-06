@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="How to play Zombie Tag: roles, abilities, modes, maps and the shop, plus downloads for Android, iPhone and computer.">
+<meta name="theme-color" content="#120a2b">
+<title>Zombie Tag</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Rubik+Wet+Paint&display=swap">
+<style>
+/* Layout: one column of "sticker" panels on a night-purple arena floor; download buttons at the top and a full download section at the bottom. */
+:root {
+  color-scheme: dark;
+  --bg: #1a0f3d;
+  --bg-alt: #120a2b;
+  --panel: #2a1a5e;
+  --panel-hi: #3a2480;
+  --border: #4b3399;
+  --ink: #0d0a1f;
+  --text: #ffffff;
+  --dim: #cbb8ff;
+  --muted: #9d8bd6;
+  --toxic: #c6ff3d;
+  --toxic-dark: #7bd11a;
+  --blood: #ff4fa3;
+  --gold: #ffd23f;
+  --blue: #3fa9ff;
+  --medal: #ff8a2b;
+  --silver: #cfc9bb;
+  --bronze: #d08c60;
+  --t-floor: #24261d; --t-wall: #4a4536; --t-crate: #85602f; --t-task: #2a6f97;
+  --t-sspawn: #1f4e79; --t-zspawn: #5a2420; --t-hazard: #c0392b; --t-finish: #ffc629;
+  --t-mud: #4f3d22; --t-check: #2f6b45;
+  --f-display: "Rubik Wet Paint", "Rubik", system-ui, sans-serif;
+  --f-body: "Rubik", "Segoe UI", system-ui, sans-serif;
+  --r-sm: 14px; --r-md: 20px; --r-lg: 26px;
+  --sticker: 0 4px 0 var(--ink);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+body {
+  background: var(--bg);
+  background-image: radial-gradient(circle at 1px 1px, rgba(203,184,255,.07) 1px, transparent 0);
+  background-size: 24px 24px;
+  color: var(--text);
+  font-family: var(--f-body);
+  font-size: 16.5px;
+  line-height: 1.6;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg-alt); }
+a { color: var(--toxic); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.wrap { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Top bar */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg-alt); border-bottom: 2px solid var(--ink); }
+.bar .wrap { display: flex; align-items: center; gap: 14px; padding-block: 10px; }
+.brand { font-family: var(--f-display); color: var(--toxic); font-size: 22px; white-space: nowrap; text-decoration: none; }
+.nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { color: var(--dim); text-decoration: none; font-weight: 500; font-size: 14px; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.nav a:hover { background: var(--panel); color: var(--text); }
+.nav a.get { background: var(--toxic); color: var(--ink); font-weight: 800; }
+
+/* Hero */
+.hero { padding-block: 44px 28px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 32px; align-items: center; }
+.hero > * { min-width: 0; }
+.eyebrow { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(54px, 10vw, 96px); line-height: .95; margin: 8px 0 14px; color: var(--toxic); text-shadow: 0 5px 0 var(--ink); text-wrap: balance; }
+h1 span { color: var(--blood); display: block; }
+.lede { font-size: 20px; color: var(--dim); max-width: 36ch; margin: 0 0 22px; text-wrap: pretty; }
+.lede b { color: var(--text); }
+
+.dl-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.dl {
+  display: inline-flex; align-items: center; gap: 12px; text-decoration: none;
+  border: 2px solid var(--ink); border-radius: var(--r-md); box-shadow: var(--sticker);
+  padding: 12px 20px 12px 16px; color: var(--ink); font-weight: 800; font-size: 17px; line-height: 1.15;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.dl:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--ink); }
+.dl:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.dl small { display: block; font-weight: 500; font-size: 12.5px; opacity: .8; }
+.dl svg { width: 28px; height: 28px; flex: none; }
+.dl.android { background: var(--toxic); }
+.dl.ios { background: var(--text); }
+.dl.pc { background: var(--blue); }
+.ver { margin-top: 12px; font-size: 13.5px; color: var(--muted); }
+
+/* Arena illustration */
+.arena { background: var(--ink); border: 2px solid var(--ink); border-radius: var(--r-lg); box-shadow: 0 6px 0 #070512; padding: 10px; max-width: 100%; margin: 0; }
+.grid { display: grid; grid-template-columns: repeat(11, 1fr); gap: 2px; }
+.grid i { aspect-ratio: 1; border-radius: 3px; background: var(--t-floor); position: relative; display: block; }
+.grid i.w { background: var(--t-wall); }
+.grid i.c { background: var(--t-crate); }
+.grid i.t { background: var(--t-task); }
+.grid i.s { background: var(--t-sspawn); }
+.grid i.z { background: var(--t-zspawn); }
+.grid i.m { background: var(--t-mud); }
+.grid i::after { content: ""; position: absolute; inset: 18%; border-radius: 50%; border: 2px solid var(--ink); display: none; }
+.grid i.pS::after { display: block; background: var(--blue); animation: bob 2.4s ease-in-out infinite; }
+.grid i.pD::after { display: block; background: var(--text); box-shadow: inset 0 0 0 3px var(--blood); }
+.grid i.pZ::after { display: block; background: var(--toxic-dark); animation: bob 1.6s ease-in-out infinite; }
+.grid i.pF::after { display: block; background: var(--blue); opacity: .55; box-shadow: 0 0 0 3px rgba(63,169,255,.35); }
+@keyframes bob { 50% { transform: translateY(-14%); } }
+.arena-cap { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; color: var(--dim); }
+.arena-cap span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); display: inline-block; }
+
+/* Sections */
+section { padding-block: 34px; }
+h2 { font-family: var(--f-body); font-weight: 800; font-size: clamp(26px, 4.4vw, 34px); margin: 0 0 6px; line-height: 1.2; text-wrap: balance; }
+h2 em { font-style: normal; color: var(--toxic); }
+.sub { color: var(--dim); margin: 0 0 22px; max-width: 64ch; }
+h3 { font-size: 19px; margin: 0 0 6px; font-weight: 700; }
+p { margin: 0 0 10px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.cols > * { min-width: 0; }
+.panel { background: var(--panel); border: 2px solid var(--ink); border-radius: var(--r-lg); box-shadow: var(--sticker); padding: 20px 22px; }
+.panel p:last-child, .panel ul:last-child { margin-bottom: 0; }
+.panel ul, .panel ol { margin: 0; padding-inline-start: 20px; }
+.panel li { margin-bottom: 6px; }
+.panel li::marker { color: var(--toxic); }
+
+/* Roles */
+.role { padding-top: 22px; }
+.role .badge { display: inline-block; font-size: 12.5px; font-weight: 800; padding: 3px 12px; border-radius: 999px; border: 2px solid var(--ink); color: var(--ink); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.role.surv { border-top: 6px solid var(--blue); } .role.surv .badge { background: var(--blue); }
+.role.zomb { border-top: 6px solid var(--toxic-dark); } .role.zomb .badge { background: var(--toxic); }
+.role.doc { border-top: 6px solid var(--blood); } .role.doc .badge { background: var(--blood); }
+.role.zero { border-top: 6px solid var(--gold); } .role.zero .badge { background: var(--gold); }
+
+/* Round timeline */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 46px 1fr; gap: 14px; align-items: start; background: var(--panel); border: 2px solid var(--ink); border-radius: var(--r-md); padding: 14px 16px; }
+.steps li > div { min-width: 0; }
+.steps li::before { content: counter(s); width: 46px; height: 46px; border-radius: 50%; background: var(--toxic); color: var(--ink); border: 2px solid var(--ink); display: grid; place-items: center; font-weight: 800; font-size: 20px; box-shadow: 0 3px 0 var(--ink); }
+.steps h3 { margin-bottom: 2px; }
+.steps p { margin: 0; color: var(--dim); }
+
+/* Timer strip */
+.clock { margin-top: 18px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; background: var(--bg-alt); border: 2px dashed var(--border); border-radius: var(--r-md); padding: 16px 18px; }
+.clock > div { min-width: 0; }
+.clock .num { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 34px; color: var(--gold); line-height: 1; }
+.track { height: 14px; border-radius: 999px; background: var(--panel-hi); border: 2px solid var(--ink); overflow: hidden; display: flex; margin-top: 8px; }
+.track b { background: var(--gold); width: 50%; }
+.track i { background: repeating-linear-gradient(90deg, var(--blood) 0 10px, #d93d8a 10px 20px); width: 50%; }
+.clock small { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+
+/* Controls */
+.keys { display: grid; gap: 10px; }
+.key-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.key-row span { margin-inline-start: 6px; }
+kbd { font-family: var(--f-body); font-weight: 800; min-width: 38px; height: 38px; padding: 0 10px; display: inline-grid; place-items: center; background: var(--text); color: var(--ink); border: 2px solid var(--ink); border-radius: 10px; box-shadow: 0 3px 0 var(--ink); font-size: 15px; }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; border: 2px solid var(--ink); border-radius: var(--r-md); box-shadow: var(--sticker); background: var(--panel); }
+table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 15px; }
+th, td { text-align: left; padding: 10px 14px; vertical-align: top; }
+thead th { background: var(--bg-alt); color: var(--muted); font-size: 12.5px; letter-spacing: .06em; font-weight: 700; text-transform: uppercase; }
+tbody tr + tr td { border-top: 1px solid var(--border); }
+td.ic { font-size: 22px; width: 44px; text-align: center; }
+td.nm { font-weight: 700; white-space: nowrap; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--dim); }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; background: var(--panel-hi); color: var(--dim); white-space: nowrap; }
+.tag.free { background: var(--toxic); color: var(--ink); }
+.tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.tabs button { font: inherit; font-weight: 700; cursor: pointer; padding: 8px 18px; border-radius: 999px; border: 2px solid var(--ink); background: var(--panel); color: var(--dim); box-shadow: 0 3px 0 var(--ink); }
+.tabs button[aria-selected="true"] { background: var(--blue); color: var(--ink); }
+.tabs button.z[aria-selected="true"] { background: var(--toxic); }
+
+/* Modes */
+.mode h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cup { display: grid; gap: 8px; margin-top: 10px; }
+.cup div { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--bg-alt); border-radius: 12px; padding: 8px 12px; font-size: 14.5px; }
+.cup div b { color: var(--gold); }
+.medals { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.medals span { font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 999px; color: var(--ink); border: 2px solid var(--ink); }
+
+/* Maps */
+.maplist { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.maplist li { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 14px; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 14px; }
+.legend div { display: flex; align-items: center; gap: 10px; font-size: 14.5px; min-width: 0; }
+.sw { width: 26px; height: 26px; border-radius: 6px; border: 2px solid var(--ink); flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--text); }
+
+/* Economy */
+.cur { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.cur > div { background: var(--bg-alt); border: 2px solid var(--ink); border-radius: var(--r-md); padding: 14px 16px; min-width: 0; }
+.cur strong { display: block; font-size: 18px; }
+.cur .coin { color: var(--gold); } .cur .medal { color: var(--medal); } .cur .xp { color: var(--toxic); }
+.cur p { margin: 2px 0 0; color: var(--dim); font-size: 14.5px; }
+
+/* Download block */
+.get { background: var(--bg-alt); border-block: 2px solid var(--ink); }
+.get .cols .panel { display: flex; flex-direction: column; gap: 12px; }
+.get .cols .panel .dl { align-self: flex-start; }
+.get ol { color: var(--dim); }
+.get ol li b { color: var(--text); }
+.note { font-size: 14px; color: var(--muted); background: var(--panel-hi); border-radius: 12px; padding: 10px 14px; margin: 0; }
+
+/* FAQ */
+details { background: var(--panel); border: 2px solid var(--ink); border-radius: var(--r-md); padding: 0 18px; }
+details + details { margin-top: 10px; }
+summary { cursor: pointer; font-weight: 700; padding-block: 14px; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; color: var(--toxic); font-weight: 800; font-size: 20px; line-height: 1; }
+details[open] summary::after { content: "−"; }
+details p { color: var(--dim); padding-bottom: 14px; margin: 0; }
+
+footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-align: center; }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; padding-block: 28px 18px; gap: 24px; }
+  .lede { font-size: 18px; }
+  .hero .dl { flex: 1 1 200px; justify-content: center; }
+  .brand { font-size: 19px; }
+  .clock { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top">Zombie Tag</a>
+    <nav class="nav" aria-label="Site sections">
+      <a href="#play">How to play</a>
+      <a href="#roles">Roles</a>
+      <a href="#controls">Controls</a>
+      <a href="#tasks">Tasks</a>
+      <a href="#abilities">Abilities</a>
+      <a href="#modes">Modes</a>
+      <a href="#friends">Friends</a>
+      <a href="#maps">Maps</a>
+      <a href="#shop">Shop</a>
+      <a href="#faq">FAQ</a>
+      <a class="get" href="#get">Download</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <div>
+      <div class="eyebrow">Free multiplayer game · v1.2.0</div>
+      <h1>Zombie<span>Tag</span></h1>
+      <p class="lede"><b>Survivors vs. zombies.</b> Get caught and you join the infection. Run, finish tasks and heal your friends, or infect everyone before the clock runs out.</p>
+      <div class="dl-row">
+        <a class="dl android js-android" href="#get" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.6 9.48l1.84-3.18a.38.38 0 00-.66-.38l-1.86 3.23A11.4 11.4 0 0012 8.1c-1.77 0-3.43.39-4.92 1.05L5.22 5.92a.38.38 0 00-.66.38L6.4 9.48A10.8 10.8 0 001 18h22a10.8 10.8 0 00-5.4-8.52zM7 15.25a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5zm10 0a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/></svg>
+          <span>Android<small>Download APK</small></span>
+        </a>
+        <a class="dl ios js-ios" href="#get" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.37 12.77c-.02-2.3 1.88-3.4 1.96-3.46a4.22 4.22 0 00-3.32-1.8c-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79a4.45 4.45 0 00-3.76 2.28c-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74s1.78.74 2.99.72c1.24-.02 2.02-1.12 2.77-2.23a9.9 9.9 0 001.26-2.58 3.98 3.98 0 01-2.4-3.69zM14.1 6.02A4 4 0 0015.03 3a4.07 4.07 0 00-2.65 1.37 3.8 3.8 0 00-.95 2.9 3.36 3.36 0 002.67-1.25z"/></svg>
+          <span>iPhone<small>Download IPA</small></span>
+        </a>
+        <a class="dl pc js-web" href="#get" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 4h18a1 1 0 011 1v11a1 1 0 01-1 1h-7v2h3v2H7v-2h3v-2H3a1 1 0 01-1-1V5a1 1 0 011-1zm1 2v9h16V6H4z"/></svg>
+          <span>Computer<small>Play in your browser</small></span>
+        </a>
+      </div>
+      <p class="ver">Free · up to 10 players per room · play against bots with no internet · 16 languages</p>
+    </div>
+
+    <figure class="arena" aria-label="Drawing of an arena from the game: blue survivors, a doctor, green zombies and task stations">
+      <div class="grid">
+        <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
+        <i class="w"></i><i class="s pS"></i><i></i><i></i><i class="w"></i><i class="t"></i><i></i><i></i><i class="c"></i><i class="z"></i><i class="w"></i>
+        <i class="w"></i><i class="s"></i><i class="pD"></i><i></i><i class="w"></i><i></i><i></i><i class="pZ"></i><i></i><i class="z"></i><i class="w"></i>
+        <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i><i class="w"></i><i></i><i></i><i class="w"></i>
+        <i class="w"></i><i class="c"></i><i class="c"></i><i></i><i class="m"></i><i class="m"></i><i></i><i class="pF"></i><i></i><i class="t"></i><i class="w"></i>
+        <i class="w"></i><i class="t"></i><i></i><i></i><i class="m"></i><i class="pZ"></i><i></i><i></i><i class="pS"></i><i></i><i class="w"></i>
+        <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
+      </div>
+      <figcaption class="arena-cap">
+        <span><i class="dot" style="background:var(--blue)"></i>Survivor</span>
+        <span><i class="dot" style="background:var(--text);box-shadow:inset 0 0 0 2px var(--blood)"></i>Doctor</span>
+        <span><i class="dot" style="background:var(--toxic-dark)"></i>Zombie</span>
+        <span><i class="dot" style="background:var(--blue);opacity:.55"></i>Frozen after a bite</span>
+        <span><i class="dot" style="background:var(--t-task);border-radius:3px"></i>Task station</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <!-- How a round works -->
+  <section id="play">
+    <div class="wrap">
+      <h2>How to <em>play</em></h2>
+      <p class="sub">A classic match lasts 10 minutes. Most players start as survivors and a few start as zombies (about 1 zombie for every 5 players). Every survivor who gets caught becomes a zombie, so the horde keeps growing.</p>
+      <ol class="steps">
+        <li><div><h3>Find out your role</h3><p>Each player learns if they are a survivor, a doctor or a zombie. The first zombie is <b>Patient Zero</b> and gets a short story about how it all started.</p></div></li>
+        <li><div><h3>Survivors run</h3><p>"Run! Zombies are released in…" Survivors get a few seconds (5 by default) to spread out before the zombies are let loose.</p></div></li>
+        <li><div><h3>Zombies hunt</h3><p>A zombie that touches a survivor bites them. The survivor is <b>frozen for 10 seconds</b>. If a doctor reaches them and touches them in time, they are cured. If not, they turn into a zombie.</p></div></li>
+        <li><div><h3>Survivors work</h3><p>Every map has task stations. Each task a survivor finishes takes 15 seconds off everyone's timer and earns them 15 coins.</p></div></li>
+        <li><div><h3>Who wins?</h3><p><b>Survivors</b> win if at least one of them is still human when the timer hits zero. <b>Zombies</b> win if they infect everyone before that.</p></div></li>
+      </ol>
+      <div class="clock" role="img" aria-label="The timer starts at 10 minutes and tasks can cut it by up to half, down to 5 minutes">
+        <div class="num">10:00</div>
+        <div>
+          <b>Tasks make the round shorter</b>
+          <div class="track"><b></b><i></i></div>
+          <small><span>Each task: −0:15</span><span>Tasks can cut up to half the time (5:00 minimum)</span></small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roles -->
+  <section id="roles">
+    <div class="wrap">
+      <h2>Four <em>roles</em></h2>
+      <p class="sub">Every match has two teams. The survivor team also has doctors (2 by default), and the zombie team starts with Patient Zero.</p>
+      <div class="cols">
+        <div class="panel role surv"><span class="badge">Survivor</span><h3>Last until the end</h3><ul><li>Run from zombies and hide behind walls and crates.</li><li>Do tasks to make the timer shorter.</li><li>You have <b>one stone</b> to throw. Zombies hear a noise where it lands and go there.</li><li>Zombies see blue sound waves from survivors near them, so sometimes it is smarter to stand still.</li></ul></div>
+        <div class="panel role doc"><span class="badge">Doctor</span><h3>Save bitten players</h3><ul><li>A doctor is a survivor with the power to heal.</li><li>When someone is bitten, follow the <b>beeping and the blue arrows</b> and touch them before the 10 seconds run out.</li><li>Every cure gives 25 coins and 40 XP.</li><li>If another doctor cures you, you lose your healing power.</li></ul></div>
+        <div class="panel role zomb"><span class="badge">Zombie</span><h3>Infect everyone</h3><ul><li>Touch survivors to bite them.</li><li>Hear footsteps and stones, and see sound waves from nearby survivors.</li><li>Zombies are a bit slower than survivors, so use your abilities and work together.</li><li>A survivor who turns keeps playing as a zombie.</li></ul></div>
+        <div class="panel role zero"><span class="badge">Patient Zero</span><h3>The first zombie</h3><p>"It's you. Go infect everyone!" Patient Zero is picked at random at the start. Each match opens with a different short story: a test tube broke in Lab 3, a glowing rock fell in the parking lot, a can of beans from 1987 in the cafeteria, and more.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Controls -->
+  <section id="controls">
+    <div class="wrap">
+      <h2><em>Controls</em></h2>
+      <p class="sub">On a phone you can play in portrait or landscape. On a computer you play in the browser with the keyboard.</p>
+      <div class="cols">
+        <div class="panel">
+          <h3>Phone</h3>
+          <ul>
+            <li><b>Joystick</b> on the side of the screen: drag your thumb to move.</li>
+            <li><b>Ability buttons</b>: up to 3 abilities you picked. A button that is charging shows how long is left.</li>
+            <li><b>Task button</b> shows up when you stand next to a task station.</li>
+            <li><b>Stone button</b> throws your stone (survivors only, once per match).</li>
+            <li>The phone vibrates when something big happens, like a bite or a cure.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Computer</h3>
+          <div class="keys">
+            <div class="key-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Move</span></div>
+            <div class="key-row"><kbd>E</kbd><span>Start a task</span></div>
+            <div class="key-row"><kbd>Q</kbd><span>Throw the stone</span></div>
+            <div class="key-row"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span>Use an ability</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tasks -->
+  <section id="tasks">
+    <div class="wrap">
+      <h2>Five <em>tasks</em></h2>
+      <p class="sub">Each task station (the blue tile on the map) opens a short mini-game. You can't move while doing a task, so check that no zombie is close first.</p>
+      <div class="cols">
+        <div class="panel"><h3>Connect Wires</h3><p>Join each colored wire to the plug of the same color.</p></div>
+        <div class="panel"><h3>Fix the Machine</h3><p>Hit the gears again and again until the machine runs.</p></div>
+        <div class="panel"><h3>Download Data</h3><p>Start the download and stay at the station until it finishes.</p></div>
+        <div class="panel"><h3>Empty the Trash</h3><p>Pull the lever until the bin is empty.</p></div>
+        <div class="panel"><h3>Check Temperature</h3><p>Set the temperature to exactly the target number.</p></div>
+        <div class="panel" style="background:var(--bg-alt)"><h3>Tip</h3><p>The Toolbox upgrade and the Engineer skin power make tasks faster. A task is worth 15 coins and makes the round shorter for every survivor.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Abilities -->
+  <section id="abilities">
+    <div class="wrap">
+      <h2>Special <em>abilities</em></h2>
+      <p class="sub">Take up to 3 abilities into a match. After each use, an ability needs time to recharge. Abilities marked "Free" are open from the start; you buy the rest in the shop once you reach the right level.</p>
+      <div class="tabs" role="tablist" aria-label="Ability type">
+        <button type="button" role="tab" id="tab-s" aria-selected="true" aria-controls="ab-s">Survivors · 10</button>
+        <button type="button" role="tab" id="tab-z" class="z" aria-selected="false" aria-controls="ab-z">Zombies · 9</button>
+      </div>
+      <div class="tbl-wrap" id="ab-s" role="tabpanel" aria-labelledby="tab-s">
+        <table>
+          <thead><tr><th></th><th>Ability</th><th>What it does</th><th>Recharge</th><th>How to get it</th></tr></thead>
+          <tbody>
+            <tr><td class="ic">💨</td><td class="nm">Sprint</td><td>Run 1.6× faster for 3 seconds</td><td class="n">15 s</td><td><span class="tag free">Free</span></td></tr>
+            <tr><td class="ic">📡</td><td class="nm">Scan</td><td>Shows every zombie on the map for 5 seconds</td><td class="n">20 s</td><td><span class="tag free">Free</span></td></tr>
+            <tr><td class="ic">💊</td><td class="nm">Medic</td><td>Shields you and nearby survivors for 4 seconds</td><td class="n">25 s</td><td><span class="tag free">Free</span></td></tr>
+            <tr><td class="ic">🫧</td><td class="nm">Bubble</td><td>Shields only you for 2.5 seconds, recharges fast</td><td class="n">16 s</td><td><span class="tag">800 · level 3</span></td></tr>
+            <tr><td class="ic">🫥</td><td class="nm">Vanish</td><td>Zombies can't see you for 4 seconds (except up close)</td><td class="n">30 s</td><td><span class="tag">1,000 · level 4</span></td></tr>
+            <tr><td class="ic">💉</td><td class="nm">Adrenaline</td><td>A long sprint: 1.6× for 5 seconds</td><td class="n">38 s</td><td><span class="tag">1,100 · level 5</span></td></tr>
+            <tr><td class="ic">🌫️</td><td class="nm">Smoke Bomb</td><td>Blinds nearby zombies for 4 seconds</td><td class="n">28 s</td><td><span class="tag">1,200 · level 6</span></td></tr>
+            <tr><td class="ic">💥</td><td class="nm">Flashbang</td><td>Blinds zombies right next to you for 6 seconds</td><td class="n">34 s</td><td><span class="tag">1,300 · level 7</span></td></tr>
+            <tr><td class="ic">🌀</td><td class="nm">Teleport</td><td>Moves you to the spot farthest from the zombies</td><td class="n">40 s</td><td><span class="tag">1,500 · level 8</span></td></tr>
+            <tr><td class="ic">🧥</td><td class="nm">Shadow Cloak</td><td>Zombies can't see you for 7 seconds (except up close)</td><td class="n">50 s</td><td><span class="tag">1,800 · level 10</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl-wrap" id="ab-z" role="tabpanel" aria-labelledby="tab-z" hidden>
+        <table>
+          <thead><tr><th></th><th>Ability</th><th>What it does</th><th>Recharge</th><th>How to get it</th></tr></thead>
+          <tbody>
+            <tr><td class="ic">⚡</td><td class="nm">Dash</td><td>1.7× speed burst for 1 second</td><td class="n">12 s</td><td><span class="tag free">Free</span></td></tr>
+            <tr><td class="ic">👁️</td><td class="nm">Zombie Vision</td><td>See every survivor through walls for 5 seconds</td><td class="n">22 s</td><td><span class="tag free">Free</span></td></tr>
+            <tr><td class="ic">👃</td><td class="nm">Sniff</td><td>See survivors through walls for 2 seconds, recharges fast</td><td class="n">11 s</td><td><span class="tag">800 · level 3</span></td></tr>
+            <tr><td class="ic">🐾</td><td class="nm">Lunge</td><td>Jump 2 tiles forward, recharges fast</td><td class="n">8 s</td><td><span class="tag">900 · level 3</span></td></tr>
+            <tr><td class="ic">📢</td><td class="nm">Roar</td><td>Slows nearby survivors by 50% for 2.5 seconds</td><td class="n">28 s</td><td><span class="tag">1,000 · level 4</span></td></tr>
+            <tr><td class="ic">😡</td><td class="nm">Rage</td><td>1.7× speed burst for 2 seconds</td><td class="n">30 s</td><td><span class="tag">1,100 · level 5</span></td></tr>
+            <tr><td class="ic">🩸</td><td class="nm">Frenzy</td><td>1.35× speed for 5 seconds</td><td class="n">24 s</td><td><span class="tag">1,200 · level 6</span></td></tr>
+            <tr><td class="ic">🐺</td><td class="nm">Howl</td><td>Slows every survivor in a huge radius for 1.5 seconds</td><td class="n">32 s</td><td><span class="tag">1,300 · level 7</span></td></tr>
+            <tr><td class="ic">🦘</td><td class="nm">Leap</td><td>Instant jump 3 tiles forward</td><td class="n">14 s</td><td><span class="tag">1,500 · level 8</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modes -->
+  <section id="modes">
+    <div class="wrap">
+      <h2>Four <em>game modes</em></h2>
+      <p class="sub">Your progress (XP, coins and daily missions) counts in every mode.</p>
+      <div class="cols">
+        <div class="panel mode"><h3>Classic <span class="tag">10 minutes</span></h3><p>The main mode. Survivors vs. zombies, up to 10 players per room, with bots filling empty spots. Everything in "How to play" above.</p></div>
+        <div class="panel mode"><h3>Tournaments <span class="tag">Knockout</span></h3>
+          <p>8 players, half zombies and half survivors. You move on only if <b>the team you started on</b> wins: 8, then 4, then a final of 2. Each round lasts 3 minutes, survivors are 10% faster and zombies 10% slower. Official maps only.</p>
+          <div class="cup">
+            <div><span>Panic Run · every 3 hours, for 1 hour</span><b>1,200 coins</b></div>
+            <div><span>Night Outbreak · daily 20:00–22:00</span><b>2,500 + skin</b></div>
+            <div><span>Apocalypse Cup · Fri 18:00 to Sat 22:00</span><b>6,000 + skin</b></div>
+          </div>
+          <p style="margin-top:10px;color:var(--dim);font-size:14.5px">The amounts are the champion's prize. Second place, semi-finalists and everyone who joins also get prizes. Night Outbreak and Apocalypse Cup champions win the exclusive "Tournament Champion" skin.</p>
+        </div>
+        <div class="panel mode"><h3>Obstacle Course <span class="tag">Against the clock</span></h3><p>Run alone to the finish line. Saws and traps send you back to your last checkpoint, and mud slows you down. The faster your time, the better your medal:</p>
+          <div class="medals"><span style="background:var(--gold)">Gold</span><span style="background:var(--silver)">Silver</span><span style="background:var(--bronze)">Bronze</span></div>
+        </div>
+        <div class="panel mode"><h3>Training <span class="tag">5 minutes</span></h3><p>Practice against bots with no pressure, and abilities recharge 2× faster. Pick a level:</p>
+          <ul><li><b>Dummies</b>: they stand still. Great for practice.</li><li><b>Easy</b>, <b>Normal</b> and <b>Hard</b>: bots that run, search and use abilities.</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Friends -->
+  <section id="friends">
+    <div class="wrap">
+      <h2>Play <em>with friends</em></h2>
+      <p class="sub">Sign up with an account to play online. With no internet, the game switches to offline mode and you play against bots.</p>
+      <div class="cols">
+        <div class="panel"><h3>Open a room</h3><ol><li>Tap "Create room".</li><li>Send your friends the <b>room code</b> (5 letters).</li><li>Friends tap "Join with code" and type it in.</li><li>The host starts the match. Bots fill empty spots, up to 10 players.</li></ol><p style="margin-top:10px;color:var(--dim)">You can also join open rooms from the list.</p></div>
+        <div class="panel"><h3>House rules</h3><p>The host can change these in the lobby:</p><ul><li>How many zombies start the match</li><li>How many seconds before zombies are released</li><li>Zombie speed</li><li>How many doctors there are</li><li>Fast-charging abilities</li><li>Bot level</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Maps -->
+  <section id="maps">
+    <div class="wrap">
+      <h2>28 <em>maps</em>, plus the ones you build</h2>
+      <p class="sub">23 arenas for classic matches and 5 obstacle courses. In the <b>Map Creator</b> you can draw your own map, save it and share it with a code.</p>
+      <div class="panel">
+        <h3>Arenas</h3>
+        <ul class="maplist">
+          <li>Abandoned Hospital</li><li>Dead Mall</li><li>Army Camp</li><li>Secret Lab</li><li>Max Security Prison</li><li>Ghost Town</li><li>Giant Bunker</li><li>Neon Arcade</li><li>Lake Cabins</li><li>Haunted School</li><li>Creepy Mansion</li><li>Grand Hotel</li><li>Infected Farm</li><li>Old Coal Mine</li><li>Swamp Village</li><li>Office Tower</li><li>Subway Tunnels</li><li>Cruise Ship</li><li>Empty Stadium</li><li>Toxic Factory</li><li>The Sewers</li><li>Abandoned Airport</li><li>University Campus</li>
+        </ul>
+        <h3 style="margin-top:18px">Obstacle courses</h3>
+        <ul class="maplist">
+          <li>Rookie Course</li><li>Saw Valley</li><li>The Snake</li><li>Mud Marsh</li><li>Saw Gauntlet</li>
+        </ul>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <h3>What's on a map</h3>
+        <p style="color:var(--dim)">A map you build needs at least a survivor spawn (S), a zombie spawn (Z) and 3 task stations (T). An obstacle course also needs a finish line (F).</p>
+        <div class="legend">
+          <div><span class="sw" style="background:var(--t-wall)"></span>Wall</div>
+          <div><span class="sw" style="background:var(--t-crate)"></span>Crate (hide behind it)</div>
+          <div><span class="sw" style="background:var(--t-task)">T</span>Task station</div>
+          <div><span class="sw" style="background:var(--t-sspawn)">S</span>Survivor spawn</div>
+          <div><span class="sw" style="background:var(--t-zspawn)">Z</span>Zombie spawn</div>
+          <div><span class="sw" style="background:var(--t-mud)"></span>Mud (almost half speed)</div>
+          <div><span class="sw" style="background:var(--t-hazard)"></span>Trap</div>
+          <div><span class="sw" style="background:var(--t-floor);color:var(--silver)">✷</span>Moving saw</div>
+          <div><span class="sw" style="background:var(--t-check)"></span>Checkpoint</div>
+          <div><span class="sw" style="background:var(--t-finish);color:var(--ink)">F</span>Finish line</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Progress & shop -->
+  <section id="shop">
+    <div class="wrap">
+      <h2>Progress <em>and shop</em></h2>
+      <p class="sub">Every match gives XP and coins. Level up (up to level 50), and higher levels unlock new items in the shop.</p>
+      <div class="cur">
+        <div><strong class="xp">XP and levels</strong><p>For playing, winning, tasks, infections and cures.</p></div>
+        <div><strong class="coin">Coins</strong><p>You start with 300. Earn more in matches, daily missions and tournaments.</p></div>
+        <div><strong class="medal">Medals</strong><p>From tournaments and obstacle courses. They buy special items, and each medal can be swapped for 50 coins.</p></div>
+      </div>
+      <div class="cols">
+        <div class="panel"><h3>Daily and weekly missions</h3><p>New challenges every day and every week, like "Play 3 matches", "Infect 3 survivors", "Finish 30 tasks" or "Run an obstacle course". Each one pays coins and XP.</p></div>
+        <div class="panel"><h3>Skins with powers</h3><p>Some skins give a special power: <b>Tank</b> blocks the first infection, <b>Ghost</b> is harder to spot, <b>Dr. Bandage</b> heals faster, <b>Ninja</b> is quick, <b>Alpha Zombie</b> has a faster Dash, and more.</p></div>
+        <div class="panel"><h3>Skin Designer</h3><p>Design your own character: colors, pattern and eyes. Skins you design are just for looks, with no special power, so the game stays fair.</p></div>
+        <div class="panel"><h3>Outfits</h3><p>More than 50 head items: cowboy hat, crown, alien, T-rex, diamond and more. Some can only be bought with medals.</p></div>
+        <div class="panel"><h3>Upgrades</h3><p>11 upgrades, each up to level 5: Running Shoes, Fast Charger, Strong Flashlight, Toolbox, Long Arms, Quiet Steps, First Aid Kit, and for zombies Rotten Legs, Dead Eyes, Keen Ears and Blood Pump.</p></div>
+        <div class="panel"><h3>Zombie filters</h3><p>Color the screen while you are a zombie, and each filter gives a small bonus: Night Vision, Blood Moon (+5% speed), Thermal, Toxic, Frost, X-Ray, Predator and more.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section id="get" class="get">
+    <div class="wrap">
+      <h2><em>Download</em> and play</h2>
+      <p class="sub">The game is not in the app stores, so on phones you install it straight from the file. It takes a minute. On a computer there is nothing to install.</p>
+      <div class="cols">
+        <div class="panel">
+          <h3>Android</h3>
+          <a class="dl android js-android" href="#get" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.6 9.48l1.84-3.18a.38.38 0 00-.66-.38l-1.86 3.23A11.4 11.4 0 0012 8.1c-1.77 0-3.43.39-4.92 1.05L5.22 5.92a.38.38 0 00-.66.38L6.4 9.48A10.8 10.8 0 001 18h22a10.8 10.8 0 00-5.4-8.52zM7 15.25a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5zm10 0a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/></svg>
+            <span>Download APK<small>ZombieTag.apk</small></span>
+          </a>
+          <ol>
+            <li>Open this page <b>on your phone</b> and download the file.</li>
+            <li>Open the file from the notification or your Downloads folder.</li>
+            <li>If the phone asks, allow <b>"Install unknown apps"</b> for your browser.</li>
+            <li>Tap "Install" and open the game.</li>
+          </ol>
+          <p class="note">When a new version comes out, the game tells you and offers to download it.</p>
+        </div>
+        <div class="panel">
+          <h3>iPhone and iPad</h3>
+          <a class="dl ios js-ios" href="#get" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.37 12.77c-.02-2.3 1.88-3.4 1.96-3.46a4.22 4.22 0 00-3.32-1.8c-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79a4.45 4.45 0 00-3.76 2.28c-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74s1.78.74 2.99.72c1.24-.02 2.02-1.12 2.77-2.23a9.9 9.9 0 001.26-2.58 3.98 3.98 0 01-2.4-3.69zM14.1 6.02A4 4 0 0015.03 3a4.07 4.07 0 00-2.65 1.37 3.8 3.8 0 00-.95 2.9 3.36 3.36 0 002.67-1.25z"/></svg>
+            <span>Download IPA<small>ZombieTag.ipa</small></span>
+          </a>
+          <ol>
+            <li>Download the file <b>to your computer</b>.</li>
+            <li>Install <b>Sideloadly</b> or <b>AltStore</b> on the computer (free).</li>
+            <li>Plug in the iPhone with a cable, drag the file into the app and sign in with your Apple ID.</li>
+            <li>On the iPhone: Settings → General → VPN &amp; Device Management → trust the developer.</li>
+          </ol>
+          <p class="note">With a free Apple ID the app works for 7 days. After that, refresh it with the same program.</p>
+        </div>
+        <div class="panel">
+          <h3>Computer</h3>
+          <a class="dl pc js-web" href="#get" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 4h18a1 1 0 011 1v11a1 1 0 01-1 1h-7v2h3v2H7v-2h3v-2H3a1 1 0 01-1-1V5a1 1 0 011-1zm1 2v9h16V6H4z"/></svg>
+            <span>Play now<small>Opens in your browser</small></span>
+          </a>
+          <ol>
+            <li>Click <b>Play now</b>. The game opens in a new tab.</li>
+            <li>Works on Windows, Mac and Chromebook, in Chrome, Edge, Firefox or Safari.</li>
+            <li>Move with <b>WASD</b>, tasks with <b>E</b>, stone with <b>Q</b>, abilities with <b>1–3</b>.</li>
+          </ol>
+          <p class="note">Nothing to install, and you always get the newest version. Your account works on every device.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="wrap">
+      <h2>Common <em>questions</em></h2>
+      <details><summary>Does the game cost money?</summary><p>No. The game is free and has no real-money purchases. Everything in the shop is bought with coins and medals you earn by playing.</p></details>
+      <details><summary>Can I play without internet?</summary><p>Yes. With no connection the game switches to offline mode and you play against bots. Playing with friends, tournaments and sharing maps need internet.</p></details>
+      <details><summary>How many people can play together?</summary><p>Up to 10 in a normal room, and 8 in a tournament. If there aren't enough friends, bots fill the empty spots.</p></details>
+      <details><summary>Can phone and computer players play together?</summary><p>Yes. Everyone joins the same room with the room code, no matter which device they use.</p></details>
+      <details><summary>I got bitten. Now what?</summary><p>You are frozen for 10 seconds. If a doctor touches you in that time, you are human again. If not, you turn into a zombie and keep playing on the other team.</p></details>
+      <details><summary>How do I know who the doctor is?</summary><p>The role screen at the start tells you if you are a doctor ("You're a doctor!"). Doctors hear beeping and see blue arrows that lead to a bitten survivor.</p></details>
+      <details><summary>Which languages does the game have?</summary><p>16: English, Hebrew, Spanish, French, German, Portuguese, Russian, Arabic, Italian, Turkish, Chinese, Japanese, Korean, Hindi, Polish and Dutch. Change it in Settings.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Zombie Tag · version 1.2.0 · © 2026 tamat2013</div>
+</footer>
+
+<script>
+  // Download and play addresses: change these lines if the files or the web game move.
+  var ANDROID_URL = "https://github.com/tamat2013/zombie-tag/releases/latest/download/ZombieTag.apk";
+  var IOS_URL = "https://github.com/tamat2013/zombie-tag/releases/latest/download/ZombieTag.ipa";
+  var WEB_URL = "https://tamat2013.github.io/zombie-tag/";
+  document.querySelectorAll(".js-android").forEach(function (a) { a.href = ANDROID_URL; });
+  document.querySelectorAll(".js-ios").forEach(function (a) { a.href = IOS_URL; });
+  document.querySelectorAll(".js-web").forEach(function (a) { a.href = WEB_URL; });
+
+  // Survivor / zombie ability tabs
+  var tabs = [["tab-s", "ab-s"], ["tab-z", "ab-z"]];
+  tabs.forEach(function (pair) {
+    document.getElementById(pair[0]).addEventListener("click", function () {
+      tabs.forEach(function (p) {
+        var on = p[0] === pair[0];
+        document.getElementById(p[0]).setAttribute("aria-selected", on ? "true" : "false");
+        document.getElementById(p[1]).hidden = !on;
+      });
+    });
+  });
+</script>
+</body>
+</html>
