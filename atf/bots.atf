@@ -1,0 +1,313 @@
+// bots.atf - the brains of the computer players: tasks, fleeing, chasing, hunting and stuck handling.
+
+import "engine"
+
+fn bot_task_secs(kind: int) -> float {
+    return match kind { 0 => 4.0, 1 => 5.0, 2 => 6.0, 3 => 3.5, _ => 4.0 }
+}
+
+fn steer_dir(p: P, tx: float, ty: float, speed: float) {
+    let dx = tx - p.x
+    let dy = ty - p.y
+    let d = sqrt(dx * dx + dy * dy)
+    if d < 1.0 {
+        p.ix = 0.0
+        p.iy = 0.0
+        return
+    }
+    p.ix = dx / d * speed
+    p.iy = dy / d * speed
+}
+
+fn follow_path(g: Game, p: P, speed: float) -> bool {
+    while p.path.len() > 0 and dist(p.x, p.y, p.path[0].x, p.path[0].y) < 10.0 { p.path.remove(0) }
+    if p.path.len() == 0 { return false }
+    steer_dir(p, p.path[0].x, p.path[0].y, speed)
+    return true
+}
+
+fn path_to(g: Game, p: P, wx: float, wy: float) {
+    p.path = find_path(g.map, tile_to(p.x), tile_to(p.y), tile_to(wx), tile_to(wy))
+    p.goal = V{ x: wx, y: wy }
+    p.has_goal = true
+}
+
+fn clear_ahead(g: Game, p: P, ang: float, d: float) -> bool {
+    var k = 12.0
+    while k <= d {
+        let t = map_tile(g.map, tile_to(p.x + cos(ang) * k), tile_to(p.y + sin(ang) * k))
+        if tile_solid(t) { return false }
+        k += 12.0
+    }
+    return true
+}
+
+// run directly away from a threat, choosing the free direction that gains the most distance
+fn flee_from(g: Game, p: P, ex: float, ey: float, speed: float) {
+    var best = 0.0
+    var best_score = -1.0e18
+    for i in 0..16 {
+        let a = float(i) * PI / 8.0
+        if not clear_ahead(g, p, a, 56.0) { continue }
+        let nx = p.x + cos(a) * 90.0
+        let ny = p.y + sin(a) * 90.0
+        var sc = dist(nx, ny, ex, ey)
+        sc -= abs(angdiff(a, p.facing)) * 6.0
+        if map_tile(g.map, tile_to(nx), tile_to(ny)) == T_MUD { sc -= 40.0 }
+        if sc > best_score {
+            best_score = sc
+            best = a
+        }
+    }
+    p.ix = cos(best) * speed
+    p.iy = sin(best) * speed
+}
+
+fn angdiff(a: float, b: float) -> float {
+    var d = a - b
+    while d > PI { d -= 2.0 * PI }
+    while d < -PI { d += 2.0 * PI }
+    return d
+}
+
+fn random_walk_point(g: Game) -> V {
+    return g.walk[rand_int(0, g.walk.len() - 1)]
+}
+
+fn check_stuck(g: Game, p: P) {
+    if g.now - p.stuck_at < 1.0 { return }
+    if dist(p.x, p.y, p.stuck_x, p.stuck_y) < 6.0 and (p.ix != 0.0 or p.iy != 0.0) and not p.in_task {
+        p.path = []
+        p.has_goal = false
+        p.repath_at = 0.0
+        if p.mode == B_TASK { p.station = -1 }
+        p.mode = B_WANDER
+        let w = random_walk_point(g)
+        path_to(g, p, w.x, w.y)
+    }
+    p.stuck_x = p.x
+    p.stuck_y = p.y
+    p.stuck_at = g.now
+}
+
+fn use_ability(g: Game, p: P) {
+    if rand_float() > level_ability(p.level) * 0.1 + 0.02 and p.level < 3 { return }
+    let ab = suggest(g, p)
+    if ab >= 0 { activate(g, p, ab) }
+}
+
+fn nearest_enemy(g: Game, p: P) -> P? {
+    var best: P? = nil
+    var bd = 1.0e18
+    for o in g.players {
+        if o.role == p.role or o.id == p.id { continue }
+        if o.role == ZOMB and is_frozen(g, o) { continue }
+        if o.role == SURV and fx_on(g, o, E_SHIELD) and p.role == ZOMB and false { continue }
+        if not can_see(g, p, o) { continue }
+        let d = dist(o.x, o.y, p.x, p.y)
+        if d < bd {
+            bd = d
+            best = o
+        }
+    }
+    return best
+}
+
+fn survivor_brain(g: Game, p: P) {
+    let sp = level_speed(p.level)
+    let threat = nearest_enemy(g, p)
+    if threat != nil {
+        let z = threat!
+        let d = dist(z.x, z.y, p.x, p.y)
+        if d < level_panic(p.level) {
+            if p.in_task {
+                p.in_task = false
+                p.mode = B_IDLE
+            }
+            p.mode = B_FLEE
+            p.seen_x = z.x
+            p.seen_y = z.y
+            p.seen_at = g.now
+            flee_from(g, p, z.x, z.y, sp)
+            use_ability(g, p)
+            return
+        }
+    }
+    if p.mode == B_FLEE and g.now - p.seen_at < 1.0 {
+        flee_from(g, p, p.seen_x, p.seen_y, sp)
+        return
+    }
+    if p.mode == B_FLEE { p.mode = B_IDLE }
+    if p.in_task {
+        p.ix = 0.0
+        p.iy = 0.0
+        if g.now >= p.work_until {
+            complete_task(g, p, p.station)
+            p.station = -1
+            p.mode = B_IDLE
+        }
+        return
+    }
+    if p.level >= 2 and g.now >= p.repath_at + 4.0 { use_ability(g, p) }
+    // doctors head for frozen friends
+    if p.doctor {
+        for z in g.players {
+            if is_frozen(g, z) and z.start_role == SURV {
+                if p.repath_at <= g.now {
+                    path_to(g, p, z.x, z.y)
+                    p.repath_at = g.now + 1.0
+                }
+                if follow_path(g, p, sp) { return }
+            }
+        }
+    }
+    // pick a task
+    if p.station < 0 {
+        var best = -1
+        var bd = 1.0e18
+        for s in g.stations {
+            if p.tasks.contains(s.idx) { continue }
+            let d = dist(s.x, s.y, p.x, p.y) + float(rand_int(0, 250))
+            if d < bd {
+                bd = d
+                best = s.idx
+            }
+        }
+        p.station = best
+        p.has_goal = false
+        p.mode = B_TASK
+    }
+    if p.station >= 0 {
+        let s = g.stations[p.station]
+        if dist(s.x, s.y, p.x, p.y) <= TASK_RANGE - 8.0 {
+            p.in_task = true
+            p.mode = B_WORK
+            p.work_until = g.now + bot_task_secs(s.kind) / p.m_task / max(0.3, sp)
+            p.ix = 0.0
+            p.iy = 0.0
+            return
+        }
+        if not p.has_goal or p.path.len() == 0 or g.now >= p.repath_at {
+            path_to(g, p, s.x, s.y)
+            p.repath_at = g.now + 3.0
+        }
+        if follow_path(g, p, sp) { return }
+        // no route: give this station up for now
+        p.station = -1
+        p.has_goal = false
+    }
+    // nothing to do: wander
+    if not p.has_goal or p.path.len() == 0 {
+        let w = random_walk_point(g)
+        path_to(g, p, w.x, w.y)
+    }
+    if not follow_path(g, p, sp) { p.has_goal = false }
+}
+
+fn zombie_brain(g: Game, p: P) {
+    let sp = level_speed(p.level)
+    if p.start_role == ZOMB and not zombies_released(g) {
+        p.ix = 0.0
+        p.iy = 0.0
+        return
+    }
+    if is_frozen(g, p) {
+        p.ix = 0.0
+        p.iy = 0.0
+        return
+    }
+    let prey = nearest_enemy(g, p)
+    if prey != nil {
+        let s = prey!
+        p.mode = B_CHASE
+        p.seen_x = s.x
+        p.seen_y = s.y
+        p.seen_at = g.now
+        p.has_goal = false
+        if has_los(g.map, p.x, p.y, s.x, s.y) and dist(p.x, p.y, s.x, s.y) < 200.0 {
+            steer_dir(p, s.x, s.y, sp)
+        } else {
+            if p.repath_at <= g.now or p.path.len() == 0 {
+                path_to(g, p, s.x, s.y)
+                p.repath_at = g.now + level_think(p.level)
+            }
+            if not follow_path(g, p, sp) { steer_dir(p, s.x, s.y, sp) }
+        }
+        use_ability(g, p)
+        return
+    }
+    // go to where it was last seen
+    if p.mode == B_CHASE and g.now - p.seen_at < 4.0 {
+        if p.repath_at <= g.now or p.path.len() == 0 {
+            path_to(g, p, p.seen_x, p.seen_y)
+            p.repath_at = g.now + 1.0
+        }
+        if follow_path(g, p, sp) { return }
+    }
+    // go to a stone noise
+    for n in active_noises(g) {
+        let (nx, ny, owner, at) = n
+        if owner == p.id or dist(nx, ny, p.x, p.y) > NOISE_HEAR { continue }
+        if p.heard != at {
+            p.heard = at
+            path_to(g, p, nx, ny)
+            p.mode = B_HUNT
+        }
+    }
+    if p.mode == B_HUNT and follow_path(g, p, sp) { return }
+    // hunt for the noise of survivors close by
+    let hs = heard_by(g, p)
+    if hs.len() > 0 and p.level >= 2 {
+        let t = hs[0]
+        if p.repath_at <= g.now {
+            path_to(g, p, t.x, t.y)
+            p.repath_at = g.now + 1.0
+        }
+        if follow_path(g, p, sp) { return }
+    }
+    p.mode = B_WANDER
+    if not p.has_goal or p.path.len() == 0 {
+        // wander toward the nearest unfinished task: survivors work there
+        var w = random_walk_point(g)
+        if g.stations.len() > 0 and rand_float() < 0.6 {
+            let s = g.stations[rand_int(0, g.stations.len() - 1)]
+            w = V{ x: s.x, y: s.y }
+        }
+        path_to(g, p, w.x, w.y)
+    }
+    if not follow_path(g, p, sp) { p.has_goal = false }
+    use_ability(g, p)
+}
+
+fn obstacle_brain(g: Game, p: P) {
+    // bots in a course just head for the finish tile
+    let sp = level_speed(p.level)
+    if p.respawn_until > g.now or p.finished_at >= 0.0 {
+        p.ix = 0.0
+        p.iy = 0.0
+        return
+    }
+    if not p.has_goal or p.path.len() == 0 or g.now >= p.repath_at {
+        let fins = map_find(g.map, T_FINISH)
+        if fins.len() == 0 { return }
+        let f = tile_center(int(fins[0].x), int(fins[0].y))
+        path_to(g, p, f.x, f.y)
+        p.repath_at = g.now + 2.0
+    }
+    if not follow_path(g, p, sp) { p.has_goal = false }
+}
+
+fn bot_think(g: Game, p: P) {
+    p.ix = 0.0
+    p.iy = 0.0
+    if p.level == 0 or g.winner >= 0 { return }
+    if p.respawn_until > g.now { return }
+    if g.mode == M_OBSTACLE {
+        obstacle_brain(g, p)
+    } else if p.role == SURV {
+        survivor_brain(g, p)
+    } else {
+        zombie_brain(g, p)
+    }
+    check_stuck(g, p)
+}

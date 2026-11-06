@@ -1,0 +1,181 @@
+// tasks.atf - the five task mini-games the survivor plays at a station.
+// kinds: 0 wires, 1 machine, 2 download, 3 trash, 4 temperature
+
+import "std/ui"
+
+const TK_NAMES = ["Fix the wires", "Calibrate the machine", "Download the data", "Take out the trash", "Set the temperature"]
+
+struct Task {
+    kind: int
+    done: bool = false
+    // wires
+    order: [int] = []
+    linked: [bool] = []
+    picked: int = -1
+    // machine
+    needle: float = 0.0
+    dir: float = 1.0
+    hits: int = 0
+    flash: float = 0.0
+    // download / trash
+    count: int = 0
+    items: [bool] = []
+    // temperature
+    temp: float = 0.5
+    target: float = 0.5
+    ok_for: float = 0.0
+}
+
+fn task_new(kind: int) -> Task {
+    let t = Task{ kind: kind }
+    t.order = [0, 1, 2, 3]
+    shuffle(t.order)
+    t.linked = [false, false, false, false]
+    t.items = [false, false, false, false, false, false]
+    t.target = 0.2 + rand_float() * 0.6
+    t.temp = if t.target > 0.5 { 0.1 } else { 0.9 }
+    return t
+}
+
+fn wire_color(i: int) -> int {
+    return [hex("#ef4444"), hex("#3b82f6"), hex("#22c55e"), hex("#eab308")][i]
+}
+
+fn task_tick(t: Task, dt: float) {
+    if t.done { return }
+    if t.kind == 1 {
+        t.needle += t.dir * dt * (0.9 + float(t.hits) * 0.35)
+        if t.needle >= 1.0 {
+            t.needle = 1.0
+            t.dir = -1.0
+        }
+        if t.needle <= 0.0 {
+            t.needle = 0.0
+            t.dir = 1.0
+        }
+        t.flash = max(0.0, t.flash - dt)
+    }
+    if t.kind == 4 {
+        if abs(t.temp - t.target) < 0.06 { t.ok_for += dt } else { t.ok_for = 0.0 }
+        if t.ok_for >= 1.0 { t.done = true }
+    }
+}
+
+fn task_wires(t: Task) -> Node {
+    var left: [Node] = []
+    var right: [Node] = []
+    for i in 0..4 {
+        let li = i
+        let colour = wire_color(li)
+        let lb = button(if t.linked[li] { "OK" } else { " " }, || {
+            if not t.linked[li] { t.picked = li }
+        }).bg(colour).size(70, 40)
+        if t.picked == li { lb.border(4, WHITE) }
+        left.push(lb)
+        // the right side holds the same colours in a shuffled order
+        let rc = t.order[i]
+        let rb = button(if t.linked[rc] { "OK" } else { " " }, || {
+            if t.picked >= 0 and not t.linked[rc] {
+                if t.picked == rc {
+                    t.linked[rc] = true
+                    t.picked = -1
+                    var all = true
+                    for k in 0..4 { if not t.linked[k] { all = false } }
+                    if all { t.done = true }
+                } else {
+                    t.picked = -1
+                }
+            }
+        }).bg(wire_color(rc)).size(70, 40)
+        right.push(rb)
+    }
+    return column([
+        text("Pick a colour on the left, then the same colour on the right").color(hex("#cbd5e1")),
+        row([column(left).gap(10), spacer().width(60), column(right).gap(10)]).justify(Justify.Center),
+    ]).gap(14).align(Align.Center)
+}
+
+fn task_machine(t: Task) -> Node {
+    let c = canvas(|cv| {
+        cv.clear(hex("#0f172a"))
+        cv.rrect(10, 40, 300, 28, 8, hex("#1e293b"))
+        cv.rect(150, 40, 60, 28, hex("#16a34a"))
+        let nx = 10 + int(t.needle * 300.0)
+        cv.rect(nx - 3, 30, 6, 48, if t.flash > 0.0 { hex("#facc15") } else { WHITE })
+    }).size(320, 100).radius(8).clip()
+    return column([
+        text("Press when the needle is in the green zone ({t.hits}/3)").color(hex("#cbd5e1")),
+        c,
+        button("PRESS", || {
+            if t.needle > 0.45 and t.needle < 0.62 {
+                t.hits += 1
+                t.flash = 0.3
+                if t.hits >= 3 { t.done = true }
+            } else {
+                t.hits = max(0, t.hits - 1)
+            }
+        }).size(140, 44),
+    ]).gap(12).align(Align.Center)
+}
+
+fn task_download(t: Task) -> Node {
+    return column([
+        text("Click Download until the bar is full").color(hex("#cbd5e1")),
+        progress(float(t.count) / 14.0).width(300),
+        button("Download", || {
+            t.count += 1
+            if t.count >= 14 { t.done = true }
+        }).size(160, 44),
+    ]).gap(14).align(Align.Center)
+}
+
+fn task_trash(t: Task) -> Node {
+    var cells: [Node] = []
+    let names = ["Can", "Bottle", "Box", "Paper", "Bag", "Cup"]
+    for i in 0..6 {
+        let k = i
+        if t.items[k] {
+            cells.push(box([]).size(90, 44))
+        } else {
+            cells.push(button(names[k], || {
+                t.items[k] = true
+                var all = true
+                for j in 0..6 { if not t.items[j] { all = false } }
+                if all { t.done = true }
+            }).size(90, 44).bg(hex("#475569")))
+        }
+    }
+    return column([
+        text("Click each piece of trash to throw it away").color(hex("#cbd5e1")),
+        row([cells[0], cells[1], cells[2]]).gap(10),
+        row([cells[3], cells[4], cells[5]]).gap(10),
+    ]).gap(14).align(Align.Center)
+}
+
+fn task_temperature(t: Task) -> Node {
+    let c = canvas(|cv| {
+        cv.clear(hex("#0f172a"))
+        cv.rrect(10, 30, 300, 24, 8, hex("#1e293b"))
+        cv.rect(10 + int((t.target - 0.06) * 300.0), 30, int(0.12 * 300.0), 24, hex("#16a34a"))
+        let x = 10 + int(t.temp * 300.0)
+        cv.rect(x - 3, 22, 6, 40, if abs(t.temp - t.target) < 0.06 { hex("#4ade80") } else { WHITE })
+    }).size(320, 80).radius(8).clip()
+    return column([
+        text("Slide the marker into the green zone and hold for a second").color(hex("#cbd5e1")),
+        c,
+        slider(t.temp, |v| { t.temp = v }).width(300),
+    ]).gap(12).align(Align.Center)
+}
+
+fn task_view(t: Task, name: str, on_close: fn()) -> Node {
+    var body = task_wires(t)
+    if t.kind == 1 { body = task_machine(t) }
+    if t.kind == 2 { body = task_download(t) }
+    if t.kind == 3 { body = task_trash(t) }
+    if t.kind == 4 { body = task_temperature(t) }
+    return column([
+        text(name).bold().font_size(20).color(WHITE),
+        body,
+        button("Leave", on_close).bg(hex("#7f1d1d")).size(120, 36),
+    ]).gap(16).padding(22).bg(hex("#111827")).radius(14).border(2, hex("#334155")).align(Align.Center)
+}

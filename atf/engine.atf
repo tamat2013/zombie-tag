@@ -1,0 +1,785 @@
+// engine.atf - players, roles, abilities, infection, doctors, stones and the match rules of Zombie Tag.
+// All times are seconds of game time (g.now).
+
+import "world"
+
+const SURVIVOR_SPEED = 170.0
+const ZOMBIE_SPEED = 126.0
+const SURVIVOR_VISION = 230.0
+const ZOMBIE_VISION = 200.0
+const INFECT_REACH = 4.0
+const TASK_RANGE = 52.8
+const MATCH_SEC = 600.0
+const TRAIN_SEC = 300.0
+const TASK_BONUS = 15.0
+const FREEZE_SEC = 10.0
+const HEAL_REACH = 10.0
+const STONE_RANGE = 288.0
+const NOISE_SEC = 5.0
+const NOISE_HEAR = 560.0
+const SOUND_WAVE = 300.0
+const MUD_SLOW = 0.55
+const SAW_PERIOD = 2.6
+
+const SURV = 0
+const ZOMB = 1
+
+// effects
+const E_SPRINT = 0
+const E_SHIELD = 1
+const E_SCAN = 2
+const E_INVIS = 3
+const E_DASH = 4
+const E_VISION = 5
+const E_SLOWED = 6
+const E_FRENZY = 7
+const E_BLIND = 8
+
+// modes of a match
+const M_CLASSIC = 0
+const M_TRAIN = 1
+const M_OBSTACLE = 2
+
+// bot modes
+const B_IDLE = 0
+const B_TASK = 1
+const B_WORK = 2
+const B_FLEE = 3
+const B_CHASE = 4
+const B_HUNT = 5
+const B_WANDER = 6
+
+struct Ability {
+    name: str
+    short: str
+    role: int
+    cd: float
+    dur: float
+    radius: float
+    info: str
+}
+
+fn abilities() -> [Ability] {
+    return [
+        Ability{ name: "Sprint", short: "SPR", role: SURV, cd: 15.0, dur: 3.0, radius: 0.0, info: "Run 1.6x faster for 3 seconds" },
+        Ability{ name: "Scan", short: "SCN", role: SURV, cd: 20.0, dur: 5.0, radius: 0.0, info: "Reveals every zombie for 5 seconds" },
+        Ability{ name: "Medic", short: "MED", role: SURV, cd: 25.0, dur: 4.0, radius: 170.0, info: "Shields you and nearby survivors for 4 seconds" },
+        Ability{ name: "Vanish", short: "VAN", role: SURV, cd: 30.0, dur: 4.0, radius: 0.0, info: "Zombies cannot see you for 4 seconds (except up close)" },
+        Ability{ name: "Dash", short: "DSH", role: ZOMB, cd: 12.0, dur: 1.0, radius: 0.0, info: "1.7x speed burst for 1 second" },
+        Ability{ name: "Zombie Vision", short: "VIS", role: ZOMB, cd: 22.0, dur: 5.0, radius: 0.0, info: "See all survivors through walls for 5 seconds" },
+        Ability{ name: "Roar", short: "ROR", role: ZOMB, cd: 28.0, dur: 2.5, radius: 180.0, info: "Slows nearby survivors by 50% for 2.5 seconds" },
+        Ability{ name: "Smoke Bomb", short: "SMK", role: SURV, cd: 28.0, dur: 4.0, radius: 200.0, info: "Blinds nearby zombies for 4 seconds" },
+        Ability{ name: "Teleport", short: "TEL", role: SURV, cd: 40.0, dur: 0.0, radius: 0.0, info: "Takes you to the spawn farthest from the zombies" },
+        Ability{ name: "Frenzy", short: "FRZ", role: ZOMB, cd: 24.0, dur: 5.0, radius: 0.0, info: "1.35x speed for 5 seconds" },
+        Ability{ name: "Leap", short: "LEP", role: ZOMB, cd: 14.0, dur: 0.0, radius: 0.0, info: "Jumps 3 tiles forward instantly" },
+        Ability{ name: "Bubble", short: "BUB", role: SURV, cd: 16.0, dur: 2.5, radius: 0.0, info: "Shields only you for 2.5 seconds, recharges fast" },
+        Ability{ name: "Adrenaline", short: "ADR", role: SURV, cd: 38.0, dur: 5.0, radius: 0.0, info: "Long sprint: 1.6x speed for 5 seconds" },
+        Ability{ name: "Flashbang", short: "FLS", role: SURV, cd: 34.0, dur: 6.0, radius: 130.0, info: "Blinds zombies right next to you for 6 seconds" },
+        Ability{ name: "Shadow Cloak", short: "CLK", role: SURV, cd: 50.0, dur: 7.0, radius: 0.0, info: "Zombies cannot see you for 7 seconds (except up close)" },
+        Ability{ name: "Howl", short: "HWL", role: ZOMB, cd: 32.0, dur: 1.5, radius: 320.0, info: "Slows every survivor in a huge radius for 1.5 seconds" },
+        Ability{ name: "Lunge", short: "LNG", role: ZOMB, cd: 8.0, dur: 0.0, radius: 0.0, info: "Short jump 2 tiles forward, recharges fast" },
+        Ability{ name: "Rage", short: "RGE", role: ZOMB, cd: 30.0, dur: 2.0, radius: 0.0, info: "1.7x speed burst for 2 seconds" },
+        Ability{ name: "Sniff", short: "SNF", role: ZOMB, cd: 11.0, dur: 2.0, radius: 0.0, info: "See all survivors through walls for 2 seconds, recharges fast" },
+    ]
+}
+
+const AB_SPRINT = 0
+const AB_SCAN = 1
+const AB_MEDIC = 2
+const AB_VANISH = 3
+const AB_DASH = 4
+const AB_ZVIS = 5
+const AB_ROAR = 6
+const AB_SMOKE = 7
+const AB_TELEPORT = 8
+const AB_FRENZY = 9
+const AB_LEAP = 10
+const AB_BUBBLE = 11
+const AB_ADRENALINE = 12
+const AB_FLASH = 13
+const AB_CLOAK = 14
+const AB_HOWL = 15
+const AB_LUNGE = 16
+const AB_RAGE = 17
+const AB_SNIFF = 18
+
+let ABILITIES = abilities()
+
+// which effect an ability switches on (-1 = none)
+fn effect_for(ab: int) -> int {
+    return match ab {
+        0 => E_SPRINT
+        1 => E_SCAN
+        3 => E_INVIS
+        4 => E_DASH
+        5 => E_VISION
+        9 => E_FRENZY
+        11 => E_SHIELD
+        12 => E_SPRINT
+        14 => E_INVIS
+        17 => E_DASH
+        18 => E_VISION
+        _ => -1
+    }
+}
+
+struct Skin {
+    name: str
+    body: int
+    accent: int
+    eyes: int        // 0 round, 1 angry, 2 sleepy, 3 cyclops
+    pattern: int     // 0 none, 1 stripes, 2 spots, 3 split, 4 ring
+    power: str
+    info: str
+}
+
+fn skins() -> [Skin] {
+    return [
+        Skin{ name: "Rookie", body: 0xFF4F8EF7, accent: 0xFF1F3F7A, eyes: 0, pattern: 0, power: "", info: "No power" },
+        Skin{ name: "Camper", body: 0xFFF4A259, accent: 0xFF8C4A12, eyes: 0, pattern: 1, power: "", info: "No power" },
+        Skin{ name: "Mint", body: 0xFF5ED6A4, accent: 0xFF1E6B4D, eyes: 2, pattern: 2, power: "", info: "No power" },
+        Skin{ name: "Cherry", body: 0xFFE8475F, accent: 0xFF7A1525, eyes: 0, pattern: 4, power: "", info: "No power" },
+        Skin{ name: "Ninja", body: 0xFF2B2D42, accent: 0xFFEF233C, eyes: 1, pattern: 3, power: "swift", info: "+8% movement speed" },
+        Skin{ name: "Dr. Bandage", body: 0xFFF1F5F9, accent: 0xFFE11D48, eyes: 0, pattern: 4, power: "healer", info: "Medic and Bubble cooldown 30% shorter" },
+        Skin{ name: "Tank", body: 0xFF556B2F, accent: 0xFF2F3B1A, eyes: 1, pattern: 1, power: "tank", info: "Blocks the first infection of the match" },
+        Skin{ name: "Ghost", body: 0xFFD7E3FC, accent: 0xFF8EA8D8, eyes: 2, pattern: 0, power: "ghost", info: "Zombies spot you from 30% closer" },
+        Skin{ name: "Ranger", body: 0xFFC9A227, accent: 0xFF6B5208, eyes: 0, pattern: 2, power: "scout", info: "+15% vision range" },
+        Skin{ name: "Alpha Zombie", body: 0xFF7D8C3A, accent: 0xFF3D1A1A, eyes: 1, pattern: 3, power: "alpha", info: "Dash, Rage and Lunge cooldown 30% shorter" },
+        Skin{ name: "Night Hunter", body: 0xFF5B2A86, accent: 0xFF1D0B2E, eyes: 3, pattern: 4, power: "hunter", info: "+15% infection range" },
+        Skin{ name: "Robot", body: 0xFF9CA3AF, accent: 0xFF00B4D8, eyes: 3, pattern: 4, power: "engineer", info: "Tasks 25% faster" },
+        Skin{ name: "Dragon", body: 0xFF14B8A6, accent: 0xFF064E3B, eyes: 1, pattern: 1, power: "master", info: "All abilities recharge 15% faster" },
+        Skin{ name: "Lava", body: 0xFFEF233C, accent: 0xFFF97316, eyes: 1, pattern: 2, power: "brute", info: "+8% speed as a zombie" },
+        Skin{ name: "Pumpkin", body: 0xFFF77F00, accent: 0xFF5A2E00, eyes: 1, pattern: 1, power: "", info: "No power" },
+        Skin{ name: "Iceberg", body: 0xFFA8E6FF, accent: 0xFF1D6FA3, eyes: 2, pattern: 2, power: "", info: "No power" },
+    ]
+}
+
+let SKINS = skins()
+
+const BOT_NAMES = ["Rex", "Noa", "Botty", "Ziggy", "Max", "Leah", "Turbo", "Pixel", "Shadow", "Ori", "Scar", "Mika", "Grim", "Dana", "Wolf"]
+
+struct P {
+    id: int
+    name: str
+    bot: bool
+    human: bool
+    role: int
+    start_role: int
+    x: float
+    y: float
+    facing: float = 0.0
+    skin: int = 0
+    loadout_s: [int] = [AB_SPRINT, AB_SCAN, AB_MEDIC]
+    loadout_z: [int] = [AB_DASH, AB_ZVIS]
+    cd: [float] = []            // cooldown end per ability (game time)
+    fx: [float] = []            // end time per effect
+    // modifiers from the skin
+    m_speed: float = 1.0
+    m_cd: float = 1.0
+    m_vision: float = 1.0
+    m_task: float = 1.0
+    m_reach: float = 1.0
+    m_medic: float = 1.0
+    m_dash: float = 1.0
+    m_detect: float = 1.0
+    m_zspeed: float = 1.0
+    tank: bool = false
+    doctor: bool = false
+    infected_at: float = -1.0
+    infections: int = 0
+    cures: int = 0
+    stone_used: bool = false
+    noise_x: float = 0.0
+    noise_y: float = 0.0
+    noise_until: float = 0.0
+    noise_at: float = 0.0
+    in_task: bool = false
+    tasks: [int] = []
+    abilities_used: int = 0
+    // obstacle course
+    cp: V
+    finished_at: float = -1.0
+    deaths: int = 0
+    respawn_until: float = 0.0
+    // bot
+    level: int = 2               // 0 dummy, 1 easy, 2 normal, 3 hard
+    mode: int = 0
+    path: [V] = []
+    goal: V
+    has_goal: bool = false
+    repath_at: float = 0.0
+    work_until: float = 0.0
+    station: int = -1
+    seen_x: float = 0.0
+    seen_y: float = 0.0
+    seen_at: float = -100.0
+    heard: float = -1.0
+    distracted_until: float = 0.0
+    stuck_x: float = 0.0
+    stuck_y: float = 0.0
+    stuck_at: float = 0.0
+    ix: float = 0.0              // movement intent for this frame
+    iy: float = 0.0
+}
+
+struct Event { kind: str, a: int, b: int }
+
+struct Game {
+    map: GMap
+    mode: int
+    players: [P] = []
+    stations: [Station] = []
+    saws: [Saw] = []
+    saw_pos: [V] = []
+    surv_spawns: [V] = []
+    now: float = 0.0
+    ends_at: float = 0.0
+    release_at: float = 5.0
+    released: bool = false
+    cd_scale: float = 1.0
+    winner: int = -1             // -1 running, 0 survivors, 1 zombies, 2 finished (obstacle)
+    end_at: float = 0.0
+    events: [Event] = []
+    walk: [V] = []
+}
+
+fn level_speed(l: int) -> float { return match l { 0 => 0.0, 1 => 0.78, 2 => 0.9, _ => 0.98 } }
+fn level_vision(l: int) -> float { return match l { 0 => 0.0, 1 => 0.7, 2 => 0.9, _ => 1.0 } }
+fn level_think(l: int) -> float { return match l { 0 => 1.0, 1 => 0.8, 2 => 0.45, _ => 0.25 } }
+fn level_ability(l: int) -> float { return match l { 0 => 0.0, 1 => 0.25, 2 => 0.6, _ => 0.95 } }
+fn level_panic(l: int) -> float { return match l { 0 => 0.0, 1 => 160.0, 2 => 220.0, _ => 300.0 } }
+
+fn new_player(id: int, name: str, bot: bool, human: bool, role: int, skin: int, x: float, y: float) -> P {
+    let p = P{ id: id, name: name, bot: bot, human: human, role: role, start_role: role, x: x, y: y, skin: skin,
+               cp: V{ x: x, y: y }, goal: V{ x: x, y: y }, stuck_x: x, stuck_y: y }
+    p.cd = array_make::<float>(19)
+    p.fx = array_make::<float>(9)
+    let pw = SKINS[skin].power
+    if pw == "swift" { p.m_speed = 1.08 }
+    if pw == "healer" { p.m_medic = 0.7 }
+    if pw == "tank" { p.tank = true }
+    if pw == "ghost" { p.m_detect = 0.7 }
+    if pw == "alpha" { p.m_dash = 0.7 }
+    if pw == "hunter" { p.m_reach = 1.15 }
+    if pw == "scout" { p.m_vision = 1.15 }
+    if pw == "engineer" { p.m_task = 1.25 }
+    if pw == "master" { p.m_cd = 0.85 }
+    if pw == "brute" { p.m_zspeed = 1.08 }
+    return p
+}
+
+// ---------------------------------------------------------------- setup
+
+fn new_game(map: GMap, mode: int, human_skin: int, bots: int, level: int, zombies: int, doctors: int, release_sec: float, fast: bool) -> Game {
+    let g = Game{ map: map, mode: mode }
+    g.stations = if mode == M_OBSTACLE { [] } else { map_stations(map) }
+    g.saws = map_saws(map)
+    g.walk = map_walkable(map)
+    g.surv_spawns = map_spawns(map, T_SURV)
+    let zsp = map_spawns(map, T_ZOMB)
+    var dur = MATCH_SEC
+    if mode == M_TRAIN { dur = TRAIN_SEC }
+    g.ends_at = if mode == M_OBSTACLE { 1.0e18 } else { dur }
+    g.release_at = if mode == M_OBSTACLE { 0.0 } else { release_sec }
+    g.cd_scale = if mode == M_TRAIN or fast { 0.5 } else { 1.0 }
+    let total = if mode == M_OBSTACLE { 1 + bots } else { 1 + bots }
+    // roles: about one zombie per five players, at least one
+    var zc = zombies
+    if zc <= 0 { zc = max(1, int(round(float(total) / 5.0))) }
+    zc = max(1, min(zc, total - 1))
+    if mode == M_OBSTACLE { zc = 0 }
+    var ids: [int] = []
+    for i in 0..total { ids.push(i) }
+    shuffle(ids)
+    var zset: [int] = []
+    for i in 0..zc { zset.push(ids[i]) }
+    var si = 0
+    var zi = 0
+    var bot_names = copy(BOT_NAMES)
+    shuffle(bot_names)
+    for i in 0..total {
+        let role = if zset.contains(i) { ZOMB } else { SURV }
+        var sp = g.surv_spawns[si % g.surv_spawns.len()]
+        if role == ZOMB and mode != M_OBSTACLE {
+            sp = zsp[zi % zsp.len()]
+            zi += 1
+        } else {
+            si += 1
+        }
+        let jx = float((i % 3) - 1) * 10.0
+        let jy = float(((i / 3) % 3) - 1) * 10.0
+        var name = "You"
+        var skin = human_skin
+        if i > 0 {
+            name = bot_names[(i - 1) % bot_names.len()]
+            skin = rand_int(0, SKINS.len() - 1)
+        }
+        let p = new_player(i, name, i > 0, i == 0, role, skin, sp.x + jx, sp.y + jy)
+        p.level = level
+        if i > 0 {
+            // bots get a random loadout
+            p.loadout_s = [AB_SPRINT, AB_SCAN, AB_MEDIC]
+            p.loadout_z = [AB_DASH, AB_ZVIS]
+            let extra_s = [AB_VANISH, AB_SMOKE, AB_BUBBLE, AB_FLASH, AB_ADRENALINE, AB_TELEPORT, AB_CLOAK]
+            let extra_z = [AB_ROAR, AB_FRENZY, AB_LEAP, AB_HOWL, AB_LUNGE, AB_RAGE, AB_SNIFF]
+            if level >= 2 {
+                p.loadout_s[2] = rand_choice(extra_s)
+                p.loadout_z[1] = rand_choice(extra_z)
+            }
+        } else {
+            p.loadout_s = HUMAN_LOADOUT_S
+            p.loadout_z = HUMAN_LOADOUT_Z
+        }
+        g.players.push(p)
+    }
+    // doctors: some of the survivors can heal frozen zombies
+    if mode != M_OBSTACLE {
+        var surv: [P] = []
+        for p in g.players { if p.role == SURV { surv.push(p) } }
+        shuffle(surv)
+        for i in 0..min(doctors, surv.len()) { surv[i].doctor = true }
+    }
+    return g
+}
+
+var HUMAN_LOADOUT_S = [AB_SPRINT, AB_SCAN, AB_MEDIC]
+var HUMAN_LOADOUT_Z = [AB_DASH, AB_ZVIS]
+
+// ---------------------------------------------------------------- queries
+
+fn fx_on(g: Game, p: P, e: int) -> bool { return p.fx[e] > g.now }
+
+fn is_frozen(g: Game, p: P) -> bool {
+    return p.role == ZOMB and p.infected_at >= 0.0 and g.now - p.infected_at < FREEZE_SEC
+}
+
+fn frozen_left(g: Game, p: P) -> float {
+    if not is_frozen(g, p) { return 0.0 }
+    return FREEZE_SEC - (g.now - p.infected_at)
+}
+
+fn zombies_released(g: Game) -> bool { return g.now >= g.release_at }
+
+fn vision_radius(g: Game, p: P) -> float {
+    var r = SURVIVOR_VISION * p.m_vision
+    if p.role == ZOMB { r = ZOMBIE_VISION * p.m_vision }
+    if fx_on(g, p, E_BLIND) { r *= 0.3 }
+    return r
+}
+
+fn can_see(g: Game, v: P, t: P) -> bool {
+    if v.id == t.id { return true }
+    let d = dist(v.x, v.y, t.x, t.y)
+    if v.role == t.role { return d <= vision_radius(g, v) * 1.4 }
+    if v.role == SURV {
+        if fx_on(g, v, E_SCAN) { return true }
+        return d <= vision_radius(g, v) and has_los(g.map, v.x, v.y, t.x, t.y)
+    }
+    if fx_on(g, t, E_INVIS) { return d < ZT_RADIUS * 3.0 }
+    if fx_on(g, v, E_VISION) and not fx_on(g, v, E_BLIND) { return true }
+    let r = vision_radius(g, v) * t.m_detect
+    return d <= r and has_los(g.map, v.x, v.y, t.x, t.y)
+}
+
+fn speed_of(g: Game, p: P) -> float {
+    var s = SURVIVOR_SPEED
+    if p.role == ZOMB { s = ZOMBIE_SPEED * p.m_zspeed }
+    s *= p.m_speed
+    if fx_on(g, p, E_SPRINT) { s *= 1.6 }
+    if fx_on(g, p, E_FRENZY) { s *= 1.35 }
+    if fx_on(g, p, E_DASH) { s *= 1.7 }
+    if fx_on(g, p, E_SLOWED) { s *= 0.5 }
+    if map_tile(g.map, tile_to(p.x), tile_to(p.y)) == T_MUD { s *= MUD_SLOW }
+    return s
+}
+
+fn can_move(g: Game, p: P) -> bool {
+    if p.in_task or g.winner >= 0 { return false }
+    if p.respawn_until > g.now { return false }
+    if is_frozen(g, p) { return false }
+    if p.role == ZOMB and p.start_role == ZOMB and not zombies_released(g) { return false }
+    if g.mode == M_OBSTACLE and p.finished_at >= 0.0 { return false }
+    return true
+}
+
+fn time_cut(g: Game) -> float {
+    if g.ends_at > 1.0e17 { return 0.0 }
+    var done = 0
+    for p in g.players { done += p.tasks.len() }
+    return min(float(done) * TASK_BONUS, g.ends_at * 0.5)
+}
+
+fn time_left(g: Game) -> float { return max(0.0, g.ends_at - time_cut(g) - g.now) }
+
+fn counts(g: Game) -> (int, int) {
+    var s = 0
+    var z = 0
+    for p in g.players { if p.role == SURV { s += 1 } else { z += 1 } }
+    return (s, z)
+}
+
+fn local_player(g: Game) -> P { return g.players[0] }
+
+// ---------------------------------------------------------------- abilities
+
+fn ab_cooldown(g: Game, p: P, ab: int) -> float {
+    var mul = p.m_cd * g.cd_scale
+    if ab == AB_MEDIC or ab == AB_BUBBLE { mul *= p.m_medic }
+    if ab == AB_DASH or ab == AB_RAGE or ab == AB_LUNGE { mul *= p.m_dash }
+    return ABILITIES[ab].cd * mul
+}
+
+fn ab_remaining(g: Game, p: P, ab: int) -> float { return max(0.0, p.cd[ab] - g.now) }
+
+fn loadout(p: P) -> [int] { return if p.role == SURV { p.loadout_s } else { p.loadout_z } }
+
+fn can_use(g: Game, p: P, ab: int) -> bool {
+    if ABILITIES[ab].role != p.role { return false }
+    if not loadout(p).contains(ab) { return false }
+    if p.in_task or p.respawn_until > g.now or is_frozen(g, p) { return false }
+    return ab_remaining(g, p, ab) <= 0.0
+}
+
+fn leap(g: Game, p: P, d: float) {
+    let v = V{ x: p.x, y: p.y }
+    move_with_collision(g.map, v, cos(p.facing) * d, sin(p.facing) * d)
+    p.x = v.x
+    p.y = v.y
+}
+
+fn teleport_safe(g: Game, p: P) {
+    var best = g.surv_spawns[0]
+    var best_d = -1.0
+    for s in g.surv_spawns {
+        var d = 0.0
+        var first = true
+        for z in g.players {
+            if z.role != ZOMB { continue }
+            let dz = dist(z.x, z.y, s.x, s.y)
+            if first or dz < d { d = dz }
+            first = false
+        }
+        if d > best_d {
+            best_d = d
+            best = s
+        }
+    }
+    p.x = best.x
+    p.y = best.y
+    p.path = []
+}
+
+fn apply_buff(g: Game, t: P, kind: str, dur: float) {
+    if kind == "shield" and t.role == SURV { t.fx[E_SHIELD] = max(t.fx[E_SHIELD], g.now + dur) }
+    if kind == "slow" and t.role == SURV and not fx_on(g, t, E_SHIELD) { t.fx[E_SLOWED] = g.now + dur }
+    if kind == "blind" and t.role == ZOMB { t.fx[E_BLIND] = g.now + dur }
+}
+
+fn activate(g: Game, p: P, ab: int) -> bool {
+    if not can_use(g, p, ab) { return false }
+    let def = ABILITIES[ab]
+    p.cd[ab] = g.now + ab_cooldown(g, p, ab)
+    p.abilities_used += 1
+    let e = effect_for(ab)
+    if e >= 0 { p.fx[e] = g.now + def.dur }
+    if ab == AB_MEDIC {
+        p.fx[E_SHIELD] = max(p.fx[E_SHIELD], g.now + def.dur)
+        for o in g.players {
+            if o.id != p.id and o.role == SURV and dist(o.x, o.y, p.x, p.y) <= def.radius { apply_buff(g, o, "shield", def.dur) }
+        }
+    }
+    if ab == AB_ROAR or ab == AB_HOWL {
+        for o in g.players {
+            if o.role == SURV and dist(o.x, o.y, p.x, p.y) <= def.radius { apply_buff(g, o, "slow", def.dur) }
+        }
+    }
+    if ab == AB_SMOKE or ab == AB_FLASH {
+        for o in g.players {
+            if o.role == ZOMB and dist(o.x, o.y, p.x, p.y) <= def.radius { apply_buff(g, o, "blind", def.dur) }
+        }
+    }
+    if ab == AB_TELEPORT { teleport_safe(g, p) }
+    if ab == AB_LEAP { leap(g, p, 144.0) }
+    if ab == AB_LUNGE { leap(g, p, 96.0) }
+    g.events.push(Event{ kind: "ability", a: p.id, b: ab })
+    return true
+}
+
+// The best ability to use right now (bots act on it, the player sees it highlighted), or -1.
+fn suggest(g: Game, p: P) -> int {
+    var ready: [int] = []
+    for ab in loadout(p) { if can_use(g, p, ab) { ready.push(ab) } }
+    if ready.len() == 0 { return -1 }
+    var near: P = p
+    var near_d = 1.0e18
+    var have = false
+    var seen_any = false
+    for o in g.players {
+        if o.role == p.role or is_frozen(g, o) or not can_see(g, p, o) { continue }
+        seen_any = true
+        let d = dist(o.x, o.y, p.x, p.y)
+        if d < near_d {
+            near_d = d
+            near = o
+            have = true
+        }
+    }
+    if p.role == SURV {
+        if fx_on(g, p, E_SHIELD) or fx_on(g, p, E_SPRINT) or fx_on(g, p, E_INVIS) { return -1 }
+        var allies = 0
+        for o in g.players { if o.id != p.id and o.role == SURV and dist(o.x, o.y, p.x, p.y) < 170.0 { allies += 1 } }
+        if near_d < 110.0 {
+            if ready.contains(AB_MEDIC) and allies > 0 { return AB_MEDIC }
+            for ab in [AB_FLASH, AB_SMOKE, AB_BUBBLE, AB_VANISH, AB_CLOAK, AB_SPRINT, AB_ADRENALINE, AB_TELEPORT, AB_MEDIC] {
+                if ready.contains(ab) { return ab }
+            }
+        }
+        if near_d < 170.0 and ready.contains(AB_SPRINT) { return AB_SPRINT }
+        if near_d < 200.0 and ready.contains(AB_ADRENALINE) { return AB_ADRENALINE }
+        if not seen_any and ready.contains(AB_SCAN) { return AB_SCAN }
+        return -1
+    }
+    if fx_on(g, p, E_DASH) or fx_on(g, p, E_FRENZY) { return -1 }
+    var close = 0
+    var far = 0
+    for o in g.players {
+        if o.role != SURV { continue }
+        let d = dist(o.x, o.y, p.x, p.y)
+        if d < 170.0 { close += 1 }
+        if d < 300.0 and not is_frozen(g, o) { far += 1 }
+    }
+    if close > 0 and ready.contains(AB_ROAR) { return AB_ROAR }
+    if far >= 2 and ready.contains(AB_HOWL) { return AB_HOWL }
+    if have and near_d < 190.0 and ready.contains(AB_DASH) { return AB_DASH }
+    if have and near_d < 220.0 and ready.contains(AB_RAGE) { return AB_RAGE }
+    if have {
+        let ahead = cos(atan2(near.y - p.y, near.x - p.x) - p.facing)
+        if near_d > 60.0 and near_d < 120.0 and ahead > 0.9 and ready.contains(AB_LUNGE) { return AB_LUNGE }
+        if near_d > 90.0 and near_d < 170.0 and ahead > 0.9 and ready.contains(AB_LEAP) { return AB_LEAP }
+    }
+    if have and near_d < 320.0 and ready.contains(AB_FRENZY) { return AB_FRENZY }
+    if not seen_any and ready.contains(AB_ZVIS) { return AB_ZVIS }
+    if not seen_any and ready.contains(AB_SNIFF) { return AB_SNIFF }
+    return -1
+}
+
+// ---------------------------------------------------------------- stone, tasks
+
+fn can_throw_stone(g: Game, p: P) -> bool {
+    return g.mode != M_OBSTACLE and g.winner < 0 and p.role == SURV and not p.stone_used and not p.in_task
+}
+
+fn throw_stone(g: Game, p: P, angle: float) -> bool {
+    if not can_throw_stone(g, p) { return false }
+    let dx = cos(angle)
+    let dy = sin(angle)
+    var x = p.x
+    var y = p.y
+    var d = 8.0
+    while d <= STONE_RANGE {
+        let nx = p.x + dx * d
+        let ny = p.y + dy * d
+        if tile_solid(map_tile(g.map, tile_to(nx), tile_to(ny))) { break }
+        x = nx
+        y = ny
+        d += 8.0
+    }
+    p.stone_used = true
+    p.noise_x = x
+    p.noise_y = y
+    p.noise_at = g.now
+    p.noise_until = g.now + NOISE_SEC
+    g.events.push(Event{ kind: "stone", a: p.id, b: 0 })
+    return true
+}
+
+fn complete_task(g: Game, p: P, idx: int) {
+    if p.role != SURV or p.tasks.contains(idx) { return }
+    p.tasks.push(idx)
+    p.in_task = false
+    g.events.push(Event{ kind: "task", a: p.id, b: idx })
+}
+
+// the station the player stands next to and has not finished, or -1
+fn usable_station(g: Game, p: P) -> int {
+    if p.role != SURV or g.winner >= 0 { return -1 }
+    var best = -1
+    var best_d = TASK_RANGE
+    for s in g.stations {
+        if p.tasks.contains(s.idx) { continue }
+        let d = dist(s.x, s.y, p.x, p.y)
+        if d <= best_d {
+            best = s.idx
+            best_d = d
+        }
+    }
+    return best
+}
+
+// ---------------------------------------------------------------- infection and cures
+
+fn infect(g: Game, v: P, by: P) {
+    if v.role != SURV { return }
+    if fx_on(g, v, E_SHIELD) { return }
+    if v.tank {
+        v.tank = false
+        v.fx[E_SHIELD] = g.now + 1.5
+        g.events.push(Event{ kind: "blocked", a: v.id, b: 0 })
+        return
+    }
+    v.role = ZOMB
+    v.in_task = false
+    v.infected_at = g.now
+    for i in 0..9 { v.fx[i] = 0.0 }
+    v.mode = B_IDLE
+    v.path = []
+    by.infections += 1
+    g.events.push(Event{ kind: "infected", a: v.id, b: by.id })
+}
+
+fn cure(g: Game, t: P, doc: P) {
+    if not is_frozen(g, t) or t.start_role != SURV { return }
+    t.role = SURV
+    t.infected_at = -1.0
+    t.doctor = false
+    for i in 0..9 { t.fx[i] = 0.0 }
+    t.fx[E_SHIELD] = g.now + 2.0
+    t.mode = B_IDLE
+    t.path = []
+    doc.cures += 1
+    g.events.push(Event{ kind: "cured", a: t.id, b: doc.id })
+}
+
+fn check_infections(g: Game) {
+    if g.mode == M_OBSTACLE { return }
+    for v in g.players {
+        if v.role != SURV { continue }
+        for z in g.players {
+            if z.role != ZOMB { continue }
+            if z.start_role == ZOMB and not zombies_released(g) { continue }
+            if is_frozen(g, z) { continue }
+            let reach = ZT_RADIUS * 2.0 + INFECT_REACH * z.m_reach * 2.0
+            if dist(v.x, v.y, z.x, z.y) <= reach {
+                infect(g, v, z)
+                break
+            }
+        }
+    }
+}
+
+fn check_cures(g: Game) {
+    if g.mode == M_OBSTACLE { return }
+    for z in g.players {
+        if not is_frozen(g, z) or z.start_role != SURV { continue }
+        for d in g.players {
+            if d.doctor and d.role == SURV and dist(d.x, d.y, z.x, z.y) <= ZT_RADIUS * 2.0 + HEAL_REACH {
+                cure(g, z, d)
+                break
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- obstacle course
+
+fn obstacle_step(g: Game, p: P) {
+    if p.finished_at >= 0.0 or p.respawn_until > g.now { return }
+    let tile = map_tile(g.map, tile_to(p.x), tile_to(p.y))
+    if tile == T_CHECK {
+        let cx = tile_to(p.x)
+        let cy = tile_to(p.y)
+        if tile_to(p.cp.x) != cx or tile_to(p.cp.y) != cy {
+            p.cp = tile_center(cx, cy)
+            g.events.push(Event{ kind: "checkpoint", a: p.id, b: 0 })
+        }
+    }
+    if tile == T_FINISH {
+        p.finished_at = g.now
+        g.events.push(Event{ kind: "finish", a: p.id, b: 0 })
+        return
+    }
+    var hit_saw = false
+    for s in g.saw_pos { if dist(s.x, s.y, p.x, p.y) < 18.0 + ZT_RADIUS - 4.0 { hit_saw = true } }
+    if tile == T_HAZARD or hit_saw {
+        p.deaths += 1
+        p.x = p.cp.x
+        p.y = p.cp.y
+        p.respawn_until = g.now + 0.7
+        for i in 0..9 { p.fx[i] = 0.0 }
+        g.events.push(Event{ kind: "hazard", a: p.id, b: 0 })
+    }
+}
+
+// ---------------------------------------------------------------- main step
+
+fn move_player(g: Game, p: P, dt: float) {
+    var ix = p.ix
+    var iy = p.iy
+    let mag = sqrt(ix * ix + iy * iy)
+    if mag > 1.0 {
+        ix /= mag
+        iy /= mag
+    }
+    if not can_move(g, p) or mag < 0.05 { return }
+    let sp = speed_of(g, p)
+    p.facing = atan2(iy, ix)
+    let v = V{ x: p.x, y: p.y }
+    move_with_collision(g.map, v, ix * sp * dt, iy * sp * dt)
+    p.x = v.x
+    p.y = v.y
+}
+
+fn check_end(g: Game) {
+    if g.winner >= 0 { return }
+    if g.mode == M_OBSTACLE {
+        if local_player(g).finished_at >= 0.0 { end_game(g, 2) }
+        return
+    }
+    let (s, z) = counts(g)
+    if s == 0 { end_game(g, 1) } else if time_left(g) <= 0.0 { end_game(g, 0) } else if z == 0 and zombies_released(g) { end_game(g, 0) }
+}
+
+fn end_game(g: Game, who: int) {
+    if g.winner >= 0 { return }
+    g.winner = who
+    g.end_at = g.now
+    g.events.push(Event{ kind: "end", a: who, b: 0 })
+}
+
+// Advances the match by dt seconds. The caller sets p.ix / p.iy of the human first; bots are driven here.
+fn game_step(g: Game, dt: float, bot_think: fn(Game, P)) {
+    g.now += dt
+    if g.winner >= 0 { return }
+    if not g.released and zombies_released(g) {
+        g.released = true
+        if g.mode != M_OBSTACLE { g.events.push(Event{ kind: "released", a: 0, b: 0 }) }
+    }
+    g.saw_pos = []
+    for s in g.saws { g.saw_pos.push(saw_pos(s, g.now, SAW_PERIOD)) }
+    for p in g.players {
+        if p.bot { bot_think(g, p) }
+        move_player(g, p, dt)
+        if g.mode == M_OBSTACLE { obstacle_step(g, p) }
+    }
+    check_cures(g)
+    check_infections(g)
+    check_end(g)
+}
+
+// stone noises that are still sounding: (x, y, owner id, start time)
+fn active_noises(g: Game) -> [(float, float, int, float)] {
+    var out: [(float, float, int, float)] = []
+    for p in g.players { if p.noise_until > g.now { out.push((p.noise_x, p.noise_y, p.id, p.noise_at)) } }
+    return out
+}
+
+fn heard_by(g: Game, z: P) -> [P] {
+    var out: [P] = []
+    if z.role != ZOMB { return out }
+    for o in g.players {
+        if o.role == SURV and not fx_on(g, o, E_INVIS) and dist(o.x, o.y, z.x, z.y) <= SOUND_WAVE * o.m_detect {
+            out.push(o)
+        }
+    }
+    return out
+}

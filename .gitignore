@@ -8,3 +8,4 @@ web-build/
 ios/
 install.log
 android/
+.agent-dashboard/

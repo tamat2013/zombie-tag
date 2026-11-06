@@ -1,0 +1,13 @@
+{
+  "cli": {
+    "appVersionSource": "local"
+  },
+  "build": {
+    "ios": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_IOS_OTA": "1"
+      }
+    }
+  }
+}

@@ -1,0 +1,592 @@
+// world.atf - tiles, maps, collision, line of sight and A* path finding for Zombie Tag.
+
+const ZT_TILE = 48
+const ZT_RADIUS = 16.0
+
+// tile codes
+const T_FLOOR = 0
+const T_WALL = 1
+const T_CRATE = 2
+const T_TASK = 3
+const T_SURV = 4
+const T_ZOMB = 5
+const T_HAZARD = 6
+const T_FINISH = 7
+const T_MUD = 8
+const T_CHECK = 9
+const T_SAW = 10
+
+struct V { x: float, y: float }
+
+struct GMap {
+    id: str
+    name: str
+    w: int
+    h: int
+    tiles: [int]
+    obstacle: bool = false
+    medals: [int] = []
+}
+
+struct Station { idx: int, tx: int, ty: int, x: float, y: float, kind: int }
+
+struct Saw { min_x: float, max_x: float, y: float, phase: float }
+
+fn tile_of_char(c: str) -> int {
+    return match c {
+        "#" => T_WALL
+        "C" => T_CRATE
+        "T" => T_TASK
+        "S" => T_SURV
+        "Z" => T_ZOMB
+        "^" => T_HAZARD
+        "F" => T_FINISH
+        "~" => T_MUD
+        "K" => T_CHECK
+        "O" => T_SAW
+        _ => T_FLOOR
+    }
+}
+
+fn map_from_rows(id: str, name: str, rows: [str], obstacle: bool, medals: [int]) -> GMap {
+    var w = 0
+    for r in rows { w = max(w, r.len()) }
+    var tiles: [int] = []
+    for y in 0..rows.len() {
+        for x in 0..w {
+            if x < rows[y].len() { tiles.push(tile_of_char(rows[y][x])) } else { tiles.push(T_WALL) }
+        }
+    }
+    return GMap{ id: id, name: name, w: w, h: rows.len(), tiles: tiles, obstacle: obstacle, medals: medals }
+}
+
+// Doubles every tile (spawns and stations stay single), like the original "big" maps.
+fn scale_rows(rows: [str], k: int) -> [str] {
+    var out: [str] = []
+    for r in rows {
+        var line = str_builder()
+        for ch in r {
+            for _ in 0..k {
+                if ch == "S" or ch == "Z" or ch == "T" { line.add(".") } else { line.add(ch) }
+            }
+        }
+        let s = line.finish()
+        for _ in 0..k { out.push(s) }
+    }
+    for y in 0..rows.len() {
+        for x in 0..rows[y].len() {
+            let ch = rows[y][x]
+            if ch == "S" or ch == "Z" or ch == "T" {
+                let yy = y * k
+                let xx = x * k
+                let line = out[yy]
+                out[yy] = line[..xx] + ch + line[(xx + 1)..]
+            }
+        }
+    }
+    return out
+}
+
+fn map_tile(m: GMap, tx: int, ty: int) -> int {
+    if tx < 0 or ty < 0 or tx >= m.w or ty >= m.h { return T_WALL }
+    return m.tiles[ty * m.w + tx]
+}
+
+fn tile_solid(c: int) -> bool { return c == T_WALL or c == T_CRATE or c == T_TASK }
+
+fn tile_to(v: float) -> int { return int(floor(v / 48.0)) }
+
+fn tile_center(tx: int, ty: int) -> V {
+    return V{ x: float(tx * ZT_TILE) + 24.0, y: float(ty * ZT_TILE) + 24.0 }
+}
+
+fn map_find(m: GMap, code: int) -> [V] {
+    var out: [V] = []
+    for ty in 0..m.h {
+        for tx in 0..m.w {
+            if m.tiles[ty * m.w + tx] == code { out.push(V{ x: float(tx), y: float(ty) }) }
+        }
+    }
+    return out
+}
+
+fn map_stations(m: GMap) -> [Station] {
+    var out: [Station] = []
+    let ts = map_find(m, T_TASK)
+    for i in 0..ts.len() {
+        let c = tile_center(int(ts[i].x), int(ts[i].y))
+        out.push(Station{ idx: i, tx: int(ts[i].x), ty: int(ts[i].y), x: c.x, y: c.y, kind: i % 5 })
+    }
+    return out
+}
+
+fn map_walkable(m: GMap) -> [V] {
+    var out: [V] = []
+    for ty in 0..m.h {
+        for tx in 0..m.w {
+            let c = m.tiles[ty * m.w + tx]
+            if not tile_solid(c) and c != T_HAZARD and c != T_SAW { out.push(V{ x: float(tx), y: float(ty) }) }
+        }
+    }
+    return out
+}
+
+fn map_spawns(m: GMap, code: int) -> [V] {
+    var out: [V] = []
+    for t in map_find(m, code) { out.push(tile_center(int(t.x), int(t.y))) }
+    if out.len() == 0 {
+        let any = map_walkable(m)
+        if any.len() > 0 { out.push(tile_center(int(any[0].x), int(any[0].y))) } else { out.push(V{ x: 72.0, y: 72.0 }) }
+    }
+    return out
+}
+
+fn map_saws(m: GMap) -> [Saw] {
+    var out: [Saw] = []
+    let ts = map_find(m, T_SAW)
+    for i in 0..ts.len() {
+        let tx = int(ts[i].x)
+        let ty = int(ts[i].y)
+        var lo = tx
+        var hi = tx
+        while lo - 1 >= tx - 3 and not tile_solid(map_tile(m, lo - 1, ty)) { lo -= 1 }
+        while hi + 1 <= tx + 3 and not tile_solid(map_tile(m, hi + 1, ty)) { hi += 1 }
+        out.push(Saw{ min_x: tile_center(lo, ty).x, max_x: tile_center(hi, ty).x, y: tile_center(tx, ty).y, phase: float(i) * 0.37 % 1.0 })
+    }
+    return out
+}
+
+fn saw_pos(s: Saw, t: float, period: float) -> V {
+    let a = (t / period + s.phase) % 1.0 * 2.0 * PI
+    let mid = (s.min_x + s.max_x) / 2.0
+    let amp = (s.max_x - s.min_x) / 2.0
+    return V{ x: mid + sin(a) * amp, y: s.y }
+}
+
+// Pushes a circle out of the solid tiles it overlaps.
+fn resolve_collision(m: GMap, p: V, r: float) {
+    let x0 = tile_to(p.x - r)
+    let x1 = tile_to(p.x + r)
+    let y0 = tile_to(p.y - r)
+    let y1 = tile_to(p.y + r)
+    for ty in y0..=y1 {
+        for tx in x0..=x1 {
+            if not tile_solid(map_tile(m, tx, ty)) { continue }
+            let rx = float(tx * ZT_TILE)
+            let ry = float(ty * ZT_TILE)
+            let cx = max(rx, min(p.x, rx + 48.0))
+            let cy = max(ry, min(p.y, ry + 48.0))
+            var dx = p.x - cx
+            var dy = p.y - cy
+            let d2 = dx * dx + dy * dy
+            if d2 >= r * r { continue }
+            if d2 == 0.0 {
+                let l = p.x - rx
+                let rt = rx + 48.0 - p.x
+                let t = p.y - ry
+                let b = ry + 48.0 - p.y
+                let mn = min(min(l, rt), min(t, b))
+                if mn == l { p.x = rx - r } else if mn == rt { p.x = rx + 48.0 + r } else if mn == t { p.y = ry - r } else { p.y = ry + 48.0 + r }
+                continue
+            }
+            let d = sqrt(d2)
+            dx /= d
+            dy /= d
+            p.x = cx + dx * r
+            p.y = cy + dy * r
+        }
+    }
+}
+
+// Moves by (dx, dy) in small steps, sliding along walls.
+fn move_with_collision(m: GMap, p: V, dx: float, dy: float) {
+    let big = max(abs(dx), abs(dy))
+    let steps = max(1, int(ceil(big / (ZT_RADIUS * 0.5))))
+    for _ in 0..steps {
+        p.x += dx / float(steps)
+        resolve_collision(m, p, ZT_RADIUS)
+        p.y += dy / float(steps)
+        resolve_collision(m, p, ZT_RADIUS)
+    }
+}
+
+fn has_los(m: GMap, ax: float, ay: float, bx: float, by: float) -> bool {
+    let d = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+    let steps = int(ceil(d / 12.0))
+    for i in 1..steps {
+        let t = float(i) / float(steps)
+        if map_tile(m, tile_to(ax + (bx - ax) * t), tile_to(ay + (by - ay) * t)) == T_WALL { return false }
+    }
+    return true
+}
+
+fn dist(ax: float, ay: float, bx: float, by: float) -> float {
+    return sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by))
+}
+
+// ---------------------------------------------------------------- A* (8 directions, no corner cutting)
+
+fn passable(m: GMap, tx: int, ty: int, avoid: bool) -> bool {
+    let c = map_tile(m, tx, ty)
+    if tile_solid(c) { return false }
+    if avoid and (c == T_HAZARD or c == T_SAW) { return false }
+    return true
+}
+
+struct Heap { idx: [int] = [], f: [float] = [] }
+
+fn heap_push(h: Heap, i: int, f: float) {
+    h.idx.push(i)
+    h.f.push(f)
+    var n = h.idx.len() - 1
+    while n > 0 {
+        let p = (n - 1) / 2
+        if h.f[p] <= h.f[n] { break }
+        let ti = h.idx[p]
+        let tf = h.f[p]
+        h.idx[p] = h.idx[n]
+        h.f[p] = h.f[n]
+        h.idx[n] = ti
+        h.f[n] = tf
+        n = p
+    }
+}
+
+fn heap_pop(h: Heap) -> int {
+    let top = h.idx[0]
+    let li = h.idx.pop()
+    let lf = h.f.pop()
+    if h.idx.len() > 0 {
+        h.idx[0] = li
+        h.f[0] = lf
+        var n = 0
+        loop {
+            let l = n * 2 + 1
+            let r = l + 1
+            var m = n
+            if l < h.idx.len() and h.f[l] < h.f[m] { m = l }
+            if r < h.idx.len() and h.f[r] < h.f[m] { m = r }
+            if m == n { break }
+            let ti = h.idx[m]
+            let tf = h.f[m]
+            h.idx[m] = h.idx[n]
+            h.f[m] = h.f[n]
+            h.idx[n] = ti
+            h.f[n] = tf
+            n = m
+        }
+    }
+    return top
+}
+
+// Waypoints (tile centers) from the tile (sx, sy) to (gx, gy), without the start. Empty when there is no way.
+fn find_path(m: GMap, sx: int, sy: int, gx: int, gy: int) -> [V] {
+    var path: [V] = []
+    if gx < 0 or gy < 0 or gx >= m.w or gy >= m.h { return path }
+    let W = m.w
+    let start = sy * W + sx
+    let goal = gy * W + gx
+    if start == goal { return path }
+    let g = array_make::<float>(W * m.h)
+    let from = array_make::<int>(W * m.h)
+    let closed = array_make::<bool>(W * m.h)
+    for i in 0..g.len() {
+        g[i] = 1.0e18
+        from[i] = -1
+    }
+    let heap = Heap()
+    g[start] = 0.0
+    heap_push(heap, start, 0.0)
+    var expanded = 0
+    while heap.idx.len() > 0 {
+        let cur = heap_pop(heap)
+        if cur == goal { break }
+        if closed[cur] { continue }
+        closed[cur] = true
+        expanded += 1
+        if expanded > 2500 { return path }
+        let cx = cur % W
+        let cy = cur / W
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if dx == 0 and dy == 0 { continue }
+                let nx = cx + dx
+                let ny = cy + dy
+                let ni = ny * W + nx
+                if ni != goal and not passable(m, nx, ny, true) { continue }
+                if dx != 0 and dy != 0 and (not passable(m, cx + dx, cy, true) or not passable(m, cx, cy + dy, true)) { continue }
+                if closed[ni] { continue }
+                var mud = 1.0
+                if map_tile(m, nx, ny) == T_MUD { mud = 1.6 }
+                var step = 1.0
+                if dx != 0 and dy != 0 { step = 1.414 }
+                let cost = g[cur] + step * mud
+                if cost < g[ni] {
+                    g[ni] = cost
+                    from[ni] = cur
+                    let ddx = float(abs(nx - gx))
+                    let ddy = float(abs(ny - gy))
+                    heap_push(heap, ni, cost + max(ddx, ddy) + 0.414 * min(ddx, ddy))
+                }
+            }
+        }
+    }
+    if from[goal] < 0 { return path }
+    var i = goal
+    while i != start {
+        path.push(tile_center(i % W, i / W))
+        i = from[i]
+    }
+    return path.reversed()
+}
+
+// ---------------------------------------------------------------- map data
+
+const HOSPITAL = [
+    "################################",
+    "#S....#.......T......#.......Z.#",
+    "#.....#..............#.........#",
+    "#..T..#....CC....CC..#....T....#",
+    "#.....#..............#.........#",
+    "###.#####.........######.#######",
+    "#.......#....~~~~....#.........#",
+    "#.T.....#....~~~~....#....C....#",
+    "#.......#............#.........#",
+    "#...........#....#.............#",
+    "#...C.......#.T..#........T....#",
+    "#...........#....#.............#",
+    "#####.###########.####.#########",
+    "#.......#.................#....#",
+    "#..T....#....C......C.....#..T.#",
+    "#.......#......S..........#....#",
+    "#.......#.................#....#",
+    "#...........T.......~~~........#",
+    "#S.....CC..............Z.....S.#",
+    "################################",
+]
+
+const MALL = [
+    "################################",
+    "#S.......#..........#.........S#",
+    "#..T.....#....T.....#.....T....#",
+    "#........#..........#..........#",
+    "#...CC...####....####...CC.....#",
+    "#..............................#",
+    "#....#####..........#####......#",
+    "#....#...T..........T...#......#",
+    "#....#..................#..Z...#",
+    "#.......................#......#",
+    "#....#.......CCCC.......#......#",
+    "#....#..................#......#",
+    "#....######.......#######......#",
+    "#..............~~..............#",
+    "#..T......Z....~~.........T....#",
+    "#..............................#",
+    "#...####....####....####....####",
+    "#...#..T....#.......#..T.......#",
+    "#S..#.......#...S...#.........S#",
+    "################################",
+]
+
+const BASE = [
+    "################################",
+    "#S.....C.......#.......C......S#",
+    "#..............#...............#",
+    "#..####..T.....#.....T..####...#",
+    "#..#..#...............#....#...#",
+    "#..#T.#....~~~~~~~~...#..T.#...#",
+    "#..#..#....~~~~~~~~...#....#...#",
+    "#..##.#...............##.###...#",
+    "#........######.######.........#",
+    "#..C.....#....Z.....#......C...#",
+    "#........#..........#..........#",
+    "#........###.####.###..........#",
+    "#..............................#",
+    "#####..####..........####..#####",
+    "#.......#......T.......#.......#",
+    "#..T....#..............#....T..#",
+    "#.......#...CC....CC...#.......#",
+    "#..............................#",
+    "#S......C.......S......C......S#",
+    "################################",
+]
+
+const OB_ROOKIE = [
+    "################################",
+    "#S...#....^.....#.....O........#",
+    "#....#....^.....#..............#",
+    "#....#..........#....####......#",
+    "#....####^^^....#..............#",
+    "#.........^.....K.......O......#",
+    "#.........^.....#..............#",
+    "#######...###########^^^###..###",
+    "#..............................#",
+    "#..O.........O..........O......#",
+    "#..............................#",
+    "###..####################......#",
+    "#......^.......~~~~~~~~........#",
+    "#......^.......~~~~~~~~........#",
+    "#K.....^...O...~~~~~~~~...^^^..#",
+    "#..............~~~~~~~~...^F^..#",
+    "#......^..................^.^..#",
+    "#......^...........O...........#",
+    "#..............................#",
+    "################################",
+]
+
+const OB_SAW = [
+    "################################",
+    "#S.....O.......O.......O.......#",
+    "#..............................#",
+    "#^^^^^^^^^^^^^^^^^^^^^^^^^^^...#",
+    "#..............................#",
+    "#...O.......O........O.........#",
+    "#..............................#",
+    "#...^^^^^^^^^^^^^^^^^^^^^^^^^^^#",
+    "#K.............................#",
+    "#......~~~~~~~O~~~~~~~~~.......#",
+    "#..............................#",
+    "#^^^^^^^^^^^^^^^^^^^^^^^^^^^...#",
+    "#.............................K#",
+    "#....O.....O.....O.....O.......#",
+    "#..............................#",
+    "#...^^^^^^^^^^^^^^^^^^^^^^^^^^^#",
+    "#..............................#",
+    "#..O.......O.......O.......O...#",
+    "#.............................F#",
+    "################################",
+]
+
+const OB_MARSH = [
+    "################################",
+    "#S....~~~~~~~~~~~~~~~~~~~~.....#",
+    "#.....~~~~~~~~~^^~~~~~~~~~.....#",
+    "#..^..~~~~~~~~~~~~~~~~~~~~..^..#",
+    "#.....~~~~^^~~~~~~~~^^~~~~.....#",
+    "###########~~~~~~~~~~###########",
+    "#.........K~~~~~~~~~~..........#",
+    "#..O......~~~~~~~~~~~......O...#",
+    "#.........~~~^^~~~~~~..........#",
+    "#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#",
+    "#~~~^^~~~~~~~~O~~~~~~~~~^^~~~~~#",
+    "#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#",
+    "######################~~~~~~~~~#",
+    "#.....................~~~~~~~K~#",
+    "#..^^^^^^^^^^^^^^^^^..~~~~~~~~~#",
+    "#..^...............^...........#",
+    "#..^.......F.......^.....O.....#",
+    "#..^.......................^...#",
+    "#..............................#",
+    "################################",
+]
+
+const OB_GAUNTLET = [
+    "################################",
+    "#S..O....O....O....O....O......#",
+    "#..............................#",
+    "#..O....O....O....O....O....O..#",
+    "#..............................#",
+    "###########################....#",
+    "#..............................#",
+    "#.O..O..O..O..O..O..O..O..O....#",
+    "#..............................#",
+    "#....###########################",
+    "#K.............................#",
+    "#..^^..^^..^^..^^..^^..^^..^^..#",
+    "#..............................#",
+    "#..O...O...O...O...O...O...O...#",
+    "###########################....#",
+    "#.............................K#",
+    "#....O.....O.....O.....O.......#",
+    "#..............................#",
+    "#F.....^.....^.....^.....^.....#",
+    "################################",
+]
+
+// A generated map: rooms joined by corridors, with crates, mud, tasks and spawns (seeded, so it is always the same).
+fn generate_rows(seed: int, w: int, h: int, mud: float) -> [str] {
+    rand_seed(seed)
+    var g: [[str]] = []
+    for y in 0..h {
+        var row: [str] = []
+        for x in 0..w { row.push("#") }
+        g.push(row)
+    }
+    var rooms: [[int]] = []
+    for _ in 0..(w * h / 90) {
+        let rw = rand_int(5, 11)
+        let rh = rand_int(4, 8)
+        let rx = rand_int(2, w - rw - 2)
+        let ry = rand_int(2, h - rh - 2)
+        var ok = true
+        for r in rooms {
+            if rx < r[0] + r[2] + 2 and rx + rw + 2 > r[0] and ry < r[1] + r[3] + 2 and ry + rh + 2 > r[1] { ok = false }
+        }
+        if not ok { continue }
+        rooms.push([rx, ry, rw, rh])
+        for y in ry..(ry + rh) {
+            for x in rx..(rx + rw) { g[y][x] = "." }
+        }
+    }
+    for i in 1..rooms.len() {
+        let a = rooms[i - 1]
+        let b = rooms[i]
+        carve(g, a[0] + a[2] / 2, a[1] + a[3] / 2, b[0] + b[2] / 2, b[1] + b[3] / 2)
+        if i % 3 == 0 and i > 2 {
+            let c = rooms[i - 3]
+            carve(g, c[0] + c[2] / 2, c[1] + c[3] / 2, b[0] + b[2] / 2, b[1] + b[3] / 2)
+        }
+    }
+    for i in 0..rooms.len() {
+        let r = rooms[i]
+        if i % 4 == 0 and i > 0 { g[r[1] + 1][r[0] + 1] = "S" }
+        if i % 4 == 2 { g[r[1] + r[3] - 2][r[0] + r[2] - 2] = "Z" }
+        if g[r[1]][r[0]] == "." { g[r[1]][r[0]] = "T" }
+        if i % 2 == 1 and r[2] > 6 { g[r[1] + r[3] / 2][r[0] + r[2] / 2] = "C" }
+        if rand_float() < mud {
+            for y in (r[1] + 1)..(r[1] + r[3] - 1) {
+                for x in (r[0] + 2)..(r[0] + r[2] - 2) {
+                    if g[y][x] == "." { g[y][x] = "~" }
+                }
+            }
+        }
+    }
+    if rooms.len() > 0 {
+        let f = rooms[0]
+        g[f[1] + f[3] / 2][f[0] + 1] = "S"
+        let l = rooms[rooms.len() - 1]
+        g[l[1] + l[3] / 2][l[0] + l[2] - 2] = "Z"
+    }
+    var out: [str] = []
+    for row in g { out.push("".join(row)) }
+    return out
+}
+
+fn carve(g: [[str]], x0: int, y0: int, x1: int, y1: int) {
+    var x = x0
+    var y = y0
+    while x != x1 {
+        if g[y][x] == "#" { g[y][x] = "." }
+        if x < x1 { x += 1 } else { x -= 1 }
+    }
+    while y != y1 {
+        if g[y][x] == "#" { g[y][x] = "." }
+        if y < y1 { y += 1 } else { y -= 1 }
+    }
+    if g[y][x] == "#" { g[y][x] = "." }
+}
+
+fn all_maps() -> [GMap] {
+    return [
+        map_from_rows("hospital", "Abandoned Hospital", scale_rows(HOSPITAL, 2), false, []),
+        map_from_rows("mall", "Dead Mall", scale_rows(MALL, 2), false, []),
+        map_from_rows("base", "Army Camp", scale_rows(BASE, 2), false, []),
+        map_from_rows("lab", "Secret Lab", generate_rows(11, 64, 40, 0.15), false, []),
+        map_from_rows("prison", "Max Security Prison", generate_rows(23, 72, 44, 0.1), false, []),
+        map_from_rows("swamp", "Swamp Village", generate_rows(197, 72, 48, 0.8), false, []),
+        map_from_rows("obstacle_rookie", "Rookie Course", OB_ROOKIE, true, [30, 45, 70]),
+        map_from_rows("obstacle_saw", "Saw Valley", OB_SAW, true, [35, 55, 80]),
+        map_from_rows("obstacle_marsh", "Mud Marsh", OB_MARSH, true, [45, 65, 95]),
+        map_from_rows("obstacle_gauntlet", "Saw Gauntlet", OB_GAUNTLET, true, [45, 65, 95]),
+    ]
+}
