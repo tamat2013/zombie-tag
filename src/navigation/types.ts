@@ -52,6 +52,7 @@ export type RootStackParamList = {
   Shop: { tab?: ShopTab } | undefined;
   Missions: undefined;
   Tournaments: undefined;
+  Leaderboard: undefined;
   Profile: undefined;
   Settings: undefined;
 };

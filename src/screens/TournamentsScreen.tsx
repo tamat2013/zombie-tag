@@ -21,7 +21,7 @@ import { haptic } from '../utils/haptics';
 type Group = 'live' | 'upcoming' | 'ended';
 type Tab = Group | 'rules';
 type Detail = 'prizes' | 'board';
-type Placed = LeaderboardEntry & { rank: number };
+export type Placed = LeaderboardEntry & { rank: number };
 
 const EMPTY: Record<Group, string> = {
   live: 'No tournament is live right now.',
@@ -54,7 +54,7 @@ function statusPill(t: Tournament, now: number) {
   return <Pill text="Ended" lead={<Icon name="flag-checkered" size={14} color={colors.textDim} />} color={colors.textDim} />;
 }
 
-function StandingRow({ entry, own }: { entry: Placed; own: boolean }) {
+export function StandingRow({ entry, own }: { entry: Placed; own: boolean }) {
   return (
     <View style={[styles.standing, own && styles.ownRow]}>
       {entry.rank <= 3 ? <Icon name="medal" size={18} color={RANK_COLORS[entry.rank - 1]} /> : <Text style={styles.rank}>{entry.rank}</Text>}

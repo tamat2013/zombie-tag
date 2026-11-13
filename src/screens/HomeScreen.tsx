@@ -167,6 +167,10 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
               <Icon name="map-outline" size={18} color={colors.textDim} />
               <Text style={styles.quickText}>Map creator</Text>
             </Pressable>
+            <Pressable onPress={() => navigation.navigate('Leaderboard')} style={({ pressed }) => [styles.quickBtn, pressed && styles.pressed]}>
+              <Icon name="podium" size={18} color={colors.textDim} />
+              <Text style={styles.quickText}>Leaderboard</Text>
+            </Pressable>
           </View>
         </>
       ) : (
@@ -192,6 +196,9 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
               </Text>
             ) : null}
             <View style={{ flex: 1 }} />
+            <Pressable onPress={() => navigation.navigate('Leaderboard')} accessibilityLabel={tr('Leaderboard')} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} hitSlop={6}>
+              <Icon name="podium" size={20} color={colors.textDim} />
+            </Pressable>
             <Pressable onPress={() => navigation.navigate('SkinDesigner')} accessibilityLabel={tr('Skin designer')} style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]} hitSlop={6}>
               <Icon name="pencil-outline" size={20} color={colors.textDim} />
             </Pressable>

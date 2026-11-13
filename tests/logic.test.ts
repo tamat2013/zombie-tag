@@ -199,3 +199,33 @@ test('there are lots of built-in maps with unique ids', async () => {
   assert.ok(BUILT_IN_MAPS.filter((m) => m.kind === 'obstacle').length >= 5);
   assert.equal(BUILT_IN_MAPS[0].id, 'hospital');
 });
+
+test('leaderboard: public row, sorting, ties and own rank', async () => {
+  const { boardEntryOf, sortBoard, rankIn, buildBoardView, simulatedPlayers } = await import('../src/logic/leaderboard.ts');
+  const me = createDefaultProfile('me', '  Tester  ', 'secret@mail.com', NOW);
+  me.xp = 500;
+  me.stats.wins = 7;
+  const row = boardEntryOf(me);
+  assert.deepEqual(row, { uid: 'me', name: 'Tester', xp: 500, wins: 7, infections: 0, tasks: 0 });
+  assert.ok(!('email' in row) && !('coins' in row), 'only public fields are published');
+
+  const a = { uid: 'a', name: 'A', xp: 100, wins: 5, infections: 0, tasks: 0 };
+  const b = { uid: 'b', name: 'B', xp: 300, wins: 5, infections: 0, tasks: 0 };
+  assert.deepEqual(sortBoard([a, b, row], 'wins').map((e) => e.uid), ['me', 'b', 'a'], 'ties go to more XP');
+  assert.equal(rankIn([a, b, row], 'xp', 'me'), 1);
+  assert.equal(rankIn([a, b], 'xp', 'me'), 0);
+
+  // Players with a zero value are not listed; the local player below the cut is appended with their rank.
+  const view = buildBoardView([a, b, row], 'infections', row, 3);
+  assert.deepEqual(view.rows, []);
+  assert.equal(view.ownRank, 0);
+  const cut = buildBoardView([a, b, row], 'wins', row, 1, 1);
+  assert.deepEqual(cut.rows.map((e) => [e.uid, e.rank]), [['me', 1]]);
+  const low = { ...row, xp: 50 };
+  const below = buildBoardView([a, b, low], 'xp', low, 3, 2);
+  assert.deepEqual(below.rows.map((e) => [e.uid, e.rank]), [['b', 1], ['a', 2], ['me', 3]]);
+
+  const sim = simulatedPlayers();
+  assert.deepEqual(sim, simulatedPlayers(), 'offline players are stable');
+  assert.ok(sim.every((e) => e.isBot && e.xp > 0 && e.wins > 0 && e.infections > 0 && e.tasks > 0));
+});

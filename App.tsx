@@ -26,6 +26,7 @@ import { ResultsScreen } from './src/screens/ResultsScreen';
 import { ShopScreen } from './src/screens/ShopScreen';
 import { MissionsScreen } from './src/screens/MissionsScreen';
 import { TournamentsScreen } from './src/screens/TournamentsScreen';
+import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { initSound, setMusic } from './src/services/sound';
@@ -97,6 +98,7 @@ function Root() {
             <Stack.Screen name="Shop" component={ShopScreen} />
             <Stack.Screen name="Missions" component={MissionsScreen} />
             <Stack.Screen name="Tournaments" component={TournamentsScreen} />
+            <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
           </>

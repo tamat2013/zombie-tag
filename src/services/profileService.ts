@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { Profile } from '../types';
 import { createDefaultProfile, normalizeProfile } from '../logic/progression';
 import { firestore, isFirebaseConfigured } from './firebase';
+import { leaderboardService } from './leaderboardService';
 import { readJson, writeJson } from './storage';
 import type { AppUser } from './authService';
 
@@ -19,6 +20,7 @@ export const profileService = {
         if (snap.exists()) {
           const remote = normalizeProfile({ ...(snap.data() as Profile), uid: user.uid }, now);
           await writeJson(localKey(user.uid), remote);
+          leaderboardService.sync(remote); // players who already have progress appear on the board without waiting for a save
           return remote;
         }
       } catch (e) {
@@ -40,6 +42,7 @@ export const profileService = {
       } catch (e) {
         console.warn('Profile sync failed (kept locally)', e);
       }
+      await leaderboardService.sync(p);
     }
   },
 };
