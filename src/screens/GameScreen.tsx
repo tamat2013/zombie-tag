@@ -27,6 +27,7 @@ import { ZOMBIE_FILTERS } from '../data/catalog';
 import { useGame } from '../state/GameContext';
 import { Character } from '../components/Character';
 import { Joystick } from '../components/Joystick';
+import { instantPress } from '../components/instantPress';
 import { AbilityButton } from '../components/AbilityButton';
 import { RoleReveal } from '../components/RoleReveal';
 import { OriginStory } from '../components/OriginStory';
@@ -547,6 +548,8 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
     }
   };
   openTaskRef.current = openTask;
+  const pressTask = instantPress(openTask);
+  const pressStone = instantPress(throwStone);
 
   // Browser test hook: exposes the running match only when the web page URL contains "e2e".
   useEffect(() => {
@@ -819,7 +822,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
       {/* HUD: abilities + action */}
       <View style={styles.actions} pointerEvents="box-none">
         {station && !task ? (
-          <Pressable onPress={openTask} style={({ pressed }) => [styles.useBtn, pressed && { transform: [{ scale: 0.94 }] }]}>
+          <Pressable {...pressTask} style={({ pressed }) => [styles.useBtn, pressed && { transform: [{ scale: 0.94 }] }]}>
             <Glyph emoji={TASK_INFO[station.type].icon} size={30} />
             <Text style={styles.useText}>{TASK_INFO[station.type].title}</Text>
           </Pressable>
@@ -827,7 +830,7 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
         <View style={styles.abilityRow}>
           {canStone ? (
             <Pressable
-              onPress={throwStone}
+              {...pressStone}
               disabled={local.stoneUsed || !!engine.ended || beforeStart}
               style={({ pressed }) => [styles.stoneBtn, local.stoneUsed && { opacity: 0.35 }, pressed && { transform: [{ scale: 0.92 }] }]}
             >

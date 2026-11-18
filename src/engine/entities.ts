@@ -5,7 +5,7 @@ export type EffectKey = 'sprint' | 'shield' | 'scan' | 'invisible' | 'dash' | 'v
 export const EFFECT_KEYS: EffectKey[] = ['sprint', 'shield', 'scan', 'invisible', 'dash', 'vision', 'slowed', 'frenzy', 'blinded'];
 
 /** Buffs one player can put on another (sent over the network when the target is remote). */
-export type BuffKind = 'shield' | 'cure' | 'slow' | 'blind';
+export type BuffKind = 'shield' | 'cure' | 'slow' | 'blind' | 'infect';
 
 /** Who drives a player in this client: local input, the network, or this client's AI. */
 export type Control = 'local' | 'remote' | 'ai';
@@ -91,6 +91,10 @@ export interface EnginePlayer {
   abilitiesUsed: number;
   lastNetUpdate: number;
   netTarget?: { x: number; y: number };
+  /** Last reported position and when it arrived, to estimate how fast a remote player moves. */
+  netPrev?: { x: number; y: number; t: number };
+  /** Smoothed age (ms) of this player's network updates when they arrive: their connection delay. */
+  netDelayMs?: number;
   // Obstacle course
   checkpoint: Vec;
   finishedAt: number | null;

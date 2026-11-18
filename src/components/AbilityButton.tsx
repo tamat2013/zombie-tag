@@ -5,6 +5,7 @@ import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { AbilityDef } from '../engine/abilities';
 import { colors } from '../theme';
+import { instantPress } from './instantPress';
 
 interface Props {
   def: AbilityDef;
@@ -36,9 +37,10 @@ export function AbilityButton({ def, cooldown, remainingSec, active, suggested, 
   }, [suggested, glow]);
 
   const ready = cooldown <= 0;
+  const press = instantPress(onPress, !disabled && ready);
   const ring = def.role === 'zombie' ? colors.zombie : colors.survivor;
   return (
-    <Pressable onPress={onPress} disabled={disabled || !ready} hitSlop={6}>
+    <Pressable {...press} disabled={disabled || !ready} hitSlop={10}>
       <View style={styles.wrap}>
         <Animated.View style={[styles.glow, { borderColor: colors.gold, opacity: glow, transform: [{ scale: glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) }] }]} />
         <View style={[styles.btn, { borderColor: active ? colors.gold : ring, opacity: disabled ? 0.4 : 1 }]}>

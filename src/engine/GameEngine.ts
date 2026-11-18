@@ -57,6 +57,10 @@ export type EngineEvent =
   | { type: 'released' }
   | { type: 'end'; winner: Role | 'finish' };
 
+/** Remote players are drawn ahead by their measured delay; these bound it, and set the guess before any is measured. */
+const MAX_REMOTE_LEAD_MS = 500;
+const DEFAULT_REMOTE_LEAD_MS = 100;
+
 export interface OutgoingBuff {
   targetId: string;
   kind: BuffKind;
@@ -83,6 +87,8 @@ export interface NetPlayerState {
   /** Stone used, and the active noise as [x, y, ms left]. */
   su?: 0 | 1;
   n?: [number, number, number] | null;
+  /** Server time when the packet was made; lets the receiver measure how old it is. */
+  ts?: number;
 }
 
 export interface EngineConfig {
@@ -137,6 +143,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
   ended: { winner: Role | 'finish'; at: number } | null = null;
   events: EngineEvent[] = [];
   outbox: OutgoingBuff[] = [];
+  private lastInfectSent = new Map<string, number>();
   private survivorSpawns: Vec[] = [];
   rng: () => number;
   private released = false;
@@ -349,6 +356,11 @@ export class GameEngine implements AbilityWorld, BotWorld {
     if (kind === 'slow' && t.role === 'survivor' && !isActive(t, 'shield', this.now)) t.effects.slowed = this.now + durationMs;
     if (kind === 'blind' && t.role === 'zombie') t.effects.blinded = this.now + durationMs;
     if (kind === 'cure') this.cure(t, fromId);
+    if (kind === 'infect') {
+      // A zombie's own client saw the touch; trust it so lag cannot make a hit vanish.
+      const z = this.getPlayer(fromId);
+      if (z && z.role === 'zombie' && !this.isFrozen(z) && (z.startRole !== 'zombie' || this.zombiesReleased)) this.infect(t, z);
+    }
   }
 
   leap(p: EnginePlayer, distance: number) {
@@ -514,14 +526,21 @@ export class GameEngine implements AbilityWorld, BotWorld {
   private checkInfections() {
     if (this.mode === 'obstacle') return;
     for (const victim of this.players) {
-      if (victim.role !== 'survivor' || victim.control === 'remote') continue;
+      if (victim.role !== 'survivor') continue;
+      const remoteVictim = victim.control === 'remote';
       for (const z of this.players) {
         if (z.role !== 'zombie') continue;
+        // A remote victim is only hit by zombies this client owns (itself or host bots).
+        if (remoteVictim && z.control === 'remote') continue;
         if (z.startRole === 'zombie' && !this.zombiesReleased) continue;
         if (this.isFrozen(z)) continue;
         const reach = PLAYER_RADIUS * 2 + INFECT_REACH * z.mods.reach * 2;
         if (Math.hypot(victim.x - z.x, victim.y - z.y) <= reach) {
-          this.infect(victim, z);
+          if (!remoteVictim) this.infect(victim, z);
+          else if ((this.lastInfectSent.get(victim.id) ?? -Infinity) + 500 <= this.now) {
+            this.lastInfectSent.set(victim.id, this.now);
+            this.outbox.push({ targetId: victim.id, kind: 'infect', durationMs: 0, fromId: z.id });
+          }
           break;
         }
       }
@@ -591,6 +610,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
       d: p.doctor ? 1 : 0,
       cb: p.curedBy,
       su: p.stoneUsed ? 1 : 0,
+      ts: Math.round(this.now),
       n: p.noise && p.noise.until > this.now ? [Math.round(p.noise.x), Math.round(p.noise.y), Math.round(p.noise.until - this.now)] : null,
     };
   }
@@ -621,7 +641,28 @@ export class GameEngine implements AbilityWorld, BotWorld {
       }
     }
     p.role = newRole;
-    p.netTarget = { x: s.x, y: s.y };
+    // Dead reckoning: a packet is already old when it arrives. Measure how old (from the server
+    // timestamp it carries), and draw the player that far ahead along their movement, so a slow
+    // connection gets a bigger correction and a fast one a small one.
+    const target = { x: s.x, y: s.y };
+    const stamp = s.ts ?? this.now;
+    if (s.ts !== undefined) {
+      const age = Math.min(MAX_REMOTE_LEAD_MS, Math.max(0, this.now - s.ts));
+      p.netDelayMs = p.netDelayMs === undefined ? age : p.netDelayMs * 0.8 + age * 0.2;
+    }
+    const prev = p.netPrev;
+    if (prev && stamp > prev.t && stamp - prev.t < 400) {
+      const dtSec = (stamp - prev.t) / 1000;
+      let vx = (s.x - prev.x) / dtSec;
+      let vy = (s.y - prev.y) / dtSec;
+      const v = Math.hypot(vx, vy);
+      const maxV = 420;
+      if (v > maxV) { vx *= maxV / v; vy *= maxV / v; }
+      const leadMs = Math.min(MAX_REMOTE_LEAD_MS, (p.netDelayMs ?? DEFAULT_REMOTE_LEAD_MS) + 50);
+      moveWithCollision(this.map, target, (vx * leadMs) / 1000, (vy * leadMs) / 1000);
+    }
+    p.netPrev = { x: s.x, y: s.y, t: stamp };
+    p.netTarget = target;
     p.facing = s.f;
     p.inTask = !!s.it;
     if (s.d !== undefined) p.doctor = s.d === 1;
@@ -674,7 +715,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
           p.x = p.netTarget.x;
           p.y = p.netTarget.y;
         } else {
-          const k = Math.min(1, dt * 12);
+          const k = Math.min(1, dt * 18);
           p.x += dx * k;
           p.y += dy * k;
         }
