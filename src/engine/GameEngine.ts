@@ -59,6 +59,10 @@ export type EngineEvent =
 
 /** Remote players are drawn ahead by their measured delay; these bound it, and set the guess before any is measured. */
 const MAX_REMOTE_LEAD_MS = 500;
+/** Extra infection distance (px) so near-touches count. */
+const INFECT_SLACK = 10;
+/** Extra infection distance per second of measured network delay (px). */
+const INFECT_LAG_PX_PER_S = 80;
 const DEFAULT_REMOTE_LEAD_MS = 100;
 
 export interface OutgoingBuff {
@@ -534,7 +538,11 @@ export class GameEngine implements AbilityWorld, BotWorld {
         if (remoteVictim && z.control === 'remote') continue;
         if (z.startRole === 'zombie' && !this.zombiesReleased) continue;
         if (this.isFrozen(z)) continue;
-        const reach = PLAYER_RADIUS * 2 + INFECT_REACH * z.mods.reach * 2;
+        // Forgiving hit zone: a little slack always, plus more when the other player is seen over the
+        // network (their drawn position trails their real one by roughly the measured delay).
+        const remoteOne = remoteVictim ? victim : z.control === 'remote' ? z : null;
+        const lagMs = remoteOne ? Math.min(400, remoteOne.netDelayMs ?? DEFAULT_REMOTE_LEAD_MS) : 0;
+        const reach = PLAYER_RADIUS * 2 + INFECT_REACH * z.mods.reach * 2 + INFECT_SLACK + (lagMs / 1000) * INFECT_LAG_PX_PER_S;
         if (Math.hypot(victim.x - z.x, victim.y - z.y) <= reach) {
           if (!remoteVictim) this.infect(victim, z);
           else if ((this.lastInfectSent.get(victim.id) ?? -Infinity) + 500 <= this.now) {
