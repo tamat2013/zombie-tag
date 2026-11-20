@@ -60,7 +60,7 @@ export type EngineEvent =
 /** Remote players are drawn ahead by their measured delay; these bound it, and set the guess before any is measured. */
 const MAX_REMOTE_LEAD_MS = 500;
 /** Extra infection distance (px) so near-touches count. */
-const INFECT_SLACK = 10;
+const INFECT_SLACK = 22;
 /** Extra infection distance per second of measured network delay (px). */
 const INFECT_LAG_PX_PER_S = 80;
 const DEFAULT_REMOTE_LEAD_MS = 100;
