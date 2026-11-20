@@ -32,6 +32,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { initSound, setMusic } from './src/services/sound';
 import { initLanguage, tr } from './src/i18n/language';
 import { checkAndroidUpdate } from './src/services/appUpdate';
+import { setupWebApp } from './src/utils/webFullscreen';
 import { useFonts } from 'expo-font';
 import { Rubik_400Regular, Rubik_500Medium, Rubik_700Bold, Rubik_800ExtraBold, Rubik_900Black } from '@expo-google-fonts/rubik';
 import { LilitaOne_400Regular } from '@expo-google-fonts/lilita-one';
@@ -42,6 +43,8 @@ if (Platform.OS !== 'web') {
   I18nManager.allowRTL(false);
   I18nManager.forceRTL(false);
 }
+
+setupWebApp();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
