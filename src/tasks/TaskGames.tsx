@@ -108,14 +108,14 @@ export function MachineTask({ onComplete, speed }: TaskProps) {
   const pos = useRef(new Animated.Value(0)).current;
   const value = useRef(0);
   const [flash, setFlash] = useState<'good' | 'bad' | null>(null);
-  const zoneWidth = 0.16 * Math.min(1.6, speed);
+  const zoneWidth = Math.max(0.26, 0.3 * Math.min(1.3, speed));
 
   useEffect(() => {
     const id = pos.addListener(({ value: v }) => (value.current = v));
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pos, { toValue: 1, duration: 900 - hits * 120, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-        Animated.timing(pos, { toValue: 0, duration: 900 - hits * 120, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(pos, { toValue: 1, duration: 1400 - hits * 150, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(pos, { toValue: 0, duration: 1400 - hits * 150, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
       ]),
     );
     loop.start();
@@ -126,7 +126,7 @@ export function MachineTask({ onComplete, speed }: TaskProps) {
   }, [pos, hits]);
 
   const stop = () => {
-    const v = value.current;
+    const v = value.current * 0.98;
     if (Math.abs(v - zone) <= zoneWidth / 2) {
       haptic('medium');
       setFlash('good');
@@ -137,7 +137,7 @@ export function MachineTask({ onComplete, speed }: TaskProps) {
     } else {
       haptic('error');
       setFlash('bad');
-      setHits(0);
+      setHits(Math.max(0, hits - 1));
     }
     setTimeout(() => setFlash(null), 250);
   };
