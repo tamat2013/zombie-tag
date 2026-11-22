@@ -104,18 +104,19 @@ export function WiresTask({ onComplete }: TaskProps) {
 
 export function MachineTask({ onComplete, speed }: TaskProps) {
   const [hits, setHits] = useState(0);
-  const [zone, setZone] = useState(() => 0.25 + Math.random() * 0.5);
+  const [zone, setZone] = useState(() => 0.3 + Math.random() * 0.4);
   const pos = useRef(new Animated.Value(0)).current;
   const value = useRef(0);
   const [flash, setFlash] = useState<'good' | 'bad' | null>(null);
-  const zoneWidth = Math.max(0.26, 0.3 * Math.min(1.3, speed));
+  // Easy on purpose: a very wide zone and a slow needle that does not speed up.
+  const zoneWidth = Math.max(0.46, 0.5 * Math.min(1.3, speed));
 
   useEffect(() => {
     const id = pos.addListener(({ value: v }) => (value.current = v));
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pos, { toValue: 1, duration: 1400 - hits * 150, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-        Animated.timing(pos, { toValue: 0, duration: 1400 - hits * 150, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(pos, { toValue: 1, duration: 2400, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(pos, { toValue: 0, duration: 2400, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
       ]),
     );
     loop.start();
@@ -123,7 +124,7 @@ export function MachineTask({ onComplete, speed }: TaskProps) {
       loop.stop();
       pos.removeListener(id);
     };
-  }, [pos, hits]);
+  }, [pos]);
 
   const stop = () => {
     const v = value.current * 0.98;
@@ -132,12 +133,11 @@ export function MachineTask({ onComplete, speed }: TaskProps) {
       setFlash('good');
       const next = hits + 1;
       setHits(next);
-      setZone(0.2 + Math.random() * 0.6);
+      setZone(0.3 + Math.random() * 0.4);
       if (next >= 3) setTimeout(onComplete, 250);
     } else {
       haptic('error');
       setFlash('bad');
-      setHits(Math.max(0, hits - 1));
     }
     setTimeout(() => setFlash(null), 250);
   };
