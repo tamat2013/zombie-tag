@@ -1,19 +1,23 @@
 // Audio and language settings: music and effects volume, footsteps, vibration, a mute-all switch and the language. The phone splits them into tabs; the desktop shows them side by side.
 import { useDevice } from '../utils/device';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Pressable, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import { Card, P, Screen, ScreenHeader, Tabs } from '../components/ui';
+import { RatingBox } from '../components/RatingBox';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { VOLUME_STEPS } from '../logic/soundSettings';
+import { ratingService } from '../services/ratingService';
+import { useGame, useProfile } from '../state/GameContext';
+import type { RatingState } from '../logic/rating';
 import { playSfx, updateSoundSettings, useSoundSettings } from '../services/sound';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { colors, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
-type Tab = 'sound' | 'effects' | 'language';
+type Tab = 'sound' | 'effects' | 'language' | 'rating';
 
 const TESTS = [
   ['skull-outline', 'groan', 'Groan'],
@@ -28,6 +32,34 @@ export function SettingsScreen() {
   const { isDesktop } = useDevice();
   const s = useSoundSettings();
   const [tab, setTab] = useState<Tab>('sound');
+  const profile = useProfile();
+  const { toast } = useGame();
+  const [rated, setRated] = useState<RatingState | null>(null);
+  useEffect(() => {
+    ratingService.load().then(setRated);
+  }, []);
+
+  const rating = (
+    <Card style={styles.grow}>
+      <View style={styles.head}>
+        <Icon name="star" size={22} color={colors.gold} />
+        <Text style={styles.cardTitle}>Rate the game</Text>
+      </View>
+      {rated ? (
+        <RatingBox
+          key={rated.stars ?? 0}
+          initialStars={rated.stars}
+          initialReview={rated.review}
+          saveLabel={rated.stars ? 'Update rating' : 'Send rating'}
+          onSave={async (stars, review) => {
+            setRated(await ratingService.save(profile.uid, profile.displayName, stars, review));
+            toast('Thanks for rating!', { icon: '⭐' });
+          }}
+        />
+      ) : null}
+    </Card>
+  );
+
 
   const mute = (
     <Toggle icon={s.muted ? 'volume-off' : 'volume-high'} title="Mute all" subtitle="Turns off music and effects without losing your volume levels" value={s.muted} onChange={(muted) => updateSoundSettings({ muted })} />
@@ -115,6 +147,7 @@ export function SettingsScreen() {
             { id: 'sound', label: 'Sound' },
             { id: 'effects', label: 'Effects' },
             { id: 'language', label: 'Language' },
+            { id: 'rating', label: 'Rating' },
           ]}
           value={tab}
           onChange={setTab}
@@ -133,8 +166,10 @@ export function SettingsScreen() {
               </View>
               {tests}
             </View>
-          ) : (
+          ) : tab === 'language' ? (
             language
+          ) : (
+            rating
           )}
         </View>
       </Screen>
@@ -163,6 +198,7 @@ export function SettingsScreen() {
             <Text style={styles.cardTitle}>Try sounds</Text>
             {tests}
           </Card>
+          {rating}
         </View>
       </View>
     </Screen>

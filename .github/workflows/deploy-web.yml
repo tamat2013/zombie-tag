@@ -55,6 +55,12 @@ jobs:
       - run: cp dist/index.html dist/404.html
       # Static pages next to the game, e.g. site/guide/ is served at /zombie-tag/guide/.
       - run: cp -R site/. dist/
+      # The guide's rating section talks to Firestore through its REST API and needs only these two public values.
+      - name: Write guide Firebase config
+        run: printf 'window.ZT_FIREBASE = { apiKey: "%s", projectId: "%s" };\n' "$API_KEY" "$PROJECT_ID" > dist/guide/firebase-config.js
+        env:
+          API_KEY: ${{ vars.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          PROJECT_ID: ${{ vars.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

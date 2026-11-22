@@ -7,6 +7,7 @@ import { ROWS_SCREENS } from './strings.screens.ts';
 import { ROWS_UPDATE } from './strings.update.ts';
 import { ROWS_EXTRA1 } from './strings.extra1.ts';
 import { ROWS_EXTRA2 } from './strings.extra2.ts';
+import { ROWS_EXTRA3 } from './strings.extra3.ts';
 
 const BASE: readonly (readonly string[])[] = [
   // --- Sign up / log in ---
@@ -174,4 +175,4 @@ const BASE: readonly (readonly string[])[] = [
   ['Tap to skip', 'הקש כדי לדלג', 'Toca para saltar', 'Touche pour passer', 'Tippen zum Überspringen', 'Toque para pular', 'Нажмите, чтобы пропустить', 'المس للتخطي', 'Tocca per saltare', 'Geçmek için dokun', '点击跳过', 'タップでスキップ', '탭하여 건너뛰기', 'छोड़ने के लिए टैप करें', 'Dotknij, aby pominąć', 'Tik om over te slaan'],
 ];
 
-export const ROWS: readonly (readonly string[])[] = [...BASE, ...ROWS_SCREENS, ...ROWS_GAME, ...ROWS_CATALOG, ...ROWS_UPDATE, ...ROWS_EXTRA1, ...ROWS_EXTRA2];
+export const ROWS: readonly (readonly string[])[] = [...BASE, ...ROWS_SCREENS, ...ROWS_GAME, ...ROWS_CATALOG, ...ROWS_UPDATE, ...ROWS_EXTRA1, ...ROWS_EXTRA2, ...ROWS_EXTRA3];

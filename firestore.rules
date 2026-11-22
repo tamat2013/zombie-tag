@@ -57,5 +57,20 @@ service cloud.firestore {
         && request.resource.data.points >= resource.data.points
         && request.resource.data.points - resource.data.points <= 2000;
     }
+    // Game ratings: one public row per player (the app and the guide website both write here).
+    // Anyone can read, so the website can show the average; a player writes only their own row.
+    match /ratings/{uid} {
+      function validRating() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['stars', 'review', 'name', 'source', 'updatedAt'])
+          && d.stars is int && d.stars >= 1 && d.stars <= 5
+          && d.review is string && d.review.size() <= 500
+          && d.name is string && d.name.size() <= 30
+          && d.source in ['app', 'web']
+          && d.updatedAt is number;
+      }
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == uid && validRating();
+    }
   }
 }

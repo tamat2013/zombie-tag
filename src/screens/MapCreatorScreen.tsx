@@ -1,7 +1,7 @@
 // Map editor: paint tiles with a finger (or mouse), validate, save, share by code and test-play.
 import React, { useMemo, useRef, useState } from 'react';
 import { useDevice } from '../utils/device';
-import { PanResponder, Share, StyleSheet, Switch } from 'react-native';
+import { PanResponder, Share, StyleSheet, Switch, View as GridView } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import { Pressable, TextInput, View } from '../i18n/Layout';
 import { tr } from '../i18n/language';
@@ -67,11 +67,12 @@ function swatch(code: number) {
   return code === T.FINISH ? '#e9c46a' : tileColors[code] ?? tileColors[0];
 }
 
+// The tile grid uses the plain View: the mirroring View would flip rows in right-to-left languages while painting assumes left-to-right.
 const Cell = React.memo(function Cell({ code, size }: { code: number; size: number }) {
   const letter = LETTER_BY_CODE[code];
   const icon = ICON_BY_CODE[code];
   return (
-    <View
+    <GridView
       style={{
         width: size,
         height: size,
@@ -85,17 +86,17 @@ const Cell = React.memo(function Cell({ code, size }: { code: number; size: numb
     >
       {letter && size >= 12 ? <Text style={{ fontSize: size * 0.55, color: '#fff', fontWeight: '900', lineHeight: size * 0.8 }}>{letter}</Text> : null}
       {icon && size >= 12 ? <Glyph emoji={icon} size={size * 0.6} color="#fff" /> : null}
-    </View>
+    </GridView>
   );
 });
 
 const Row = React.memo(function Row({ row, size }: { row: number[]; size: number }) {
   return (
-    <View style={{ flexDirection: 'row' }}>
+    <GridView style={{ flexDirection: 'row' }}>
       {row.map((code, i) => (
         <Cell key={i} code={code} size={size} />
       ))}
-    </View>
+    </GridView>
   );
 });
 
@@ -326,15 +327,15 @@ export function MapCreatorScreen({ navigation, route }: ScreenProps<'MapCreator'
 
   const canvasBox = (
     <View style={styles.canvasBox} onLayout={measureCanvas}>
-      <View style={styles.frame}>
-        <View {...pan.panHandlers} style={{ width: cell * dims.w, height: cell * dims.h }}>
-          <View pointerEvents="none">
+      <GridView style={styles.frame}>
+        <GridView {...pan.panHandlers} style={{ width: cell * dims.w, height: cell * dims.h }}>
+          <GridView pointerEvents="none">
             {rows.map((r, y) => (
               <Row key={y} row={r} size={cell} />
             ))}
-          </View>
-        </View>
-      </View>
+          </GridView>
+        </GridView>
+      </GridView>
     </View>
   );
 

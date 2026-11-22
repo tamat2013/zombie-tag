@@ -6,6 +6,7 @@ import { tr, useLanguage } from '../i18n/language';
 import { Text } from '../i18n/Text';
 import type { ScreenProps } from '../navigation/types';
 import type { GameMode } from '../types';
+import { RatingPrompt } from '../components/RatingPrompt';
 import { Coin, HazardStripe, Screen, ProgressBar, Tag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
@@ -218,6 +219,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           </View>
         </>
       )}
+      <RatingPrompt />
     </Screen>
   );
 }

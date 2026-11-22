@@ -220,6 +220,27 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
   .brand { font-size: 19px; }
   .clock { grid-template-columns: 1fr; }
 }
+
+  /* Ratings */
+  .rate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .rate-grid { grid-template-columns: 1fr; } }
+  .avg { font-size: 56px; font-weight: 900; color: var(--gold); line-height: 1; }
+  .stars { display: inline-flex; gap: 4px; }
+  .stars button { background: none; border: 0; padding: 0; font-size: 34px; line-height: 1; cursor: pointer; color: var(--muted); }
+  .stars button.on, .stars-ro.on { color: var(--gold); }
+  .stars-ro { color: var(--gold); letter-spacing: 2px; }
+  .rate-form textarea { width: 100%; min-height: 80px; margin: 10px 0; padding: 10px; border-radius: var(--r-sm); border: 2px solid var(--border); background: var(--bg-alt); color: var(--text); font: inherit; resize: vertical; box-sizing: border-box; }
+  .rate-form input[type=text] { width: 100%; margin-top: 10px; padding: 8px 10px; border-radius: var(--r-sm); border: 2px solid var(--border); background: var(--bg-alt); color: var(--text); font: inherit; box-sizing: border-box; }
+  .rate-form button.send { padding: 10px 22px; border: 0; border-radius: var(--r-sm); background: var(--toxic); color: var(--ink); font: inherit; font-weight: 800; cursor: pointer; box-shadow: var(--sticker); }
+  .rate-form button.send:disabled { opacity: .5; cursor: default; }
+  .rate-msg { margin-top: 8px; color: var(--dim); min-height: 1.2em; }
+  .bars div { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 14px; }
+  .bars i { display: block; height: 10px; border-radius: 5px; background: var(--gold); }
+  .bars span.track { flex: 1; background: var(--bg-alt); border-radius: 5px; }
+  .reviews { margin-top: 16px; display: grid; gap: 10px; }
+  .review { background: var(--panel); border: 2px solid var(--border); border-radius: var(--r-md); padding: 12px 14px; }
+  .review b { color: var(--text); }
+  .review p { margin: 6px 0 0; color: var(--dim); overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -237,6 +258,7 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
       <a href="#friends">Friends</a>
       <a href="#maps">Maps</a>
       <a href="#shop">Shop</a>
+      <a href="#rate">Rate</a>
       <a href="#faq">FAQ</a>
       <a class="get" href="#get">Download</a>
     </nav>
@@ -559,6 +581,32 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
     </div>
   </section>
 
+  <!-- Ratings -->
+  <section id="rate">
+    <div class="wrap">
+      <h2>Rate <em>the game</em></h2>
+      <p class="sub">Tell us what you think. Players who rate in the game's Settings are counted here too.</p>
+      <div class="rate-grid">
+        <div class="panel">
+          <h3>Average rating</h3>
+          <div class="avg" id="rate-avg">&ndash;</div>
+          <div class="stars-ro" id="rate-avg-stars" aria-hidden="true"></div>
+          <p id="rate-count">Loading&hellip;</p>
+          <div class="bars" id="rate-bars"></div>
+        </div>
+        <div class="panel rate-form">
+          <h3>Your rating</h3>
+          <div class="stars" id="rate-stars" role="radiogroup" aria-label="Your rating"></div>
+          <input type="text" id="rate-name" maxlength="30" placeholder="Your name (optional)">
+          <textarea id="rate-review" maxlength="500" placeholder="Write a review (optional)"></textarea>
+          <button class="send" id="rate-send" disabled>Send rating</button>
+          <div class="rate-msg" id="rate-msg" role="status"></div>
+        </div>
+      </div>
+      <div class="reviews" id="rate-reviews"></div>
+    </div>
+  </section>
+
   <!-- FAQ -->
   <section id="faq">
     <div class="wrap">
@@ -569,15 +617,17 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
       <details><summary>Can phone and computer players play together?</summary><p>Yes. Everyone joins the same room (from the open rooms, by friend username, or with the room code), no matter which device they use.</p></details>
       <details><summary>I got bitten. Now what?</summary><p>You are frozen for 10 seconds. If a doctor touches you in that time, you are human again. If not, you turn into a zombie and keep playing on the other team.</p></details>
       <details><summary>How do I know who the doctor is?</summary><p>The role screen at the start tells you if you are a doctor ("You're a doctor!"). Doctors hear beeping and see blue arrows that lead to a bitten survivor.</p></details>
+      <details><summary>How do I rate the game?</summary><p>Once a month the game asks you for 1 to 5 stars, until you rate. To change your rating later, go to Settings &gt; Rating. You can also rate and write a review in the "Rate the game" section of this page.</p></details>
       <details><summary>Which languages does the game have?</summary><p>16: English, Hebrew, Spanish, French, German, Portuguese, Russian, Arabic, Italian, Turkish, Chinese, Japanese, Korean, Hindi, Polish and Dutch. Change it in Settings.</p></details>
     </div>
   </section>
 </main>
 
 <footer>
-  <div class="wrap">Zombie Tag · version 0.0.5 · © 2026 tamat2013</div>
+  <div class="wrap">Zombie Tag · version 0.0.6 · © 2026 tamat2013</div>
 </footer>
 
+<script src="firebase-config.js"></script>
 <script>
   // Download and play addresses: change these lines if the files or the web game move.
   var ANDROID_URL = "https://github.com/tamat2013/zombie-tag/releases/latest/download/ZombieTag.apk";
@@ -598,6 +648,89 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
       });
     });
   });
+
+  // Ratings: Firestore REST API with an anonymous sign-in. Hidden when the site has no Firebase config.
+  (function () {
+    var cfg = window.ZT_FIREBASE;
+    var sec = document.getElementById("rate");
+    if (!cfg || !cfg.apiKey || !cfg.projectId) { sec.hidden = true; return; }
+    var DOCS = "https://firestore.googleapis.com/v1/projects/" + cfg.projectId + "/databases/(default)/documents/ratings";
+    var chosen = 0;
+    var starsEl = document.getElementById("rate-stars");
+    var sendBtn = document.getElementById("rate-send");
+    var msg = document.getElementById("rate-msg");
+    function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; }
+
+    function paintStars(n) {
+      Array.prototype.forEach.call(starsEl.children, function (b, i) { b.className = i < n ? "on" : ""; b.setAttribute("aria-checked", i + 1 === n ? "true" : "false"); });
+    }
+    for (var i = 1; i <= 5; i++) (function (n) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = "★"; b.setAttribute("role", "radio"); b.setAttribute("aria-label", n + " stars");
+      b.addEventListener("click", function () { chosen = n; paintStars(n); sendBtn.disabled = false; });
+      starsEl.appendChild(b);
+    })(i);
+
+    function field(d, k) { var f = d.fields && d.fields[k]; return f ? (f.integerValue !== undefined ? Number(f.integerValue) : f.stringValue) : undefined; }
+    function stars(n) { return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n); }
+
+    function load() {
+      fetch(DOCS + "?pageSize=300").then(function (r) { return r.json(); }).then(function (data) {
+        var docs = (data.documents || []).map(function (d) {
+          return { stars: field(d, "stars"), review: field(d, "review") || "", name: field(d, "name") || "", at: field(d, "updatedAt") || 0 };
+        }).filter(function (x) { return x.stars >= 1 && x.stars <= 5; });
+        var total = docs.length, sum = 0, counts = [0, 0, 0, 0, 0, 0];
+        docs.forEach(function (x) { sum += x.stars; counts[x.stars]++; });
+        var avg = total ? Math.round(sum / total * 10) / 10 : 0;
+        document.getElementById("rate-avg").textContent = total ? avg.toFixed(1) : "–";
+        document.getElementById("rate-avg-stars").textContent = total ? stars(Math.round(avg)) : "";
+        document.getElementById("rate-count").textContent = total ? total + (total === 1 ? " rating" : " ratings") : "No ratings yet. Be the first!";
+        var bars = document.getElementById("rate-bars"); bars.textContent = "";
+        for (var s = 5; s >= 1; s--) {
+          var row = document.createElement("div"), label = document.createElement("span"), track = document.createElement("span"), fill = document.createElement("i");
+          label.textContent = s + " ★"; track.className = "track"; fill.style.width = total ? (counts[s] / total * 100) + "%" : "0";
+          track.appendChild(fill); row.appendChild(label); row.appendChild(track);
+          var c = document.createElement("span"); c.textContent = counts[s]; row.appendChild(c); bars.appendChild(row);
+        }
+        var list = document.getElementById("rate-reviews"); list.textContent = "";
+        docs.filter(function (x) { return x.review; }).sort(function (a, b) { return b.at - a.at; }).slice(0, 20).forEach(function (x) {
+          var box = document.createElement("div"), head = document.createElement("div"), who = document.createElement("b"), st = document.createElement("span"), p = document.createElement("p");
+          box.className = "review"; st.className = "stars-ro on"; st.textContent = " " + stars(x.stars);
+          who.textContent = x.name || "Player"; p.textContent = x.review;
+          head.appendChild(who); head.appendChild(st); box.appendChild(head); box.appendChild(p); list.appendChild(box);
+        });
+      }).catch(function () { document.getElementById("rate-count").textContent = "Could not load ratings right now."; });
+    }
+
+    function auth() {
+      var refresh = store("zt.refresh");
+      var req = refresh
+        ? fetch("https://securetoken.googleapis.com/v1/token?key=" + cfg.apiKey, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(refresh) })
+            .then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) { return { token: j.id_token, uid: j.user_id, refresh: j.refresh_token }; })
+        : Promise.reject();
+      return req.catch(function () {
+        return fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + cfg.apiKey, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ returnSecureToken: true }) })
+          .then(function (r) { if (!r.ok) throw new Error("auth"); return r.json(); }).then(function (j) { return { token: j.idToken, uid: j.localId, refresh: j.refreshToken }; });
+      }).then(function (a) { store("zt.refresh", a.refresh); return a; });
+    }
+
+    sendBtn.addEventListener("click", function () {
+      if (!chosen) return;
+      sendBtn.disabled = true; msg.textContent = "Sending…";
+      var name = document.getElementById("rate-name").value.trim().slice(0, 30);
+      var review = document.getElementById("rate-review").value.trim().slice(0, 500);
+      auth().then(function (a) {
+        var body = { fields: { stars: { integerValue: String(chosen) }, review: { stringValue: review }, name: { stringValue: name }, source: { stringValue: "web" }, updatedAt: { integerValue: String(Date.now()) } } };
+        return fetch(DOCS + "/" + a.uid, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: "Bearer " + a.token }, body: JSON.stringify(body) });
+      }).then(function (r) {
+        if (!r.ok) throw new Error("save");
+        msg.textContent = "Thank you! Your rating was saved. Send again any time to change it.";
+        sendBtn.disabled = false; load();
+      }).catch(function () { msg.textContent = "Could not send right now. Please try again later."; sendBtn.disabled = false; });
+    });
+
+    load();
+  })();
 </script>
 </body>
 </html>
