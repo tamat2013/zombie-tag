@@ -17,8 +17,11 @@ import { ABILITIES } from '../engine/abilities';
 import { assignRoles, knockoutRoles } from '../engine/GameEngine';
 import { CLASSIC_DURATION_SEC, DEFAULT_RULES, KNOCKOUT_SIZE, TOURNAMENT_ROUND_SEC } from '../engine/constants';
 import { isFirebaseConfigured } from '../services/firebase';
-import { MAX_ROOM_PLAYERS, knockedOut, roomCapacity, roomService } from '../services/roomService';
+import { MAX_ROOM_PLAYERS, isJoinableOpenRoom, knockedOut, roomCapacity, roomService } from '../services/roomService';
 import type { Room } from '../services/roomService';
+import { friendService } from '../services/friendService';
+import type { FriendMatch } from '../services/friendService';
+import type { Friend } from '../types';
 import { getTournamentById, roundName, tournamentStatus } from '../logic/tournaments';
 import { localSetup, makeBots, onlineSetup, roomMap, seededRng } from '../utils/matchSetup';
 import { Glyph, Icon } from '../components/Icon';
@@ -27,7 +30,7 @@ import { colors, outline, radius } from '../theme';
 import { haptic } from '../utils/haptics';
 
 type Tab = 'bots' | 'online';
-type OnlineTab = 'create' | 'join' | 'rooms';
+type OnlineTab = 'rooms' | 'create' | 'join' | 'friends';
 type RoomTab = 'players' | 'settings';
 type Opt = { key: string; label: string; active: boolean; onPress: () => void; color?: string };
 /** One setting: its title and current value, and the options to pick from. */
@@ -414,17 +417,22 @@ function OnlineLobby({
   mainTabs: React.ReactNode;
 }) {
   const profile = useProfile();
-  const { toast } = useGame();
+  const { toast, updateProfile } = useGame();
   const { isDesktop } = useDevice();
   const [code, setCode] = useState<string | null>(initialCode ?? null);
   const [room, setRoom] = useState<Room | null>(null);
   const [joinCode, setJoinCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [openRooms, setOpenRooms] = useState<Room[] | null>(null);
-  const [subTab, setSubTab] = useState<OnlineTab>('create');
+  const [subTab, setSubTab] = useState<OnlineTab>('rooms');
   const [roomTab, setRoomTab] = useState<RoomTab>('players');
+  const [friendName, setFriendName] = useState('');
+  const [friendMatches, setFriendMatches] = useState<FriendMatch[]>([]);
   const leavingToGame = useRef(false);
   const ignoreStart = useRef<number | null | undefined>(undefined);
+  const autoStarting = useRef(false);
+  const startRef = useRef<(() => Promise<boolean>) | null>(null);
+  const friends = profile.friends ?? [];
 
   // Leave the room when the lobby closes, unless we are heading into the match.
   const codeRef = useRef(code);
@@ -474,6 +482,63 @@ function OnlineLobby({
   useEffect(() => {
     if (!code) loadOpen();
   }, [code, loadOpen]);
+
+  // An open room starts by itself once it is full. The host's device starts it.
+  useEffect(() => {
+    if (!room || !room.public || room.status !== 'lobby' || room.hostId !== profile.uid) return;
+    if (Object.keys(room.players ?? {}).length < roomCapacity(room) || autoStarting.current) return;
+    autoStarting.current = true;
+    startRef.current?.().then((ok) => {
+      if (!ok) autoStarting.current = false;
+    });
+  }, [room, profile.uid]);
+
+  const enter = async (get: () => Promise<string>, fail: string) => {
+    setBusy(true);
+    try {
+      const c = await get();
+      ignoreStart.current = undefined;
+      setCode(c);
+      haptic('success');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : fail, { tone: 'bad' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Join an open room, or make one when there is none. */
+  const playOpen = () =>
+    enter(() => roomService.quickJoin(profile, { map, mode: flow.mode === 'tournament' ? 'tournament' : 'classic', tournamentId: flow.tournamentId }), 'Could not join a room');
+
+  const addFriend = (f: Friend) => {
+    updateProfile((p) => ({ ...p, friends: [...(p.friends ?? []).filter((x) => x.uid !== f.uid), { uid: f.uid, name: f.name }] }));
+    setFriendName('');
+    setFriendMatches([]);
+    toast('Friend added', { tone: 'good' });
+  };
+
+  const removeFriend = (uid: string) => updateProfile((p) => ({ ...p, friends: (p.friends ?? []).filter((x) => x.uid !== uid) }));
+
+  const searchFriend = async () => {
+    const name = friendName.trim();
+    if (!name) return;
+    if (name.toLowerCase() === profile.displayName.trim().toLowerCase()) {
+      toast('That is your own username', { tone: 'bad' });
+      return;
+    }
+    setBusy(true);
+    try {
+      const found = (await friendService.find(name, profile.uid)).filter((m) => !friends.some((f) => f.uid === m.uid));
+      if (found.length === 0) toast('No player found with that username', { tone: 'bad' });
+      else if (found.length === 1) addFriend(found[0]);
+      else setFriendMatches(found);
+    } catch {
+      toast('Could not search right now', { tone: 'bad' });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const create = async () => {
     setBusy(true);
@@ -551,6 +616,10 @@ function OnlineLobby({
     </Card>
   );
 
+  const now = Date.now();
+  const openPublic = (openRooms ?? []).filter((r) => isJoinableOpenRoom(r, now));
+  const capacity = flow.mode === 'tournament' ? KNOCKOUT_SIZE : MAX_ROOM_PLAYERS;
+
   const roomsCard = (
     <Card style={styles.roomsCard}>
       <View style={styles.roomsHead}>
@@ -559,12 +628,14 @@ function OnlineLobby({
           <Icon name="refresh" size={20} color={colors.text} />
         </Pressable>
       </View>
+      <P dim>Open rooms are made automatically. The match starts when {capacity} players are in.</P>
+      <Button title="Find a match" icon="🎮" onPress={playOpen} loading={busy} small={!isDesktop} style={styles.cardBtn} />
       <View style={styles.roomsBlock}>
         {openRooms === null ? <ActivityIndicator color={colors.toxic} /> : null}
-        {openRooms?.length === 0 ? <P dim>No open rooms right now. Create one!</P> : null}
-        {openRooms && openRooms.length > 0 ? (
+        {openRooms && openPublic.length === 0 ? <P dim>No one is waiting right now. Tap "Find a match" to open a room!</P> : null}
+        {openRooms && openPublic.length > 0 ? (
           <Grid
-            items={openRooms}
+            items={openPublic}
             minWidth={isDesktop ? 220 : 150}
             minHeight={isDesktop ? 64 : 58}
             gap={isDesktop ? 12 : 8}
@@ -591,25 +662,83 @@ function OnlineLobby({
     </Card>
   );
 
-  // Desktop shows all three cards; the phone shows one of them at a time.
+  const friendsCard = (
+    <Card style={styles.roomsCard}>
+      <H size={16}>Friends</H>
+      <P dim>Type a friend's username to add them. When they wait in a room, you can join them with one tap.</P>
+      <View style={styles.joinRow}>
+        <Button title="Add" small variant="blue" onPress={searchFriend} disabled={busy || !friendName.trim()} />
+        <TextInput
+          value={friendName}
+          onChangeText={setFriendName}
+          placeholder="Username"
+          placeholderTextColor={colors.textMuted}
+          maxLength={30}
+          autoCapitalize="none"
+          autoCorrect={false}
+          onSubmitEditing={searchFriend}
+          style={[styles.input, styles.nameInput]}
+        />
+      </View>
+      {friendMatches.length > 0 ? (
+        <View style={styles.roomsBlock}>
+          <P dim>Several players have this username. Pick yours:</P>
+          {friendMatches.map((m) => (
+            <Pressable key={m.uid} onPress={() => addFriend(m)} style={styles.openRoom}>
+              <Text style={styles.openCount}>{m.xp} XP</Text>
+              <Text style={styles.openName} numberOfLines={1}>
+                {m.name}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      <View style={styles.roomsBlock}>
+        {friends.length === 0 ? <P dim>No friends yet.</P> : null}
+        {friends.map((f) => {
+          const there = (openRooms ?? []).find((r) => r.players?.[f.uid] && r.status === 'lobby');
+          return (
+            <View key={f.uid} style={styles.openRoom}>
+              <Pressable onPress={() => removeFriend(f.uid)} hitSlop={8}>
+                <Icon name="close" size={18} color={colors.textMuted} />
+              </Pressable>
+              <View style={styles.openInfo}>
+                <Text style={styles.openName} numberOfLines={1}>
+                  {f.name}
+                </Text>
+                <Text style={[styles.openCode, there && { color: colors.toxic }]} numberOfLines={1}>
+                  {there ? 'Waiting in a room' : 'Not in a room'}
+                </Text>
+              </View>
+              {there ? <Button title="Join" small variant="blue" onPress={() => join(there.code)} disabled={busy} /> : null}
+            </View>
+          );
+        })}
+      </View>
+    </Card>
+  );
+
+  // Desktop shows all the cards; the phone shows one of them at a time.
   const browse = isDesktop ? (
     <>
+      {roomsCard}
+      {friendsCard}
       {createCard}
       {joinCard}
-      {roomsCard}
     </>
   ) : (
     <>
       <Tabs<OnlineTab>
         tabs={[
+          { id: 'rooms', label: 'Rooms' },
+          { id: 'friends', label: 'Friends' },
           { id: 'create', label: 'Create' },
           { id: 'join', label: 'Join' },
-          { id: 'rooms', label: 'Rooms' },
         ]}
         value={subTab}
         onChange={setSubTab}
       />
-      <View style={styles.panel}>{subTab === 'create' ? createCard : subTab === 'join' ? joinCard : roomsCard}</View>
+      <View style={styles.panel}>{subTab === 'create' ? createCard : subTab === 'join' ? joinCard : subTab === 'friends' ? friendsCard : roomsCard}</View>
     </>
   );
 
@@ -629,15 +758,16 @@ function OnlineLobby({
   const aliveBots = alive ? Object.fromEntries(Object.entries(room.knockout?.bots ?? {}).filter(([id]) => alive.includes(id))) : null;
   const roomRules: MatchRules = { ...DEFAULT_RULES, ...(room.rules ?? {}) };
   const roomMinutes = (room.durationSec ?? CLASSIC_DURATION_SEC) / 60;
-  const bots = aliveBots ? Object.keys(aliveBots).length : knockout ? KNOCKOUT_SIZE - inRun.length : Math.min(room.botCount, MAX_ROOM_PLAYERS - players.length);
-  const hasSettings = isHost || !knockout;
+  const isOpenRoom = !!room.public;
+  const bots = aliveBots ? Object.keys(aliveBots).length : isOpenRoom ? 0 : knockout ? KNOCKOUT_SIZE - inRun.length : Math.min(room.botCount, MAX_ROOM_PLAYERS - players.length);
+  const hasSettings = !isOpenRoom && (isHost || !knockout);
   const showSettings = hasSettings && roomTab === 'settings' && !out;
   const avatar = isDesktop ? 40 : 30;
 
-  const start = async () => {
+  const start = async (): Promise<boolean> => {
     if (inRun.length + bots < 2) {
       toast('Need at least 2 participants (players or bots)', { tone: 'bad' });
-      return;
+      return false;
     }
     haptic('heavy');
     const seed = Math.floor(Math.random() * 1e9);
@@ -654,11 +784,14 @@ function OnlineLobby({
         durationSec: knockout ? TOURNAMENT_ROUND_SEC : roomMinutes * 60,
         rules: knockout ? null : roomRules,
       });
+      return true;
     } catch (e) {
       toast('Could not start', { tone: 'bad' });
       console.warn(e);
+      return false;
     }
   };
+  startRef.current = start;
 
   const levelTile = difficultyTile('Bot level', room.difficulty, (d) => roomService.updateSettings(room.code, { difficulty: d }), false);
   const hostTiles: Tile[] = knockout
@@ -722,7 +855,9 @@ function OnlineLobby({
     />
   );
 
-  const footer = isHost ? (
+  const footer = isOpenRoom ? (
+    <Button title={`Waiting for players ${players.length}/${roomCapacity(room)}`} icon="⏳" onPress={() => {}} disabled small={!isDesktop} />
+  ) : isHost ? (
     <Button title={allReady ? 'Start match' : 'Waiting for everyone to be ready'} icon="▶️" onPress={start} disabled={!allReady} small={!isDesktop} />
   ) : (
     <Button
@@ -821,6 +956,7 @@ const styles = StyleSheet.create({
   segTextCompact: { fontSize: 12 },
   cardBtn: { marginTop: 10 },
   joinRow: { flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' },
+  nameInput: { fontSize: 16, letterSpacing: 0, textAlign: 'left' },
   input: { flex: 1, backgroundColor: colors.bgAlt, borderRadius: radius.sm, ...outline, color: colors.text, paddingHorizontal: 12, paddingVertical: 9, fontSize: 18, textAlign: 'center', letterSpacing: 4 },
   roomsCard: { flex: 1 },
   roomsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

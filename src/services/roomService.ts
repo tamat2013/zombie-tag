@@ -48,6 +48,17 @@ export interface Room {
   durationSec?: number | null;
   /** Knockout tournament in progress: who is still in, and the bots that are still in. */
   knockout?: RoomKnockout | null;
+  /** An open room made automatically: no bots, and the match starts by itself once the room is full. */
+  public?: boolean | null;
+}
+
+/** Open rooms older than this are treated as abandoned. */
+const PUBLIC_ROOM_MAX_AGE_MS = 20 * 60 * 1000;
+
+/** True for an open room that can still take players and has not been left behind. */
+export function isJoinableOpenRoom(r: Room, now: number): boolean {
+  const created = typeof r.createdAt === 'number' ? r.createdAt : now;
+  return !!r.public && r.status === 'lobby' && now - created < PUBLIC_ROOM_MAX_AGE_MS && Object.keys(r.players ?? {}).length < roomCapacity(r);
 }
 
 export interface RoomKnockout {
@@ -87,7 +98,7 @@ function code(): string {
 }
 
 export const roomService = {
-  async create(profile: Profile, opts: { map: GameMap; botCount: number; difficulty: BotDifficulty; mode: Room['mode']; tournamentId?: string }): Promise<string> {
+  async create(profile: Profile, opts: { map: GameMap; botCount: number; difficulty: BotDifficulty; mode: Room['mode']; tournamentId?: string; public?: boolean }): Promise<string> {
     const db = realtimeDb();
     for (let attempt = 0; attempt < 6; attempt++) {
       const c = code();
@@ -104,6 +115,7 @@ export const roomService = {
           botCount: opts.botCount,
           difficulty: opts.difficulty,
           status: 'lobby',
+          public: opts.public ?? null,
           createdAt: serverTimestamp(),
           players: { [profile.uid]: roomPlayerFrom(profile) },
         };
@@ -137,7 +149,7 @@ export const roomService = {
   },
 
   async start(roomCode: string, match: NonNullable<Room['match']>) {
-    await update(ref(realtimeDb(), `rooms/${roomCode}`), { match: { ...match, startedAt: serverTimestamp() }, status: 'playing', live: null, buffs: null, result: null });
+    await update(ref(realtimeDb(), `rooms/${roomCode}`), { match: { ...match, startedAt: serverTimestamp() }, status: 'playing', public: null, live: null, buffs: null, result: null });
   },
 
   /** Host only: who moves on to the next knockout round (null when the run is over). */
@@ -167,6 +179,7 @@ export const roomService = {
     await update(ref(db, `rooms/${roomCode}`), patch);
   },
 
+  /** Every room still waiting for players (private ones too), newest first. */
   async listOpen(): Promise<Room[]> {
     const snap = await get(ref(realtimeDb(), 'rooms'));
     if (!snap.exists()) return [];
@@ -174,6 +187,26 @@ export const roomService = {
     return rooms
       .filter((r) => r.status === 'lobby' && !r.knockout?.alive?.length && Object.keys(r.players ?? {}).length < roomCapacity(r))
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-      .slice(0, 20);
+      .slice(0, 60);
+  },
+
+  /**
+   * Join the fullest open room of this kind, or make a new one when there is none.
+   * Returns the room code. The match starts by itself when the room fills up.
+   */
+  async quickJoin(profile: Profile, opts: { map: GameMap; mode: Room['mode']; tournamentId?: string }): Promise<string> {
+    const now = Date.now();
+    const rooms = (await this.listOpen())
+      .filter((r) => isJoinableOpenRoom(r, now) && r.mode === opts.mode && (r.tournamentId ?? null) === (opts.tournamentId ?? null))
+      .sort((a, b) => Object.keys(b.players ?? {}).length - Object.keys(a.players ?? {}).length);
+    for (const r of rooms) {
+      try {
+        await this.join(r.code, profile);
+        return r.code;
+      } catch {
+        // It filled up or started meanwhile: try the next one.
+      }
+    }
+    return this.create(profile, { map: opts.map, botCount: 0, difficulty: 'normal', mode: opts.mode, tournamentId: opts.tournamentId, public: true });
   },
 };

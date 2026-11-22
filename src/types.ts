@@ -172,7 +172,14 @@ export interface Profile {
   bestObstacleTimes: Record<string, number>;
   obstacleMedals: Record<string, 'gold' | 'silver' | 'bronze'>;
   tournaments: Record<string, TournamentEntryState>;
+  /** Friends added by username, so they are easy to find and join. */
+  friends?: Friend[];
   createdAt: number;
+}
+
+export interface Friend {
+  uid: string;
+  name: string;
 }
 
 /** Summary of one match from the local player's point of view. */
