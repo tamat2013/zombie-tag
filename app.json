@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zombie Tag",
     "slug": "zombie-tag",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "runtimeVersion": {
       "policy": "appVersion"
     },

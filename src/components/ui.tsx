@@ -1,6 +1,6 @@
 // Small shared building blocks: screen wrapper, header, currency bar, progress bar, cards, toasts.
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import { Animated, PanResponder, StyleSheet } from 'react-native';
 import { Pressable, ScrollView, View } from '../i18n/Layout';
 import { Text } from '../i18n/Text';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
@@ -13,6 +13,8 @@ import { Icon, Glyph } from './Icon';
 import { SideBar, TabBar } from './AppShell';
 import type { ShellKey } from './AppShell';
 import { useDevice } from '../utils/device';
+import { isRtl } from '../i18n/direction';
+import { useLanguage } from '../i18n/language';
 
 export function Screen({ children, scroll, style, shell }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle>; shell?: ShellKey }) {
   const { isDesktop } = useDevice();
@@ -190,6 +192,22 @@ export function Grid<T>({
   const perPage = paged ? Math.max(1, cols * rows) : items.length;
   const pages = Math.max(1, Math.ceil(items.length / Math.max(1, perPage)));
   const current = Math.min(page, pages - 1);
+  // Swiping sideways turns the page too (drag with the mouse on web). Direction follows the arrows, so it flips in right-to-left languages.
+  const rtl = isRtl(useLanguage());
+  const swipe = useRef({ current, pages, rtl });
+  swipe.current = { current, pages, rtl };
+  const swipeResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_e, g) => Math.abs(g.dx) > 16 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderRelease: (_e, g) => {
+        if (Math.abs(g.dx) < 50 && Math.abs(g.vx) < 0.4) return;
+        const { current: c, pages: n, rtl: r } = swipe.current;
+        const forward = r ? g.dx > 0 : g.dx < 0;
+        setPage(Math.min(n - 1, Math.max(0, c + (forward ? 1 : -1))));
+      },
+    }),
+  ).current;
   const shown = paged ? items.slice(current * perPage, current * perPage + perPage) : items;
   const cellW = box ? (box.width - gap * (cols - 1)) / cols : 0;
   const cellH = paged && box ? (box.height - gap * (rows - 1)) / rows : minHeight;
@@ -227,7 +245,7 @@ export function Grid<T>({
   if (!paged) return <View onLayout={measure}>{grid}{footerRow}</View>;
   return (
     <View style={{ flex: 1, gap: 8 }}>
-      <View style={{ flex: 1, overflow: 'hidden' }} onLayout={measure}>
+      <View style={{ flex: 1, overflow: 'hidden' }} onLayout={measure} {...swipeResponder.panHandlers}>
         {grid}
       </View>
       {footerRow}
