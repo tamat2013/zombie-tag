@@ -265,6 +265,9 @@ export function GameScreen({ route, navigation }: ScreenProps<'Game'>) {
             pushFeed(`${TASK_INFO[e.taskType].title} done · timer cut by ${TASK_TIME_BONUS_SEC}s`, colors.toxic);
           }
           break;
+        case 'teamTask':
+          if (e.playerId !== me) pushFeed(`${nameOf(e.playerId)} finished a task · timer cut by ${TASK_TIME_BONUS_SEC}s for everyone`, colors.toxic);
+          break;
         case 'checkpoint':
           if (e.playerId === me) {
             playSfx('checkpoint');

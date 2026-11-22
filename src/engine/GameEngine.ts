@@ -49,6 +49,7 @@ export type EngineEvent =
   | { type: 'cured'; playerId: string; byId: string }
   | { type: 'blocked'; playerId: string }
   | { type: 'task'; playerId: string; taskType: TaskType }
+  | { type: 'teamTask'; playerId: string }
   | { type: 'ability'; playerId: string; ability: AbilityId }
   | { type: 'checkpoint'; playerId: string }
   | { type: 'hazard'; playerId: string }
@@ -683,6 +684,8 @@ export class GameEngine implements AbilityWorld, BotWorld {
     p.effects = emptyEffects();
     for (const k of EFFECT_KEYS) if (s.e?.[k]) p.effects[k] = this.now + s.e[k]!;
     p.infections = Math.max(p.infections, s.i);
+    // A task finished on another device cuts the shared clock here too, so tell the player.
+    if (s.t > p.completedStations.length) this.events.push({ type: 'teamTask', playerId: p.id });
     while (p.completedStations.length < s.t) p.completedStations.push(-1 - p.completedStations.length);
     p.lastNetUpdate = this.now;
   }
