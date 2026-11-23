@@ -61,7 +61,7 @@ export type EngineEvent =
 /** Remote players are drawn ahead by their measured delay; these bound it, and set the guess before any is measured. */
 const MAX_REMOTE_LEAD_MS = 500;
 /** Extra infection distance (px) so near-touches count. */
-const INFECT_SLACK = 22;
+const INFECT_SLACK = 34;
 /** Extra infection distance per second of measured network delay (px). */
 const INFECT_LAG_PX_PER_S = 80;
 const DEFAULT_REMOTE_LEAD_MS = 100;
@@ -149,6 +149,10 @@ export class GameEngine implements AbilityWorld, BotWorld {
   events: EngineEvent[] = [];
   outbox: OutgoingBuff[] = [];
   private lastInfectSent = new Map<string, number>();
+  /** Touches on remote players that are not yet confirmed: resent until the victim turns into a zombie. */
+  private pendingInfect = new Map<string, { fromId: string; until: number }>();
+  /** Where everyone was on the previous tick, so a very short touch between two ticks still counts. */
+  private prevPos = new Map<string, { x: number; y: number }>();
   private survivorSpawns: Vec[] = [];
   rng: () => number;
   private released = false;
@@ -364,7 +368,7 @@ export class GameEngine implements AbilityWorld, BotWorld {
     if (kind === 'infect') {
       // A zombie's own client saw the touch; trust it so lag cannot make a hit vanish.
       const z = this.getPlayer(fromId);
-      if (z && z.role === 'zombie' && !this.isFrozen(z) && (z.startRole !== 'zombie' || this.zombiesReleased)) this.infect(t, z);
+      if (z && z.role === 'zombie') this.infect(t, z);
     }
   }
 
@@ -544,16 +548,41 @@ export class GameEngine implements AbilityWorld, BotWorld {
         const remoteOne = remoteVictim ? victim : z.control === 'remote' ? z : null;
         const lagMs = remoteOne ? Math.min(400, remoteOne.netDelayMs ?? DEFAULT_REMOTE_LEAD_MS) : 0;
         const reach = PLAYER_RADIUS * 2 + INFECT_REACH * z.mods.reach * 2 + INFECT_SLACK + (lagMs / 1000) * INFECT_LAG_PX_PER_S;
-        if (Math.hypot(victim.x - z.x, victim.y - z.y) <= reach) {
+        if (this.closestApproach(victim, z) <= reach) {
           if (!remoteVictim) this.infect(victim, z);
-          else if ((this.lastInfectSent.get(victim.id) ?? -Infinity) + 500 <= this.now) {
-            this.lastInfectSent.set(victim.id, this.now);
-            this.outbox.push({ targetId: victim.id, kind: 'infect', durationMs: 0, fromId: z.id });
-          }
+          else this.pendingInfect.set(victim.id, { fromId: z.id, until: this.now + 1200 });
           break;
         }
       }
     }
+    // A touch is never lost: keep telling the victim's device until the infection shows up there.
+    for (const [victimId, pend] of this.pendingInfect) {
+      const v = this.getPlayer(victimId);
+      if (!v || v.role !== 'survivor' || this.now > pend.until) {
+        this.pendingInfect.delete(victimId);
+        this.lastInfectSent.delete(victimId);
+      } else if ((this.lastInfectSent.get(victimId) ?? -Infinity) + 250 <= this.now) {
+        this.lastInfectSent.set(victimId, this.now);
+        this.outbox.push({ targetId: victimId, kind: 'infect', durationMs: 0, fromId: pend.fromId });
+      }
+    }
+    for (const p of this.players) this.prevPos.set(p.id, { x: p.x, y: p.y });
+  }
+
+  /** Smallest distance between two players during the last tick (not just at its end), so a quick touch is never missed. */
+  private closestApproach(a: EnginePlayer, b: EnginePlayer): number {
+    const pa = this.prevPos.get(a.id);
+    const pb = this.prevPos.get(b.id);
+    const end = Math.hypot(a.x - b.x, a.y - b.y);
+    if (!pa || !pb) return end;
+    const r0x = pa.x - pb.x;
+    const r0y = pa.y - pb.y;
+    const dx = a.x - b.x - r0x;
+    const dy = a.y - b.y - r0y;
+    const len2 = dx * dx + dy * dy;
+    if (len2 < 1e-6) return end;
+    const t = Math.max(0, Math.min(1, -(r0x * dx + r0y * dy) / len2));
+    return Math.min(end, Math.hypot(r0x + t * dx, r0y + t * dy));
   }
 
   /** Doctors heal frozen zombies by touching them. Checked by whoever owns the frozen player. */

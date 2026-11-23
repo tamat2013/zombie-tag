@@ -22,7 +22,7 @@ import type { Room } from '../services/roomService';
 import { friendService } from '../services/friendService';
 import type { FriendMatch } from '../services/friendService';
 import type { Friend } from '../types';
-import { TOURNAMENT_GROUPS, getTournamentById, nextGroup, openGroup, roundName, tournamentStatus } from '../logic/tournaments';
+import { TOURNAMENT_GROUPS, getTournamentById, nextGroup, openGroup, roundName, tournamentGroup, tournamentStatus } from '../logic/tournaments';
 import { localSetup, makeBots, onlineSetup, roomMap, seededRng } from '../utils/matchSetup';
 import { Glyph, Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
@@ -659,7 +659,7 @@ function OnlineLobby({
       </View>
       {flow.mode === 'tournament' ? (
         <>
-          <P dim>Each tournament has {TOURNAMENT_GROUPS} start groups. A group opens for 1 minute, then it starts and everyone who joined plays the same run together.</P>
+          <P dim>Each tournament has {TOURNAMENT_GROUPS} start groups. A group opens for {tournament ? Math.round((tournamentGroup(tournament, 0).joinEndsAt - tournamentGroup(tournament, 0).startsAt) / 1000) : 60} seconds, then it starts and everyone who joined plays the same run together.</P>
           <P style={styles.roundLine}>
             {group
               ? `Group ${group.index + 1} of ${TOURNAMENT_GROUPS} is open · ${mmss(group.joinEndsAt - clock)} left to join`
