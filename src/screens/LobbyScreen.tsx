@@ -22,7 +22,7 @@ import type { Room } from '../services/roomService';
 import { friendService } from '../services/friendService';
 import type { FriendMatch } from '../services/friendService';
 import type { Friend } from '../types';
-import { getTournamentById, roundName, tournamentStatus } from '../logic/tournaments';
+import { TOURNAMENT_GROUPS, getTournamentById, nextGroup, openGroup, roundName, tournamentStatus } from '../logic/tournaments';
 import { localSetup, makeBots, onlineSetup, roomMap, seededRng } from '../utils/matchSetup';
 import { Glyph, Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
@@ -57,6 +57,11 @@ const CLASSIC_MINUTES = [3, 5, 10, 15];
 const BOT_COUNTS = Array.from({ length: MAX_ROOM_PLAYERS }, (_, i) => i);
 
 /** The widest preview of a map that still fits a box of maxWidth × maxHeight, keeping the map's shape. */
+function mmss(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 function fitWidth(map: GameMap, maxWidth: number, maxHeight: number): number {
   return Math.max(40, Math.min(maxWidth, (maxHeight * map.width) / map.height));
 }
@@ -433,6 +438,15 @@ function OnlineLobby({
   const autoStarting = useRef(false);
   const startRef = useRef<(() => Promise<boolean>) | null>(null);
   const friends = profile.friends ?? [];
+  // A clock that ticks every second, for the tournament group countdowns.
+  const [clock, setClock] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const tournament = flow.mode === 'tournament' && flow.tournamentId ? getTournamentById(flow.tournamentId, clock) : undefined;
+  const group = tournament ? openGroup(tournament, clock) : null;
+  const upcoming = tournament && !group ? nextGroup(tournament, clock) : null;
 
   // Leave the room when the lobby closes, unless we are heading into the match.
   const codeRef = useRef(code);
@@ -486,12 +500,15 @@ function OnlineLobby({
   // An open room starts by itself once it is full. The host's device starts it.
   useEffect(() => {
     if (!room || !room.public || room.status !== 'lobby' || room.hostId !== profile.uid) return;
-    if (Object.keys(room.players ?? {}).length < roomCapacity(room) || autoStarting.current) return;
+    // A tournament group starts by itself when its join minute is over, even if the room is not full.
+    const full = Object.keys(room.players ?? {}).length >= roomCapacity(room);
+    const joinClosed = !!room.joinUntil && clock >= room.joinUntil;
+    if (!(full || joinClosed) || autoStarting.current) return;
     autoStarting.current = true;
     startRef.current?.().then((ok) => {
       if (!ok) autoStarting.current = false;
     });
-  }, [room, profile.uid]);
+  }, [room, profile.uid, clock]);
 
   const enter = async (get: () => Promise<string>, fail: string) => {
     setBusy(true);
@@ -508,8 +525,20 @@ function OnlineLobby({
   };
 
   /** Join an open room, or make one when there is none. */
-  const playOpen = () =>
-    enter(() => roomService.quickJoin(profile, { map, mode: flow.mode === 'tournament' ? 'tournament' : 'classic', tournamentId: flow.tournamentId }), 'Could not join a room');
+  const playOpen = () => {
+    if (flow.mode === 'tournament') {
+      // Players who join in the same minute play the same run together.
+      if (!tournament || !group) {
+        toast(upcoming ? `The next group opens in ${mmss(upcoming.startsAt - Date.now())}` : 'No more groups in this tournament', { tone: 'bad' });
+        return;
+      }
+      return enter(
+        () => roomService.quickJoin(profile, { map, mode: 'tournament', tournamentId: flow.tournamentId, group: group.index, joinUntil: group.joinEndsAt }),
+        'Could not join a room',
+      );
+    }
+    return enter(() => roomService.quickJoin(profile, { map, mode: 'classic', tournamentId: flow.tournamentId }), 'Could not join a room');
+  };
 
   const addFriend = (f: Friend) => {
     updateProfile((p) => ({ ...p, friends: [...(p.friends ?? []).filter((x) => x.uid !== f.uid), { uid: f.uid, name: f.name }] }));
@@ -628,7 +657,20 @@ function OnlineLobby({
           <Icon name="refresh" size={20} color={colors.text} />
         </Pressable>
       </View>
-      <P dim>Open rooms are made automatically. The match starts when {capacity} players are in.</P>
+      {flow.mode === 'tournament' ? (
+        <>
+          <P dim>Each tournament has {TOURNAMENT_GROUPS} start groups. A group opens for 1 minute, then it starts and everyone who joined plays the same run together.</P>
+          <P style={styles.roundLine}>
+            {group
+              ? `Group ${group.index + 1} of ${TOURNAMENT_GROUPS} is open · ${mmss(group.joinEndsAt - clock)} left to join`
+              : upcoming
+                ? `The next group opens in ${mmss(upcoming.startsAt - clock)}`
+                : 'No more groups in this tournament'}
+          </P>
+        </>
+      ) : (
+        <P dim>Open rooms are made automatically. The match starts when {capacity} players are in.</P>
+      )}
       <Button title="Find a match" icon="🎮" onPress={playOpen} loading={busy} small={!isDesktop} style={styles.cardBtn} />
       <View style={styles.roomsBlock}>
         {openRooms === null ? <ActivityIndicator color={colors.toxic} /> : null}
@@ -759,7 +801,7 @@ function OnlineLobby({
   const roomRules: MatchRules = { ...DEFAULT_RULES, ...(room.rules ?? {}) };
   const roomMinutes = (room.durationSec ?? CLASSIC_DURATION_SEC) / 60;
   const isOpenRoom = !!room.public;
-  const bots = aliveBots ? Object.keys(aliveBots).length : isOpenRoom ? 0 : knockout ? KNOCKOUT_SIZE - inRun.length : Math.min(room.botCount, MAX_ROOM_PLAYERS - players.length);
+  const bots = aliveBots ? Object.keys(aliveBots).length : isOpenRoom && !knockout ? 0 : knockout ? KNOCKOUT_SIZE - inRun.length : Math.min(room.botCount, MAX_ROOM_PLAYERS - players.length);
   const hasSettings = !isOpenRoom && (isHost || !knockout);
   const showSettings = hasSettings && roomTab === 'settings' && !out;
   const avatar = isDesktop ? 40 : 30;
@@ -856,7 +898,17 @@ function OnlineLobby({
   );
 
   const footer = isOpenRoom ? (
-    <Button title={`Waiting for players ${players.length}/${roomCapacity(room)}`} icon="⏳" onPress={() => {}} disabled small={!isDesktop} />
+    <Button
+      title={
+        room.joinUntil
+          ? `Starts in ${mmss(room.joinUntil - clock)} · ${players.length}/${roomCapacity(room)} players`
+          : `Waiting for players ${players.length}/${roomCapacity(room)}`
+      }
+      icon="⏳"
+      onPress={() => {}}
+      disabled
+      small={!isDesktop}
+    />
   ) : isHost ? (
     <Button title={allReady ? 'Start match' : 'Waiting for everyone to be ready'} icon="▶️" onPress={start} disabled={!allReady} small={!isDesktop} />
   ) : (

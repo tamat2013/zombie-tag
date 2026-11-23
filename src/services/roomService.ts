@@ -27,6 +27,9 @@ export interface Room {
   hostId: string;
   mode: 'classic' | 'tournament';
   tournamentId?: string | null;
+  /** Tournament group (start slot) this room belongs to, and when joining it closes. */
+  group?: number | null;
+  joinUntil?: number | null;
   mapId: string;
   map?: GameMap | null;
   botCount: number;
@@ -58,6 +61,7 @@ const PUBLIC_ROOM_MAX_AGE_MS = 20 * 60 * 1000;
 /** True for an open room that can still take players and has not been left behind. */
 export function isJoinableOpenRoom(r: Room, now: number): boolean {
   const created = typeof r.createdAt === 'number' ? r.createdAt : now;
+  if (r.joinUntil && now >= r.joinUntil) return false;
   return !!r.public && r.status === 'lobby' && now - created < PUBLIC_ROOM_MAX_AGE_MS && Object.keys(r.players ?? {}).length < roomCapacity(r);
 }
 
@@ -98,7 +102,7 @@ function code(): string {
 }
 
 export const roomService = {
-  async create(profile: Profile, opts: { map: GameMap; botCount: number; difficulty: BotDifficulty; mode: Room['mode']; tournamentId?: string; public?: boolean }): Promise<string> {
+  async create(profile: Profile, opts: { map: GameMap; botCount: number; difficulty: BotDifficulty; mode: Room['mode']; tournamentId?: string; public?: boolean; group?: number; joinUntil?: number }): Promise<string> {
     const db = realtimeDb();
     for (let attempt = 0; attempt < 6; attempt++) {
       const c = code();
@@ -110,6 +114,8 @@ export const roomService = {
           hostId: profile.uid,
           mode: opts.mode,
           tournamentId: opts.tournamentId ?? null,
+          group: opts.group ?? null,
+          joinUntil: opts.joinUntil ?? null,
           mapId: opts.map.id,
           map: opts.map.builtIn ? null : opts.map,
           botCount: opts.botCount,
@@ -131,6 +137,7 @@ export const roomService = {
     if (!snap.exists()) throw new Error('Room not found');
     const room = snap.val() as Room;
     if (room.status !== 'lobby') throw new Error('The match in this room has already started');
+    if (room.joinUntil && Date.now() >= room.joinUntil && !room.players?.[profile.uid]) throw new Error('Joining this tournament group has closed');
     if (room.knockout?.alive?.length && !room.players?.[profile.uid]) throw new Error('The tournament in this room is already underway');
     if (Object.keys(room.players ?? {}).length >= roomCapacity(room) && !room.players?.[profile.uid]) throw new Error('The room is full');
     await set(ref(realtimeDb(), `rooms/${c}/players/${profile.uid}`), roomPlayerFrom(profile));
@@ -194,10 +201,10 @@ export const roomService = {
    * Join the fullest open room of this kind, or make a new one when there is none.
    * Returns the room code. The match starts by itself when the room fills up.
    */
-  async quickJoin(profile: Profile, opts: { map: GameMap; mode: Room['mode']; tournamentId?: string }): Promise<string> {
+  async quickJoin(profile: Profile, opts: { map: GameMap; mode: Room['mode']; tournamentId?: string; group?: number; joinUntil?: number }): Promise<string> {
     const now = Date.now();
     const rooms = (await this.listOpen())
-      .filter((r) => isJoinableOpenRoom(r, now) && r.mode === opts.mode && (r.tournamentId ?? null) === (opts.tournamentId ?? null))
+      .filter((r) => isJoinableOpenRoom(r, now) && r.mode === opts.mode && (r.tournamentId ?? null) === (opts.tournamentId ?? null) && (r.group ?? null) === (opts.group ?? null))
       .sort((a, b) => Object.keys(b.players ?? {}).length - Object.keys(a.players ?? {}).length);
     for (const r of rooms) {
       try {
@@ -207,6 +214,6 @@ export const roomService = {
         // It filled up or started meanwhile: try the next one.
       }
     }
-    return this.create(profile, { map: opts.map, botCount: 0, difficulty: 'normal', mode: opts.mode, tournamentId: opts.tournamentId, public: true });
+    return this.create(profile, { map: opts.map, botCount: 0, difficulty: 'normal', mode: opts.mode, tournamentId: opts.tournamentId, public: true, group: opts.group, joinUntil: opts.joinUntil });
   },
 };
