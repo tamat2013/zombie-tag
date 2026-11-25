@@ -30,13 +30,19 @@
     "files": [
       "electron/**/*",
       "dist/**/*",
-      "package.json",
-      "!**/node_modules/**"
+      "package.json"
     ],
     "win": {
       "target": "nsis",
       "artifactName": "ZombieTag-Setup.${ext}"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tamat2013",
+        "repo": "zombie-tag"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "perMachine": false,
@@ -75,6 +81,7 @@
     "@types/react": "~19.1.10",
     "electron": "^45.5.0",
     "electron-builder": "^26.18.0",
+    "electron-updater": "^6.8.11",
     "typescript": "~5.9.2"
   }
 }

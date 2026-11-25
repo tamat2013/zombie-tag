@@ -163,7 +163,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: release-windows/ZombieTag-Setup.exe
+          path: |
+            release-windows/ZombieTag-Setup.exe
+            release-windows/ZombieTag-Setup.exe.blockmap
+            release-windows/latest.yml
 
   publish:
     needs: [android, ios, web, windows]
@@ -187,5 +190,7 @@ jobs:
             out/ZombieTag.apk
             out/ZombieTag.ipa
             out/ZombieTag-Setup.exe
+            out/ZombieTag-Setup.exe.blockmap
+            out/latest.yml
             out/ZombieTag-web.zip
             out/SHA256SUMS.txt

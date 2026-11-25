@@ -1,4 +1,5 @@
 const { app, BrowserWindow, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('node:path');
 
 function createWindow() {
@@ -26,6 +27,12 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  if (process.platform === 'win32' && app.isPackaged) {
+    autoUpdater.on('error', (error) => console.error('Desktop update failed:', error));
+    autoUpdater.checkForUpdatesAndNotify().catch((error) => {
+      console.error('Could not check for desktop updates:', error);
+    });
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

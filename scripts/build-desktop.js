@@ -5,10 +5,11 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const stagingRoot = path.join(root, '.desktop-build');
 const stagingApp = path.join(stagingRoot, 'app');
+const projectPackage = require(path.join(root, 'package.json'));
 
-function runNode(script, args, env) {
+function runNode(script, args, env, cwd = root) {
   const result = spawnSync(process.execPath, [script, ...args], {
-    cwd: root,
+    cwd,
     env,
     stdio: 'inherit',
   });
@@ -28,10 +29,22 @@ try {
   fs.cpSync(path.join(root, 'dist'), path.join(stagingApp, 'dist'), { recursive: true });
   fs.writeFileSync(path.join(stagingApp, 'package.json'), JSON.stringify({
     name: 'zombie-tag-desktop',
-    version: require(path.join(root, 'package.json')).version,
+    version: projectPackage.version,
     private: true,
     main: 'electron/main.cjs',
+    dependencies: {
+      'electron-updater': projectPackage.devDependencies['electron-updater'],
+    },
   }, null, 2) + '\n');
+
+  if (!process.env.npm_execpath) throw new Error('Run the desktop build with npm run desktop:build');
+  runNode(process.env.npm_execpath, [
+    'install',
+    '--omit=dev',
+    '--no-audit',
+    '--no-fund',
+    '--no-save',
+  ], process.env, stagingApp);
 
   runNode(require.resolve('electron-builder/cli.js'), ['--win', 'nsis'], process.env);
 } finally {
