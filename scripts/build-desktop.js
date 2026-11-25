@@ -52,7 +52,7 @@ async function build() {
       '--no-save',
     ], process.env, stagingApp);
 
-    runNode(require.resolve('electron-builder/cli.js'), ['--win', 'nsis'], process.env);
+    runNode(require.resolve('electron-builder/cli.js'), ['--win', 'nsis', '--publish', 'never'], process.env);
   } finally {
     fs.rmSync(stagingRoot, { recursive: true, force: true });
   }
