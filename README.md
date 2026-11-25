@@ -21,10 +21,13 @@ To try the browser version without installing the Android tools: `npm install`, 
 
 - `ZombieTag.apk`: Android app. Installed Android apps find it through the update check in `src/services/appUpdate.ts`.
 - `ZombieTag.ipa`: iOS app, unsigned (install with Sideloadly or AltStore).
+- `ZombieTag-Setup.exe`: Windows desktop installer. To update, run the latest installer again.
 - `ZombieTag-web.zip`: the web version, ready to host anywhere.
 - `SHA256SUMS.txt`: checksums of the files above.
 
-Keep these file names: the guide page links to `releases/latest/download/ZombieTag.apk` and `ZombieTag.ipa`. To build a tag again, run the Release workflow by hand from the Actions tab and enter the tag.
+Keep these file names: the guide page links to the latest APK, IPA and Windows installer. To build a tag again, run the Release workflow by hand from the Actions tab and enter the tag.
+
+To build the Windows installer locally, run `npm run desktop:build` on Windows. The unsigned installer is written to `release-windows/ZombieTag-Setup.exe`.
 
 ### Automatic install (Windows)
 

@@ -8,6 +8,10 @@ function versionCode(version) {
 
 module.exports = ({ config }) => ({
   ...config,
+  experiments: {
+    ...config.experiments,
+    ...(process.env.ZOMBIE_TAG_DESKTOP === '1' ? { baseUrl: './' } : {}),
+  },
   android: {
     ...config.android,
     versionCode: versionCode(config.version),

@@ -4,9 +4,10 @@ name: Release
 # a GitHub Release with them attached:
 #   ZombieTag.apk      Android app (the in-game update check looks for this file)
 #   ZombieTag.ipa      iOS app, unsigned (install with Sideloadly or AltStore)
+#   ZombieTag-Setup.exe Windows desktop installer
 #   ZombieTag-web.zip  the web version, ready to host anywhere
 #   SHA256SUMS.txt     checksums of the files above
-# The guide page links to releases/latest/download/ZombieTag.apk and ZombieTag.ipa, so keep these names.
+# Keep the asset names used by the guide's latest-download links.
 # Firebase values come from Settings > Secrets and variables > Actions > Variables; without them the apps run offline.
 on:
   push:
@@ -145,8 +146,27 @@ jobs:
           name: web
           path: ZombieTag-web.zip
 
+  windows:
+    needs: check
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run desktop:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: release-windows/ZombieTag-Setup.exe
+
   publish:
-    needs: [android, ios, web]
+    needs: [android, ios, web, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -155,7 +175,7 @@ jobs:
           merge-multiple: true
       - name: Checksums
         working-directory: out
-        run: sha256sum ZombieTag.apk ZombieTag.ipa ZombieTag-web.zip > SHA256SUMS.txt
+        run: sha256sum ZombieTag.apk ZombieTag.ipa ZombieTag-Setup.exe ZombieTag-web.zip > SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
@@ -166,5 +186,6 @@ jobs:
           files: |
             out/ZombieTag.apk
             out/ZombieTag.ipa
+            out/ZombieTag-Setup.exe
             out/ZombieTag-web.zip
             out/SHA256SUMS.txt

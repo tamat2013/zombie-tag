@@ -12,9 +12,38 @@
     "web": "node scripts/run-web.js",
     "web:offline": "node scripts/run-web.js --offline",
     "web:build": "expo export --platform web",
+    "desktop:build": "node scripts/build-desktop.js",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "ios": "expo run:ios"
+  },
+  "build": {
+    "appId": "com.zombieoutbreak.game",
+    "productName": "Zombie Tag",
+    "extraMetadata": {
+      "main": "electron/main.cjs"
+    },
+    "directories": {
+      "app": ".desktop-build/app",
+      "output": "release-windows"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json",
+      "!**/node_modules/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "ZombieTag-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "dependencies": {
     "@expo-google-fonts/lilita-one": "^0.4.1",
@@ -44,6 +73,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0",
     "typescript": "~5.9.2"
   }
 }

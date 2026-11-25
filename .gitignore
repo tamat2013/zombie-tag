@@ -2,6 +2,9 @@ node_modules/
 .expo/
 dist/
 web-build/
+release/
+release-windows/
+.desktop-build/
 *.log
 .env
 .env.local

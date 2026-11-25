@@ -88,6 +88,7 @@ h1 span { color: var(--blood); display: block; }
 .dl.android { background: var(--toxic); }
 .dl.ios { background: var(--text); }
 .dl.pc { background: var(--blue); }
+.dl.windows { background: var(--gold); }
 .ver { margin-top: 12px; font-size: 13.5px; color: var(--muted); }
 
 /* Arena illustration */
@@ -283,6 +284,10 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
         <a class="dl pc js-web" href="#get" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 4h18a1 1 0 011 1v11a1 1 0 01-1 1h-7v2h3v2H7v-2h3v-2H3a1 1 0 01-1-1V5a1 1 0 011-1zm1 2v9h16V6H4z"/></svg>
           <span>Computer<small>Play in your browser</small></span>
+        </a>
+        <a class="dl windows js-desktop" href="#get">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.2 10.2 4v7H3zm8.2-1.4L21 2v9h-9.8zM3 12.8h7.2v7L3 18.6zm8.2 0H21v9l-9.8-1.8z"/></svg>
+          <span>Windows PC<small>Download installer EXE</small></span>
         </a>
       </div>
       <p class="ver">Free · up to 10 players per room · play against bots with no internet · 16 languages</p>
@@ -534,7 +539,7 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
   <section id="get" class="get">
     <div class="wrap">
       <h2><em>Download</em> and play</h2>
-      <p class="sub">The game is not in the app stores, so on phones you install it straight from the file. It takes a minute. On a computer there is nothing to install.</p>
+      <p class="sub">Install the game on Windows with the setup file, or play in a browser on any computer. Phone downloads are available below too.</p>
       <div class="cols">
         <div class="panel">
           <h3>Android</h3>
@@ -565,17 +570,30 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
           <p class="note">With a free Apple ID the app works for 7 days. After that, refresh it with the same program.</p>
         </div>
         <div class="panel">
-          <h3>Computer</h3>
+          <h3>Windows PC</h3>
+          <a class="dl windows js-desktop" href="#get">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.2 10.2 4v7H3zm8.2-1.4L21 2v9h-9.8zM3 12.8h7.2v7L3 18.6zm8.2 0H21v9l-9.8-1.8z"/></svg>
+            <span>Download installer<small>ZombieTag-Setup.exe</small></span>
+          </a>
+          <ol>
+            <li>Download <b>ZombieTag-Setup.exe</b> to your Windows computer.</li>
+            <li>Open the downloaded file and follow the setup steps.</li>
+            <li>Start Zombie Tag from the desktop shortcut or Start menu.</li>
+          </ol>
+          <p class="note">To update, download and run the latest setup file again. Windows may show a security warning because this installer is not code-signed; only use the download from this official page.</p>
+        </div>
+        <div class="panel">
+          <h3>Play in a browser</h3>
           <a class="dl pc js-web" href="#get" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 4h18a1 1 0 011 1v11a1 1 0 01-1 1h-7v2h3v2H7v-2h3v-2H3a1 1 0 01-1-1V5a1 1 0 011-1zm1 2v9h16V6H4z"/></svg>
             <span>Play now<small>Opens in your browser</small></span>
           </a>
           <ol>
             <li>Click <b>Play now</b>. The game opens in a new tab.</li>
-            <li>Works on Windows, Mac and Chromebook, in Chrome, Edge, Firefox or Safari.</li>
+            <li>Works on Windows, Mac and Chromebook, in Chrome, Edge, Firefox or Safari. No install needed.</li>
             <li>Move with <b>WASD</b>, tasks with <b>E</b>, stone with <b>Q</b>, abilities with <b>1–3</b>.</li>
           </ol>
-          <p class="note">Nothing to install, and you always get the newest version. Your account works on every device.</p>
+          <p class="note">The browser version always has the newest game. Your account works on every device.</p>
         </div>
       </div>
     </div>
@@ -632,9 +650,11 @@ footer { padding-block: 28px 40px; color: var(--muted); font-size: 13.5px; text-
   // Download and play addresses: change these lines if the files or the web game move.
   var ANDROID_URL = "https://github.com/tamat2013/zombie-tag/releases/latest/download/ZombieTag.apk";
   var IOS_URL = "https://github.com/tamat2013/zombie-tag/releases/latest/download/ZombieTag.ipa";
+  var DESKTOP_URL = "https://github.com/tamat2013/zombie-tag/releases/latest/download/ZombieTag-Setup.exe";
   var WEB_URL = "https://tamat2013.github.io/zombie-tag/";
   document.querySelectorAll(".js-android").forEach(function (a) { a.href = ANDROID_URL; });
   document.querySelectorAll(".js-ios").forEach(function (a) { a.href = IOS_URL; });
+  document.querySelectorAll(".js-desktop").forEach(function (a) { a.href = DESKTOP_URL; });
   document.querySelectorAll(".js-web").forEach(function (a) { a.href = WEB_URL; });
 
   // Survivor / zombie ability tabs
