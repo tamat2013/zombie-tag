@@ -108,6 +108,44 @@ export function tournamentStatus(t: Tournament, now: number): 'upcoming' | 'live
   return 'ended';
 }
 
+// ---- Start groups -----------------------------------------------------------------------------
+// Every tournament is split into 10 equal time slots. Each slot opens for one minute; everyone who
+// joins in that minute plays the same knockout run together, then the run starts by itself.
+
+export const TOURNAMENT_GROUPS = 100;
+export const GROUP_JOIN_MS = 60_000;
+
+export interface TournamentGroup {
+  /** 0-based slot number. */
+  index: number;
+  startsAt: number;
+  /** The minute in which players can still join this group. */
+  joinEndsAt: number;
+}
+
+export function tournamentGroup(t: Tournament, index: number): TournamentGroup {
+  const len = (t.endsAt - t.startsAt) / TOURNAMENT_GROUPS;
+  const startsAt = t.startsAt + index * len;
+  return { index, startsAt, joinEndsAt: startsAt + Math.min(GROUP_JOIN_MS, len) };
+}
+
+/** The group that is open for joining right now, or null. */
+export function openGroup(t: Tournament, now: number): TournamentGroup | null {
+  if (now < t.startsAt || now >= t.endsAt) return null;
+  const len = (t.endsAt - t.startsAt) / TOURNAMENT_GROUPS;
+  const g = tournamentGroup(t, Math.min(TOURNAMENT_GROUPS - 1, Math.floor((now - t.startsAt) / len)));
+  return now < g.joinEndsAt ? g : null;
+}
+
+/** The next group that will open, or null when the tournament has no more groups. */
+export function nextGroup(t: Tournament, now: number): TournamentGroup | null {
+  for (let i = 0; i < TOURNAMENT_GROUPS; i++) {
+    const g = tournamentGroup(t, i);
+    if (g.startsAt > now) return g;
+  }
+  return null;
+}
+
 /** Bonus leaderboard points for winning a whole knockout run. */
 export const CHAMPION_POINTS = 300;
 
